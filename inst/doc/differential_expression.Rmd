@@ -1,0 +1,93 @@
+---
+title: "Differential Expression"
+author: "Christoph Hafemeister"
+date: "`r Sys.Date()`"
+output: html_document
+vignette: >
+  %\VignetteIndexEntry{Differential expression}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  digits = 2,
+  fig.width=4, fig.height=2.5, dpi=300, out.width = '70%'
+)
+```
+
+```{r load_packages, include=FALSE}
+library('Matrix')
+library('ggplot2')
+library('reshape2')
+library('sctransform')
+```
+
+With this vignette we show how data that has been transformed using the `vst` function can be tested for differentially expressed genes across subsets of cells.
+
+### Load some data
+First we will follow the [Seurat clustering tutorial](https://satijalab.org/seurat/pbmc3k_tutorial.html) and load a dataset of Peripheral Blood Mononuclear Cells (PBMC) freely available from 10X Genomics. There are 2,700 single cells that were sequenced on the Illumina NextSeq 500. The raw data can be found [here](https://s3-us-west-2.amazonaws.com/10x.files/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz).
+
+```{r load_data}
+pbmc_data <- readRDS(file = "~/Projects/data/pbmc3k_umi_counts.Rds")
+class(pbmc_data)
+dim(pbmc_data)
+```
+
+`pbmc_data` is a sparse matrix of UMI counts (32,738 genes as rows and 2,700 cells as columns). Perform the variance stabilizing transformation:
+
+```{r, fig.width=4, fig.height=2.5}
+options(mc.cores = 7)
+set.seed(43)
+vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi_per_gene'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
+```
+
+Now we cluster the data in order to have groups of cells to test against each other. In short, we select variable genes by scaling the residual variance of all genes and selecting those that are more than one standard deviation above the mean. We then perform PCA and keep the top 12 dimensions, use euclidean distance and hierarchical clustering. This approach is sufficient for the purposes of this vignette, but in general we favor more sophisticated graph-based clustering approaches.
+
+```{r}
+var_genes <- rownames(vst_out$gene_attr)[scale(vst_out$gene_attr$residual_variance)[, 1] > 1]
+pca <- irlba::prcomp_irlba(t(vst_out$y[var_genes, ]), n = 20)
+ce <- pca$x[, 1:10]
+hcl <- hclust(dist(ce), method='ward.D2')
+clustering <- cutree(hcl, 10)
+```
+
+Perform differential expression test between cluster 1 and 2.
+```{r}
+res1 <- sctransform::compare_expression(x = vst_out, umi = pbmc_data, group = clustering, val1 = 1, val2 = 2, show_progress = FALSE)
+```
+
+By default, for every gene `compare_expression` uses a likelihood ratio test between two models. The first model has only an intercept term, while the second model also includes a group indicator variable, effectively fitting one intercept per group. Both models include an offset term to account for the expected UMI counts given the `vst` model. Model 1: $\log(\mu) = \beta_0 + \log(o)$, model 2: $\log(\mu) = \beta_1 + \beta_2 x + \log(o)$, where $\mu$ is the expected number of UMI counts of the given gene, $o$ the offset term (expected value under the regularized negative binomial regression model - see variance stabilizing transformation vignette), $x$ indicator variable that is 1 for cells belonging to group 2 and 0 otherwise. A negative binomial error distribution is assumed and both models use the regularized theta from the `vst` model to specify variance. The fold-change can be determined directly from the model 2 coefficient: $\log_2(e^{\beta_2})$
+
+The results are ordered by p-value and we show the top ranking genes for each group.
+```{r}
+head(subset(res1, log_fc < 0), 10)
+head(subset(res1, log_fc > 0), 10)
+```
+
+Generate a volcano-plot
+```{r, fig.height=3.5}
+ggplot(res1, aes(log_fc, -log10(p_value))) + geom_point(alpha=0.4, shape=16)
+```
+
+Genes only detected in one group receive large absolute values for fold change, but not necessarily the smallest p-values.
+
+We can also test one cluster vs all others. For example cluster 3:
+```{r}
+res2 <- sctransform::compare_expression(x = vst_out, umi = pbmc_data, group = clustering, val1 = setdiff(clustering, 3), val2 = 3, show_progress = FALSE)
+```
+
+And plot the distribution in raw UMI space and Pearson residual space.
+```{r, fig.width=4, fig.height=4, out.width='49%', fig.show='hold'}
+goi <- rownames(subset(res2, log_fc > 0))[1:3]
+df <- melt(t(as.matrix(pbmc_data[goi, ])), varnames = c('cell', 'gene'), value.name = 'UMI')
+df$cluster <- clustering
+ggplot(df, aes(x = gene, y = log10(UMI + 1), color = cluster == 3)) + geom_violin(scale = 'width')
+df <- melt(t(as.matrix(vst_out$y[goi, ])), varnames = c('cell', 'gene'), value.name = 'Pearson_residual')
+df$cluster <- clustering
+ggplot(df, aes(x = gene, y = Pearson_residual, color = cluster == 3)) + geom_violin(scale = 'width')
+
+```
+
