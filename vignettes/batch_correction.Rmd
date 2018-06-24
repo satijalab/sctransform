@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   digits = 2,
-  fig.width=5, fig.height=3, dpi=150, out.width = '70%'
+  fig.width=5, fig.height=3, dpi=100, out.width = '70%'
 )
 ```
 

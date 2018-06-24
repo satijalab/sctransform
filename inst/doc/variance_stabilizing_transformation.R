@@ -3,7 +3,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   digits = 2,
-  fig.width=4, fig.height=2.5, dpi=150, out.width = '70%'
+  fig.width=4, fig.height=2.5, dpi=100, out.width = '70%'
 )
 
 ## ----load_packages, include=FALSE----------------------------------------

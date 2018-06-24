@@ -3,7 +3,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   digits = 2,
-  fig.width=6, fig.height=4, dpi=150, out.width = '70%'
+  fig.width=6, fig.height=4, dpi=100, out.width = '70%'
 )
 
 ## ----load_packages, include=FALSE----------------------------------------
@@ -28,7 +28,7 @@ pricu <- princurve::principal.curve(pca$x, smoother='lowess', f=0.5, stretch=333
 # cell projection onto curve is maturation score
 maturation_score <- pricu$lambda/max(pricu$lambda)
 
-## ------------------------------------------------------------------------
+## ---- fig.width=8, fig.height=4, out.width = '100%'----------------------
 y_smooth <- sctransform::smooth_via_pca(vst_out$y, do_plot = TRUE)
 
 ## ------------------------------------------------------------------------
