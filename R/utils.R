@@ -17,7 +17,11 @@ is_outlier <- function(y, x, n, th = 40) {
   bins <- cut(rank(x, ties.method = 'first'), n.bins, ordered_result = TRUE)
   tmp <- aggregate(x = y, by = list(bin=bins), FUN = robust_scale)
   score <- rep(0, length(x))
-  score[o] <- as.numeric(t(tmp$x))
+  if (class(tmp$x) == 'list') {
+    score[o] <- unlist(tmp$x)
+  } else {
+    score[o] <- as.numeric(t(tmp$x))
+  }
   return(score > th)
 }
 

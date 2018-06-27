@@ -10,19 +10,20 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  digits = 2,
-  fig.width=4, fig.height=2.5, dpi=100, out.width = '70%'
-)
-```
-
-```{r load_packages, include=FALSE}
 library('Matrix')
 library('ggplot2')
 library('reshape2')
 library('sctransform')
+library('knitr')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  digits = 2,
+  optipng = '-o7',
+  fig.width=4, fig.height=2.5, dpi=100, out.width = '70%'
+)
+old_theme <- theme_set(theme_classic(base_size=8))
 ```
 
 With this vignette we introduce the concept of using regularized regression for normalization and show some examples.
@@ -58,8 +59,7 @@ rownames(cell_attr) <- colnames(pbmc_data)
 ggplot(gene_attr, aes(log_mean, log_var)) + 
   geom_point(alpha=0.3, shape=16) + 
   geom_density_2d(size = 0.3) +
-  geom_abline(intercept = 0, slope = 1, color='red') +
-  theme_gray(base_size = 8)
+  geom_abline(intercept = 0, slope = 1, color='red')
 ```
 
 For the genes, we can see that up to a mean UMI count of ca. 0.1 the variance follows the line through the origin with slop one, i.e. variance and mean are roughly equal as expected under a Poisson model. However, genes with a higher average UMI count show overdispersion compared to Poisson.
@@ -79,8 +79,7 @@ In line with the previous plot, we see a lower than expected detection rate in t
 ```{r umi_gene_rel, warning=FALSE, fig.cap='UMI detected genes relationship'}
 ggplot(cell_attr, aes(n_umi, n_gene)) + 
   geom_point(alpha=0.3, shape=16) + 
-  geom_density_2d(size = 0.3) +
-  theme_gray(base_size = 8)
+  geom_density_2d(size = 0.3)
 ```
 
 The more UMI counts a cell has, the more genes are detected. In this data set this seems to be an almost linear relationship (at least within the UMI range of most of the cells).

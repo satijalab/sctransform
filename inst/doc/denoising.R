@@ -1,16 +1,18 @@
 ## ----setup, include = FALSE----------------------------------------------
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  digits = 2,
-  fig.width=6, fig.height=4, dpi=100, out.width = '70%'
-)
-
-## ----load_packages, include=FALSE----------------------------------------
 library('Matrix')
 library('ggplot2')
 library('reshape2')
 library('sctransform')
+library('knitr')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  digits = 2,
+  optipng = '-o7',
+  fig.width=6, fig.height=4, dpi=100, out.width = '70%'
+)
+old_theme <- theme_set(theme_classic(base_size=8))
 
 ## ------------------------------------------------------------------------
 options(mc.cores = 4)

@@ -10,19 +10,20 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  digits = 2,
-  fig.width=6, fig.height=4, dpi=100, out.width = '70%'
-)
-```
-
-```{r load_packages, include=FALSE}
 library('Matrix')
 library('ggplot2')
 library('reshape2')
 library('sctransform')
+library('knitr')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  digits = 2,
+  optipng = '-o7',
+  fig.width=6, fig.height=4, dpi=100, out.width = '70%'
+)
+old_theme <- theme_set(theme_classic(base_size=8))
 ```
 
 In this vignette we show how the regression model in the variance stabilizing transformation can be used to output de-noised data. Implicitly there are two levels of smoothing/de-noising when we apply the standard workflow using `vst`. First we specify latent variables that are used in the regression model - their contribution to the overall variance in the data will be removed. Second, we usually perform dimensionality reduction, which acts like a smoothing operation. Here we show how to reverse these two operations to obtain de-noised UMI counts.

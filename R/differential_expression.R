@@ -33,10 +33,11 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   use_cells <- c(sel1, sel2)
   cell_attr <- cell_attr[use_cells, ]
   group <- factor(c(rep(0, length(sel1)), rep(1, length(sel2))))
-  genes <- rownames(x$model_pars_fit)
+  weights <- c(rep(1/length(sel1), length(sel1)), rep(1/length(sel2), length(sel2)))
+  genes <- rownames(x$model_pars_fit)[rownames(x$model_pars_fit) %in% rownames(umi)]
   cells_group1 <- rowSums(umi[genes, sel1] > 0)
   cells_group2 <- rowSums(umi[genes, sel2] > 0)
-  genes <- rownames(x$model_pars_fit)[cells_group1 >= min_cells | cells_group2 >= min_cells]
+  genes <- genes[cells_group1 >= min_cells | cells_group2 >= min_cells]
 
   regressor_data <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
   # process genes in batches
@@ -56,7 +57,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       mu <- x$model_pars_fit[genes_bin, -1, drop=FALSE] %*% t(regressor_data)  # in log space
       y <- as.matrix(umi[genes_bin, use_cells])
       bin_res <- mclapply(genes_bin, function(gene) {
-        model_comparison_lrt(y[gene, ], mu[gene, ], x$model_pars_fit[gene, 'theta'], group)
+        model_comparison_lrt(y[gene, ], mu[gene, ], x$model_pars_fit[gene, 'theta'], group, weights)
       })
     }
     res[[i]] <- do.call(rbind, bin_res)
@@ -77,10 +78,10 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
 
 #' @importFrom stats glm offset anova
 #' @importFrom MASS negative.binomial
-model_comparison_lrt <- function(y, offs, theta, group) {
+model_comparison_lrt <- function(y, offs, theta, group, weights = NULL) {
   fam <- negative.binomial(theta = theta)
-  mod0 <- glm(y ~ 1 + offset(offs), family = fam)
-  mod1 <- glm(y ~ 1 + offset(offs) + group, family = fam)
+  mod0 <- glm(y ~ 1 + offset(offs), family = fam, weights = weights)
+  mod1 <- glm(y ~ 1 + offset(offs) + group, family = fam, weights = weights)
   p_val <- anova(mod0, mod1, test = 'LRT')$'Pr(>Chi)'[2]
   fold_change <- log2(exp(mod1$coefficients[2]))
   return(c(p_val, fold_change))
