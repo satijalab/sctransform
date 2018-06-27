@@ -11,6 +11,7 @@
 #' @param latent_var The dependent variables to regress out as a character vector; must match column names in cell_attr; default is c("log_umi_per_gene")
 #' @param batch_var The dependent variables indicating which batch a cell belongs to; no batch interaction terms used if omiited
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
+#' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param min_cells Only use genes that have been detected in at least this many cells
@@ -29,7 +30,7 @@
 #'
 #' @import Matrix
 #' @import parallel
-#' @importFrom MASS theta.ml
+#' @importFrom MASS theta.ml glm.nb negative.binomial
 #' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var
 #' @importFrom utils txtProgressBar setTxtProgressBar
 #'
@@ -43,6 +44,7 @@ vst <- function(umi,
                 latent_var = c('log_umi_per_gene'),
                 batch_var = NULL,
                 n_genes = 2000,
+                method = 'poisson',
                 res_clip_range = c(-50, 50),
                 bin_size = 256,
                 min_cells = 5,
@@ -106,9 +108,31 @@ vst <- function(umi,
         X = genes_bin_regress,
         FUN = function(j) {
           y <- umi_bin[j, ]
-          fit <- glm(as.formula(model_str), data = cell_attr, family = poisson)
-          theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
-          return(c(theta, fit$coefficients))
+          if (method == 'poisson') {
+            fit <- glm(as.formula(model_str), data = cell_attr, family = poisson)
+            theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
+            return(c(theta, fit$coefficients))
+          }
+          if (method == 'nb_fast') {
+            fit <- glm(as.formula(model_str), data = cell_attr, family = poisson)
+            theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
+            fit2 <- 0
+            try(fit2 <- glm(as.formula(model_str), data = cell_attr, family = negative.binomial(theta=theta)), silent=TRUE)
+            if (class(fit2)[1] == 'numeric') {
+              return(c(theta, fit$coefficients))
+            } else {
+              return(c(theta, fit2$coefficients))
+            }
+          }
+          if (method == 'nb') {
+            fit <- 0
+            try(fit <- glm.nb(as.formula(model_str), data = cell_attr), silent=TRUE)
+            if (class(fit)[1] == 'numeric') {
+              fit <- glm(as.formula(model_str), data = cell_attr, family = poisson)
+              fit$theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
+            }
+            return(c(fit$theta, fit$coefficients))
+          }
         }
       )
     )

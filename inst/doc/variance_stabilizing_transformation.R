@@ -1,16 +1,18 @@
 ## ----setup, include = FALSE----------------------------------------------
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  digits = 2,
-  fig.width=4, fig.height=2.5, dpi=100, out.width = '70%'
-)
-
-## ----load_packages, include=FALSE----------------------------------------
 library('Matrix')
 library('ggplot2')
 library('reshape2')
 library('sctransform')
+library('knitr')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  digits = 2,
+  optipng = '-o7',
+  fig.width=4, fig.height=2.5, dpi=100, out.width = '70%'
+)
+old_theme <- theme_set(theme_classic(base_size=8))
 
 ## ----load_data-----------------------------------------------------------
 pbmc_data <- readRDS(file = "~/Projects/data/pbmc3k_umi_counts.Rds")
@@ -32,8 +34,7 @@ rownames(cell_attr) <- colnames(pbmc_data)
 ggplot(gene_attr, aes(log_mean, log_var)) + 
   geom_point(alpha=0.3, shape=16) + 
   geom_density_2d(size = 0.3) +
-  geom_abline(intercept = 0, slope = 1, color='red') +
-  theme_gray(base_size = 8)
+  geom_abline(intercept = 0, slope = 1, color='red')
 
 ## ----mean_dr_rel, warning=FALSE, fig.cap='Mean-detection-rate relationship'----
 # add the expected detection rate under Poisson model
@@ -47,8 +48,7 @@ ggplot(gene_attr, aes(log_mean, detection_rate)) +
 ## ----umi_gene_rel, warning=FALSE, fig.cap='UMI detected genes relationship'----
 ggplot(cell_attr, aes(n_umi, n_gene)) + 
   geom_point(alpha=0.3, shape=16) + 
-  geom_density_2d(size = 0.3) +
-  theme_gray(base_size = 8)
+  geom_density_2d(size = 0.3)
 
 ## ---- fig.width=4, fig.height=2.5----------------------------------------
 options(mc.cores = 7)

@@ -7,7 +7,8 @@
 plot_model(x, umi, goi, x_var = x$arguments$latent_var[1],
   cell_attr = x$cell_attr, do_log = TRUE, show_fit = TRUE,
   show_nr = FALSE, plot_residual = FALSE, batches = NULL,
-  as_poisson = FALSE, arrange_vertical = TRUE, show_density = TRUE)
+  as_poisson = FALSE, arrange_vertical = TRUE, show_density = TRUE,
+  gg_cmds = NULL)
 }
 \arguments{
 \item{x}{The output of a vst run}
@@ -35,6 +36,8 @@ plot_model(x, umi, goi, x_var = x$arguments$latent_var[1],
 \item{arrange_vertical}{Stack individual ggplot objects or place side by side}
 
 \item{show_density}{Draw 2D density lines over points}
+
+\item{gg_cmds}{Additional ggplot layer commands}
 }
 \value{
 A ggplot object

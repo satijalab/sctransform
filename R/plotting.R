@@ -20,7 +20,6 @@ plot_model_pars <- function(vst_out) {
     geom_point(data=df, size=0.5, alpha=0.5, shape=16) +
     geom_point(data=df_fit, size=0.66, alpha=0.5, shape=16) +
     facet_wrap(~ parameter, scales = 'free_y') +
-    theme_gray(base_size = 8) +
     theme(legend.position='bottom')
   return(g)
 }
@@ -75,6 +74,7 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #' @param as_poisson Fix model parameter theta to Inf, effectively showing a Poisson model
 #' @param arrange_vertical Stack individual ggplot objects or place side by side
 #' @param show_density Draw 2D density lines over points
+#' @param gg_cmds Additional ggplot layer commands
 #'
 #' @return A ggplot object
 #'
@@ -82,7 +82,8 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #'
 plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr = x$cell_attr,
                        do_log = TRUE, show_fit = TRUE, show_nr = FALSE, plot_residual = FALSE,
-                       batches = NULL, as_poisson = FALSE, arrange_vertical = TRUE, show_density = TRUE) {
+                       batches = NULL, as_poisson = FALSE, arrange_vertical = TRUE, show_density = TRUE,
+                       gg_cmds = NULL) {
   require('ggplot2')
   require('gridExtra')
   if (is.null(batches)) {
@@ -138,7 +139,7 @@ plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr
   if (do_log) {
     g <- g + ylab('Gene log10(UMI + 1)')
   }
-  g <- g + theme_gray(base_size = 8)
+  g <- g + gg_cmds
   if (length(goi) == 1) {
     g <- g + theme(strip.text = element_blank())
   }
@@ -149,7 +150,7 @@ plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr
     g2 <- ggplot(df, aes(x, res)) + geom_point(alpha = 0.5, shape=16) +
       coord_cartesian(ylim = res_range) +
       facet_grid(~gene) + xlab(x) + ylab('Pearson residual') +
-      xlab(paste('Cell', x_var)) + theme_gray(base_size = 8) +
+      xlab(paste('Cell', x_var)) + gg_cmds +
       theme(strip.text = element_blank()) # strip.background = element_blank(),
     if (show_density) {
       g2 <- g2 + geom_density_2d(color = 'lightblue', size=0.5)
@@ -158,7 +159,7 @@ plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr
       g3 <- ggplot(df, aes(x, res_nr)) + geom_point(alpha = 0.5, shape=16) +
         coord_cartesian(ylim = res_range) +
         facet_grid(~gene) + xlab(x) + ylab('Pearson residual non-reg.') +
-        xlab(paste('Cell', x_var)) + theme_gray(base_size = 8) +
+        xlab(paste('Cell', x_var)) + gg_cmds +
         theme(strip.text = element_blank()) # strip.background = element_blank(),
       if (show_density) {
         g3 <- g3 + geom_density_2d(color = 'lightblue', size=0.5)

@@ -5,9 +5,10 @@
 \title{Variance stabilizing transformation for UMI count data}
 \usage{
 vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
-  batch_var = NULL, n_genes = 2000, res_clip_range = c(-50, 50),
-  bin_size = 256, min_cells = 5, return_cell_attr = FALSE,
-  return_gene_attr = FALSE, show_progress = TRUE)
+  batch_var = NULL, n_genes = 2000, method = "poisson",
+  res_clip_range = c(-50, 50), bin_size = 256, min_cells = 5,
+  return_cell_attr = FALSE, return_gene_attr = FALSE,
+  show_progress = TRUE)
 }
 \arguments{
 \item{umi}{A matrix of UMI counts with genes as rows and cells as columns}
@@ -19,6 +20,8 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
 \item{batch_var}{The dependent variables indicating which batch a cell belongs to; no batch interaction terms used if omiited}
 
 \item{n_genes}{Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)}
+
+\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'}
 
 \item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to}
 
