@@ -6,6 +6,7 @@
 #' @param dims_use Directly specify PCs to use, e.g. 1:10
 #' @param max_pc Maximum number of PCs computed
 #' @param do_plot Plot PC sdev and sdev drop
+#' @param scale. Boolean indicating whether genes should be divided by standard deviation after centering and prior to PCA
 #'
 #' @return De-noised data
 #'
@@ -13,10 +14,16 @@
 #'
 #' @export
 #'
-smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, do_plot = FALSE) {
+smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, do_plot = FALSE,
+                           scale. = FALSE) {
   requireNamespace('irlba')
   # perform pca
-  pca <- irlba::prcomp_irlba(t(x), n = max_pc)
+  if (scale.) {
+    scale. <- apply(x, 1, sd)
+  } else {
+    scale. <- rep(1, nrow(x))
+  }
+  pca <- irlba::prcomp_irlba(t(x), n = max_pc, center = TRUE, scale. = scale.)
 
   if (is.null(dims_use)) {
     pca_sdev_drop <- c(diff(pca$sdev), 0) / -pca$sdev
@@ -34,7 +41,7 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
     }
   }
 
-  new_x <- pca$rotation[, dims_use] %*% t(pca$x[, dims_use]) + pca$center
+  new_x <- pca$rotation[, dims_use] %*% t(pca$x[, dims_use]) * pca$scale + pca$center
   dimnames(new_x) <- dimnames(x)
   return(new_x)
 }

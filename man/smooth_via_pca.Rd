@@ -5,7 +5,7 @@
 \title{Smooth data by PCA}
 \usage{
 smooth_via_pca(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100,
-  do_plot = FALSE)
+  do_plot = FALSE, scale. = FALSE)
 }
 \arguments{
 \item{x}{A data matrix with genes as rows and cells as columns}
@@ -17,6 +17,8 @@ smooth_via_pca(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100,
 \item{max_pc}{Maximum number of PCs computed}
 
 \item{do_plot}{Plot PC sdev and sdev drop}
+
+\item{scale.}{Boolean indicating whether genes should be divided by standard deviation after centering and prior to PCA}
 }
 \value{
 De-noised data
