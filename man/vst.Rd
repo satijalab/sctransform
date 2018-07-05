@@ -5,7 +5,7 @@
 \title{Variance stabilizing transformation for UMI count data}
 \usage{
 vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
-  batch_var = NULL, n_genes = 2000, method = "poisson",
+  batch_var = NULL, n_genes = 2000, n_cells = NULL, method = "poisson",
   res_clip_range = c(-50, 50), bin_size = 256, min_cells = 5,
   return_cell_attr = FALSE, return_gene_attr = FALSE,
   show_progress = TRUE)
@@ -20,6 +20,8 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
 \item{batch_var}{The dependent variables indicating which batch a cell belongs to; no batch interaction terms used if omiited}
 
 \item{n_genes}{Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)}
+
+\item{n_cells}{Number of cells to use when estimating parameters (default uses all cells)}
 
 \item{method}{Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'}
 
@@ -52,6 +54,21 @@ Uses mclapply; you can set the number of cores it will use to n with command opt
 If n_genes is set, only a (somewhat-random) subset of genes is used for estimating the
 initial model parameters.
 }
+\section{Details}{
+
+In the first step of the algorithm, per-gene glm model parameters are learned. This step can be done
+on a subset of genes and/or cells to speed things up.
+If \code{method} is set to 'poisson', glm will be called with \code{family = poisson} and
+the negative binomial theta parameter will be estimated using the response residuals in
+\code{MASS::theta.ml}.
+If \code{method} is set to 'nb_fast', glm coefficients and theta are estimated as in the
+'poisson' method, but coefficients are then re-estimated using a proper negative binomial
+model in a second call to glm with
+\code{family = MASS::negative.binomial(theta = theta)}.
+If \code{method} is set to 'nb', coefficients and theta are estimated by a single call to
+\code{MASS::glm.nb}.
+}
+
 \examples{
 
 

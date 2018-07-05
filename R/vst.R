@@ -11,6 +11,7 @@
 #' @param latent_var The dependent variables to regress out as a character vector; must match column names in cell_attr; default is c("log_umi_per_gene")
 #' @param batch_var The dependent variables indicating which batch a cell belongs to; no batch interaction terms used if omiited
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
+#' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
 #' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to
 #' @param bin_size Number of genes to put in each bin (to show progress)
@@ -28,11 +29,25 @@
 #' \item{cell_attr}{Data frame of cell meta data (optional)}
 #' \item{gene_attr}{Data frame with gene attributes such as mean, detection rate, etc. (optional)}
 #'
+#' @section Details:
+#' In the first step of the algorithm, per-gene glm model parameters are learned. This step can be done
+#' on a subset of genes and/or cells to speed things up.
+#' If \code{method} is set to 'poisson', glm will be called with \code{family = poisson} and
+#' the negative binomial theta parameter will be estimated using the response residuals in
+#' \code{MASS::theta.ml}.
+#' If \code{method} is set to 'nb_fast', glm coefficients and theta are estimated as in the
+#' 'poisson' method, but coefficients are then re-estimated using a proper negative binomial
+#' model in a second call to glm with
+#' \code{family = MASS::negative.binomial(theta = theta)}.
+#' If \code{method} is set to 'nb', coefficients and theta are estimated by a single call to
+#' \code{MASS::glm.nb}.
+#'
 #' @import Matrix
 #' @import parallel
 #' @importFrom MASS theta.ml glm.nb negative.binomial
 #' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var
 #' @importFrom utils txtProgressBar setTxtProgressBar
+#' @importFrom matrixStats rowVars
 #'
 #' @export
 #'
@@ -44,6 +59,7 @@ vst <- function(umi,
                 latent_var = c('log_umi_per_gene'),
                 batch_var = NULL,
                 n_genes = 2000,
+                n_cells = NULL,
                 method = 'poisson',
                 res_clip_range = c(-50, 50),
                 bin_size = 256,
@@ -52,6 +68,7 @@ vst <- function(umi,
                 return_gene_attr = FALSE,
                 show_progress = TRUE) {
   arguments <- as.list(environment())[-c(1, 2)]
+  start_time <- Sys.time()
   if (is.null(cell_attr)) {
     message('Calculating cell meta data for input UMI matrix')
     cell_attr <- data.frame(umi = colSums(umi),
@@ -61,26 +78,48 @@ vst <- function(umi,
     cell_attr$log_umi_per_gene <- log10(cell_attr$umi / cell_attr$gene)
   }
   if (!all(latent_var %in% colnames(cell_attr))) {
-    stop('Not all latent variables present in meta data')
+    stop('Not all latent variables present in cell attributes')
   }
   if (!is.null(batch_var)) {
     if (!batch_var %in% colnames(cell_attr)) {
-      stop('Batch variable not present in meta data')
+      stop('Batch variable not present in cell attributes')
     }
+    batch_levels <- levels(cell_attr[, batch_var])
   }
 
-  gene_cell_count <- rowSums(umi > 0)
-  genes <- rownames(umi)[gene_cell_count >= min_cells]
+  # we will generate output for all genes detected in at least min_cells cells
+  # but for the first step of parameter estimation we might use only a subset of genes
+  genes_cell_count <- rowSums(umi > 0)
+  genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
   genes_log_mean <- log10(rowMeans(umi))
 
+  if (!is.null(n_cells)) {
+    # downsample cells to speed up the first step
+    cells_step1 <- sample(x = colnames(umi), size = n_cells)
+    if (!is.null(batch_var)) {
+      dropped_batch_levels <- setdiff(batch_levels, levels(droplevels(cell_attr[cells_step1, batch_var])))
+      if (length(dropped_batch_levels) > 0) {
+        stop('Dropped batch levels ', dropped_batch_levels, ', set n_cells higher')
+      }
+    }
+    genes_cell_count_step1 <- rowSums(umi[, cells_step1] > 0)
+    genes_step1 <- rownames(umi)[genes_cell_count_step1 >= min_cells]
+    genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
+  } else {
+    cells_step1 <- colnames(umi)
+    genes_step1 <- genes
+    genes_log_mean_step1 <- genes_log_mean
+  }
+
+  data_step1 <- cell_attr[cells_step1, ]
+
   if (!is.null(n_genes)) {
     # density-sample genes to speed up the first step
-    log_mean_dens <- density(x = genes_log_mean, bw = 'nrd', adjust = 1)
-    sampling_prob <- 1 / (approx(x = log_mean_dens$x, y = log_mean_dens$y, xout = genes_log_mean)$y + .Machine$double.eps)
-    genes_step1 <- sample(x = genes, size = n_genes, prob = sampling_prob)
-  } else {
-    genes_step1 <- genes
+    log_mean_dens <- density(x = genes_log_mean_step1, bw = 'nrd', adjust = 1)
+    sampling_prob <- 1 / (approx(x = log_mean_dens$x, y = log_mean_dens$y, xout = genes_log_mean_step1)$y + .Machine$double.eps)
+    genes_step1 <- sample(x = genes_step1, size = n_genes, prob = sampling_prob)
+    genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
   }
 
   if (!is.null(batch_var)) {
@@ -91,10 +130,10 @@ vst <- function(umi,
 
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
-  message(paste("Regressing out", paste(latent_var, collapse = ' ')))
+  message('Variance stabilizing transformation of count matrix of size ', nrow(cm), ' by ', ncol(cm))
   message('Model formula is ', model_str)
   message('First step: Poisson regression (to get initial model), and estimate theta per gene')
-  message('Using ', length(x = genes_step1), ' genes')
+  message('Using ', length(x = genes_step1), ' genes, ', length(x = cells_step1), ' cells')
 
   if (show_progress) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
@@ -102,39 +141,39 @@ vst <- function(umi,
   model_pars <- list()
   for (i in 1:max_bin) {
     genes_bin_regress <- genes_step1[bin_ind == i]
-    umi_bin <- as.matrix(umi[genes_bin_regress, ])
+    umi_bin <- as.matrix(umi[genes_bin_regress, cells_step1])
     model_pars[[i]] <- do.call(rbind,
-      mclapply(
-        X = genes_bin_regress,
-        FUN = function(j) {
-          y <- umi_bin[j, ]
-          if (method == 'poisson') {
-            fit <- glm(as.formula(model_str), data = cell_attr, family = poisson)
-            theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
-            return(c(theta, fit$coefficients))
-          }
-          if (method == 'nb_fast') {
-            fit <- glm(as.formula(model_str), data = cell_attr, family = poisson)
-            theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
-            fit2 <- 0
-            try(fit2 <- glm(as.formula(model_str), data = cell_attr, family = negative.binomial(theta=theta)), silent=TRUE)
-            if (class(fit2)[1] == 'numeric') {
-              return(c(theta, fit$coefficients))
-            } else {
-              return(c(theta, fit2$coefficients))
-            }
-          }
-          if (method == 'nb') {
-            fit <- 0
-            try(fit <- glm.nb(as.formula(model_str), data = cell_attr), silent=TRUE)
-            if (class(fit)[1] == 'numeric') {
-              fit <- glm(as.formula(model_str), data = cell_attr, family = poisson)
-              fit$theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
-            }
-            return(c(fit$theta, fit$coefficients))
-          }
-        }
-      )
+                               mclapply(
+                                 X = genes_bin_regress,
+                                 FUN = function(j) {
+                                   y <- umi_bin[j, ]
+                                   if (method == 'poisson') {
+                                     fit <- glm(as.formula(model_str), data = data_step1, family = poisson)
+                                     theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
+                                     return(c(theta, fit$coefficients))
+                                   }
+                                   if (method == 'nb_fast') {
+                                     fit <- glm(as.formula(model_str), data = data_step1, family = poisson)
+                                     theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
+                                     fit2 <- 0
+                                     try(fit2 <- glm(as.formula(model_str), data = data_step1, family = negative.binomial(theta=theta)), silent=TRUE)
+                                     if (class(fit2)[1] == 'numeric') {
+                                       return(c(theta, fit$coefficients))
+                                     } else {
+                                       return(c(theta, fit2$coefficients))
+                                     }
+                                   }
+                                   if (method == 'nb') {
+                                     fit <- 0
+                                     try(fit <- glm.nb(as.formula(model_str), data = data_step1), silent=TRUE)
+                                     if (class(fit)[1] == 'numeric') {
+                                       fit <- glm(as.formula(model_str), data = data_step1, family = poisson)
+                                       fit$theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
+                                     }
+                                     return(c(fit$theta, fit$coefficients))
+                                   }
+                                 }
+                               )
     )
     if (show_progress) {
       setTxtProgressBar(pb, i)
@@ -149,39 +188,46 @@ vst <- function(umi,
 
   # look for outliers in the parameters
   # outliers are thos that do not fit the relationship with the mean
-  outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_mean[genes_step1], 100))
+  outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_mean_step1, 100))
   outliers <- apply(outliers, 1, any)
   if (sum(outliers) > 0) {
     message('Found ', sum(outliers), ' outliers - those will be ignored in fitting/regularization step\n')
     model_pars <- model_pars[!outliers, ]
     genes_step1 <- rownames(model_pars)
+    genes_log_mean_step1 <- genes_log_mean_step1[!outliers]
   }
 
+  # for parameter predictions
+  x_points <- pmax(genes_log_mean, min(genes_log_mean_step1))
+  x_points <- pmin(x_points, max(genes_log_mean_step1))
+
   # take results from step 1 and fit/predict parameters to all genes
-  o <- order(genes_log_mean)
+  o <- order(x_points)
   model_pars_fit <- matrix(NA, length(genes), ncol(model_pars),
-                              dimnames = list(genes, colnames(model_pars)))
+                           dimnames = list(genes, colnames(model_pars)))
   # fit / regularize theta
-  model_pars_fit[o, 'theta'] <- 10 ^ ksmooth(x = genes_log_mean[genes_step1], y = log10(model_pars[, 'theta']),
-                                                x.points = genes_log_mean, bandwidth = 0.3)$y
+  model_pars_fit[o, 'theta'] <- 10 ^ ksmooth(x = genes_log_mean_step1, y = log10(model_pars[, 'theta']),
+                                             x.points = x_points, bandwidth = 0.3)$y
 
   if (is.null(batch_var)){
     # global fit / regularization for all coefficients
     for (i in 2:ncol(model_pars)) {
-      model_pars_fit[o, i] <- ksmooth(x = genes_log_mean[genes_step1], y = model_pars[, i],
-                                         x.points = genes_log_mean, bandwidth = 0.3)$y
+      model_pars_fit[o, i] <- ksmooth(x = genes_log_mean_step1, y = model_pars[, i],
+                                      x.points = x_points, bandwidth = 0.3)$y
     }
   } else {
     # fit / regularize per batch
     batches <- unique(cell_attr[, batch_var])
     for (b in batches) {
+      sel <- cell_attr[, batch_var] == b & rownames(cell_attr) %in% cells_step1
+      batch_genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
       sel <- cell_attr[, batch_var] == b
       batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
       # in case some genes have not been observed in this batch
       batch_genes_log_mean <- pmax(batch_genes_log_mean, min(genes_log_mean))
       batch_o <- order(batch_genes_log_mean)
       for (i in which(grepl(paste0(batch_var, b), colnames(model_pars)))) {
-        model_pars_fit[batch_o, i] <- ksmooth(x = batch_genes_log_mean[genes_step1], y = model_pars[, i],
+        model_pars_fit[batch_o, i] <- ksmooth(x = batch_genes_log_mean_step1, y = model_pars[, i],
                                               x.points = batch_genes_log_mean, bandwidth = 0.3)$y
       }
     }
@@ -215,7 +261,9 @@ vst <- function(umi,
              model_str = model_str,
              model_pars = model_pars,
              model_pars_fit = model_pars_fit,
-             arguments = arguments)
+             arguments = arguments,
+             genes_log_mean_step1 = genes_log_mean_step1,
+             cells_step1 = cells_step1)
 
   if (return_cell_attr) {
     rv[['cell_attr']] <- cell_attr
@@ -223,13 +271,14 @@ vst <- function(umi,
   if (return_gene_attr) {
     message('Calculating gene attributes')
     gene_attr <- data.frame(
-      detection_rate = gene_cell_count[genes] / ncol(umi),
+      detection_rate = genes_cell_count[genes] / ncol(umi),
       mean = 10 ^ genes_log_mean,
       variance = apply(umi, 1, var),
-      residual_mean = apply(res, 1, mean),
-      residual_variance = apply(res, 1, var)
+      residual_mean = rowMeans(res),
+      residual_variance = matrixStats::rowVars(res)
     )
     rv[['gene_attr']] <- gene_attr
   }
+  message('Wall clock passed: ', capture.output(print(Sys.time() - start_time)))
   return(rv)
 }
