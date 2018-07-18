@@ -47,7 +47,6 @@
 #' @importFrom MASS theta.ml glm.nb negative.binomial
 #' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var
 #' @importFrom utils txtProgressBar setTxtProgressBar
-#' @importFrom matrixStats rowVars
 #'
 #' @export
 #'
@@ -130,7 +129,7 @@ vst <- function(umi,
 
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
-  message('Variance stabilizing transformation of count matrix of size ', nrow(cm), ' by ', ncol(cm))
+  message('Variance stabilizing transformation of count matrix of size ', nrow(umi), ' by ', ncol(umi))
   message('Model formula is ', model_str)
   message('First step: Poisson regression (to get initial model), and estimate theta per gene')
   message('Using ', length(x = genes_step1), ' genes, ', length(x = cells_step1), ' cells')
@@ -268,17 +267,24 @@ vst <- function(umi,
   if (return_cell_attr) {
     rv[['cell_attr']] <- cell_attr
   }
+
   if (return_gene_attr) {
     message('Calculating gene attributes')
     gene_attr <- data.frame(
       detection_rate = genes_cell_count[genes] / ncol(umi),
       mean = 10 ^ genes_log_mean,
       variance = apply(umi, 1, var),
-      residual_mean = rowMeans(res),
-      residual_variance = matrixStats::rowVars(res)
+      residual_mean = rowMeans(res)
     )
+    if (requireNamespace('matrixStats')) {
+      gene_attr$residual_variance = matrixStats::rowVars(res)
+    } else {
+      message('Consider installing matrixStats package for faster gene attribute calculation.')
+      gene_attr$residual_variance = apply(res, 1, var)
+    }
     rv[['gene_attr']] <- gene_attr
   }
+
   message('Wall clock passed: ', capture.output(print(Sys.time() - start_time)))
   return(rv)
 }
