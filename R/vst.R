@@ -46,11 +46,9 @@
 #' @import parallel
 #' @importFrom MASS theta.ml glm.nb negative.binomial
 #' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var
-#' @importFrom utils txtProgressBar setTxtProgressBar
+#' @importFrom utils txtProgressBar setTxtProgressBar capture.output
 #'
 #' @export
-#'
-#' @examples
 #'
 #'
 vst <- function(umi,
