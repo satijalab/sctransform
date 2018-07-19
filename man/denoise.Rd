@@ -2,10 +2,10 @@
 % Please edit documentation in R/denoise.R
 \name{denoise}
 \alias{denoise}
-\title{Denoise data by setting all latent factor to their median values and reversing the regression model}
+\title{Denoise data by setting all latent factors to their median values and reversing the regression model}
 \usage{
 denoise(x, data = "y", cell_attr = x$cell_attr, do_round = TRUE,
-  do_pos = TRUE)
+  do_pos = TRUE, show_progress = TRUE)
 }
 \arguments{
 \item{x}{A list that provides model parameters and optionally meta data; use output of vst function}
@@ -17,10 +17,12 @@ denoise(x, data = "y", cell_attr = x$cell_attr, do_round = TRUE,
 \item{do_round}{Round the result to integers}
 
 \item{do_pos}{Set negative values in the result to zero}
+
+\item{show_progress}{Whether to print progress bar}
 }
 \value{
 De-noised data as UMI counts
 }
 \description{
-Denoise data by setting all latent factor to their median values and reversing the regression model
+Denoise data by setting all latent factors to their median values and reversing the regression model
 }
