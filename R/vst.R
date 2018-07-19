@@ -243,7 +243,7 @@ vst <- function(umi,
   res <- matrix(NA, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
-    mu <- exp(model_pars_fit[genes_bin, -1, drop=FALSE] %*% t(regressor_data))
+    mu <- exp(tcrossprod(model_pars_fit[genes_bin, -1, drop=FALSE], regressor_data))
     y <- as.matrix(umi[genes_bin, ])
     res[genes_bin, ] <- (y - mu) / sqrt(mu + mu^2 / model_pars_fit[genes_bin, 'theta'])
     if (show_progress) {
