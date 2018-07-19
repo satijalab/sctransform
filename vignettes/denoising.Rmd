@@ -61,7 +61,7 @@ y_smooth <- sctransform::smooth_via_pca(vst_out$y, do_plot = TRUE)
 The data matrix `y_smooth` is in Pearson residual space. Based on these values we can reverse the negative binomial regression model to derive UMI counts per gene. To remove the variability from the latent factor (here `log_umi_per_gene` as a proxy of sequencing depth), we can use a fixed value for all cells. The next step uses the smoothed Pearson residual and the median of all latent factors to obtain de-noised UMI counts.
 
 ```{r}
-cm_denoised <- sctransform::denoise(vst_out, data = y_smooth)
+cm_denoised <- sctransform::denoise(vst_out, data = y_smooth, show_progress = FALSE)
 ```
 
 To give a better idea of what the data really looks like we will plot UMI, Pearson residual, de-noised Pearson residual, and de-noised UMI counts for some key genes related to neuronal development.
