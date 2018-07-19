@@ -4,11 +4,12 @@
 #'
 #' @return A ggplot object
 #'
+#' @import ggplot2
+#' @import reshape2
+#'
 #' @export
 #'
 plot_model_pars <- function(vst_out) {
-  require('ggplot2')
-  require('reshape2')
   # show estimated and regularized parameters
   df <- melt(vst_out$model_pars, varnames = c('gene', 'parameter'), as.is = TRUE)
   df_fit <- melt(vst_out$model_pars_fit, varnames = c('gene', 'parameter'), as.is = TRUE)
@@ -16,7 +17,7 @@ plot_model_pars <- function(vst_out) {
   df_fit$gene_mean <- vst_out$gene_attr[df_fit$gene, 'mean']
   df$type = 'single gene estimate'
   df_fit$type = 'regularized'
-  g <- ggplot(rbind(df, df_fit), aes(log10(gene_mean), value, color=type)) +
+  g <- ggplot(rbind(df, df_fit), aes(~log10(gene_mean), ~value, color=~type)) +
     geom_point(data=df, size=0.5, alpha=0.5, shape=16) +
     geom_point(data=df_fit, size=0.66, alpha=0.5, shape=16) +
     facet_wrap(~ parameter, scales = 'free_y') +
@@ -78,14 +79,16 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #'
 #' @return A ggplot object
 #'
+#' @import ggplot2
+#' @import reshape2
+#' @importFrom gridExtra grid.arrange
+#'
 #' @export
 #'
 plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr = x$cell_attr,
                        do_log = TRUE, show_fit = TRUE, show_nr = FALSE, plot_residual = FALSE,
                        batches = NULL, as_poisson = FALSE, arrange_vertical = TRUE, show_density = TRUE,
                        gg_cmds = NULL) {
-  require('ggplot2')
-  require('gridExtra')
   if (is.null(batches)) {
     if (!is.null(x$arguments$batch_var)) {
       batches <- cell_attr[, x$arguments$batch_var]
@@ -117,22 +120,22 @@ plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr
   }
   df <- do.call(rbind, df_list)
   df$gene <- factor(df$gene, ordered=TRUE, levels=unique(df$gene))
-  g <- ggplot(df, aes(x, y)) + geom_point(alpha=0.5, shape=16)
+  g <- ggplot(df, aes(~x, ~y)) + geom_point(alpha=0.5, shape=16)
   if (show_density) {
     g <- g + geom_density_2d(color = 'lightblue', size=0.5)
   }
   if (show_fit) {
     for (b in unique(df$batch)) {
       g <- g +
-        geom_line(data = subset(df, batch == b), aes(x, mu), color='deeppink', size = 1) +
-        geom_ribbon(data = subset(df, batch == b), aes(x = x, ymin = ymin, ymax = ymax), alpha = 0.5, fill='deeppink')
+        geom_line(data = df[df$batch == b, ], aes(~x, ~mu), color='deeppink', size = 1) +
+        geom_ribbon(data = df[df$batch == b, ], aes(x = ~x, ymin = ~ymin, ymax = ~ymax), alpha = 0.5, fill='deeppink')
     }
   }
   if (show_nr) {
     for (b in unique(df$batch)) {
       g <- g +
-        geom_line(aes(x, mu_nr), color='blue', size = 1) +
-        geom_ribbon(aes(x = x, ymin = ymin_nr, ymax = ymax_nr), alpha = 0.5, fill='blue')
+        geom_line(aes(~x, ~mu_nr), color='blue', size = 1) +
+        geom_ribbon(aes(x = ~x, ymin = ~ymin_nr, ymax = ~ymax_nr), alpha = 0.5, fill='blue')
     }
   }
   g <- g + facet_grid(~gene) + xlab(paste('Cell', x_var)) + ylab('Gene UMI counts')
@@ -147,7 +150,7 @@ plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr
   if (plot_residual) {
     ga_col = 1
     res_range <- range(df$res)
-    g2 <- ggplot(df, aes(x, res)) + geom_point(alpha = 0.5, shape=16) +
+    g2 <- ggplot(df, aes(~x, ~res)) + geom_point(alpha = 0.5, shape=16) +
       coord_cartesian(ylim = res_range) +
       facet_grid(~gene) + xlab(x) + ylab('Pearson residual') +
       xlab(paste('Cell', x_var)) + gg_cmds +
@@ -156,7 +159,7 @@ plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr
       g2 <- g2 + geom_density_2d(color = 'lightblue', size=0.5)
     }
     if (show_nr) {
-      g3 <- ggplot(df, aes(x, res_nr)) + geom_point(alpha = 0.5, shape=16) +
+      g3 <- ggplot(df, aes(~x, ~res_nr)) + geom_point(alpha = 0.5, shape=16) +
         coord_cartesian(ylim = res_range) +
         facet_grid(~gene) + xlab(x) + ylab('Pearson residual non-reg.') +
         xlab(paste('Cell', x_var)) + gg_cmds +

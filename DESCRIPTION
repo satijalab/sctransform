@@ -7,19 +7,17 @@ Maintainer: Christoph Hafemeister <chafemeister@nygenome.org>
 Description: Apply a variance stabilizing transformation to single-cell UMI count data. 
   The transformation is based on a negative binomial regression model with regularized 
   parameters. 
-License: GPLv3 (GNU General Public License, version 3)
+License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports:
   MASS,
   Matrix,
-  parallel
-Suggests:
+  parallel,
   ggplot2,
   reshape2,
+  gridExtra
+Suggests:
   irlba,
-  matrixStats,
-    knitr,
-    rmarkdown
+  matrixStats
 RoxygenNote: 6.0.1
-VignetteBuilder: knitr

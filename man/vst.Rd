@@ -69,7 +69,3 @@ If \code{method} is set to 'nb', coefficients and theta are estimated by a singl
 \code{MASS::glm.nb}.
 }
 
-\examples{
-
-
-}
