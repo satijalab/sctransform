@@ -5,7 +5,7 @@ Version: 0.1.0
 Authors@R: person(given = 'Christoph', family = 'Hafemeister', email = 'chafemeister@nygenome.org', role = c('aut', 'cre'), comment = c(ORCID = '0000-0001-6365-8254'))
 Description: A normalization method for single-cell UMI count data using a 
   variance stabilizing transformation. The transformation is based on a 
-  negative binomial regression model with regularized parameters. A part of the
+  negative binomial regression model with regularized parameters. As part of the
   same regression framework, this package also provides functions for
   differential gene expression testing, batch correction, and data
   correction/denoising.
