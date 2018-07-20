@@ -26,3 +26,14 @@ De-noised data as UMI counts
 \description{
 Denoise data by setting all latent factors to their median values and reversing the regression model
 }
+\examples{
+\dontrun{
+vst_out <- vst(pbmc, return_cell_attr = TRUE)
+umi_denoised <- denoise(vst_out)
+
+# this can also be combined with smoothing
+y_smooth <- smooth_via_pca(vst_out$y, do_plot = TRUE)
+umi_denoised <- denoise(vst_out, data = y_smooth)
+}
+
+}

@@ -19,6 +19,14 @@
 #'
 #' @export
 #'
+#' @examples
+#' \dontrun{
+#' vst_out <- vst(pbmc, return_cell_attr = TRUE)
+#' # create fake clusters
+#' clustering <- 1:ncol(pbmc) %/% 100
+#' res <- compare_expression(x = vst_out, umi = pbmc, group = clustering, val1 = 0, val2 = 3)
+#' }
+#'
 compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_size = 256,
                                cell_attr = x$cell_attr, min_cells = 5, show_progress = TRUE) {
   if (! method %in% c('LRT', 't_test')) {

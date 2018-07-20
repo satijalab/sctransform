@@ -21,8 +21,15 @@ smooth_via_pca(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100,
 \item{scale.}{Boolean indicating whether genes should be divided by standard deviation after centering and prior to PCA}
 }
 \value{
-De-noised data
+Smoothed data
 }
 \description{
-Smooth data by PCA
+Perform PCA, identify significant dimensions, and reverse the rotation using only significant dimensions.
+}
+\examples{
+\dontrun{
+vst_out <- vst(pbmc)
+y_smooth <- smooth_via_pca(vst_out$y, do_plot = TRUE)
+}
+
 }

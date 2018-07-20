@@ -1,6 +1,8 @@
 
 #' Smooth data by PCA
 #'
+#' Perform PCA, identify significant dimensions, and reverse the rotation using only significant dimensions.
+#'
 #' @param x A data matrix with genes as rows and cells as columns
 #' @param elbow_th The fraction of PC sdev drop that is considered significant; low values will lead to more PCs being used
 #' @param dims_use Directly specify PCs to use, e.g. 1:10
@@ -8,11 +10,17 @@
 #' @param do_plot Plot PC sdev and sdev drop
 #' @param scale. Boolean indicating whether genes should be divided by standard deviation after centering and prior to PCA
 #'
-#' @return De-noised data
+#' @return Smoothed data
 #'
 #' @importFrom graphics par plot abline
 #'
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' vst_out <- vst(pbmc)
+#' y_smooth <- smooth_via_pca(vst_out$y, do_plot = TRUE)
+#' }
 #'
 smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, do_plot = FALSE,
                            scale. = FALSE) {
@@ -59,6 +67,16 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @return De-noised data as UMI counts
 #'
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' vst_out <- vst(pbmc, return_cell_attr = TRUE)
+#' umi_denoised <- denoise(vst_out)
+#'
+#' # this can also be combined with smoothing
+#' y_smooth <- smooth_via_pca(vst_out$y, do_plot = TRUE)
+#' umi_denoised <- denoise(vst_out, data = y_smooth)
+#' }
 #'
 denoise <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_pos = TRUE,
                     show_progress = TRUE) {
