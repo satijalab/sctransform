@@ -15,3 +15,10 @@ A ggplot object
 \description{
 Plot estimated and fitted model parameters
 }
+\examples{
+\dontrun{
+vst_out <- vst(pbmc, return_gene_attr = TRUE)
+plot_model_pars(vst_out)
+}
+
+}
