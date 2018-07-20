@@ -274,7 +274,7 @@ vst <- function(umi,
       variance = apply(umi, 1, var),
       residual_mean = rowMeans(res)
     )
-    if (requireNamespace('matrixStats')) {
+    if (requireNamespace('matrixStats', quietly = TRUE)) {
       gene_attr$residual_variance = matrixStats::rowVars(res)
     } else {
       message('Consider installing matrixStats package for faster gene attribute calculation.')

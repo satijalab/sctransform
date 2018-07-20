@@ -16,7 +16,7 @@
 #'
 smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, do_plot = FALSE,
                            scale. = FALSE) {
-  requireNamespace('irlba')
+  requireNamespace('irlba', quietly = TRUE)
   # perform pca
   if (scale.) {
     scale. <- apply(x, 1, 'sd')
