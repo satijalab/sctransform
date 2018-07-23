@@ -24,5 +24,6 @@ Imports:
   gridExtra
 Suggests:
   irlba,
-  matrixStats
+  matrixStats,
+  testthat
 RoxygenNote: 6.0.1
