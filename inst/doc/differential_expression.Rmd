@@ -40,7 +40,7 @@ class(pbmc_data)
 dim(pbmc_data)
 ```
 
-`pbmc_data` is a sparse matrix of UMI counts (32,738 genes as rows and 2,700 cells as columns). Perform the variance stabilizing transformation:
+`pbmc_data` is a sparse matrix of UMI counts (32,738 genes as rows and 2,638 cells as columns). Perform the variance stabilizing transformation:
 
 ```{r, fig.width=4, fig.height=2.5}
 options(mc.cores = 7)

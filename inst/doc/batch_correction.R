@@ -27,7 +27,9 @@ cell_attr$replicate <- as.integer(sapply(strsplit(rownames(cell_attr), '_'), fun
 cell_attr$batch <- factor(as.integer(cell_attr$replicate %in% c(5, 6)) + 1)
 cell_attr$gene <- Matrix::colSums(cm > 0)
 cell_attr$umi <- as.integer(Matrix::colSums(cm))
-cell_attr$log_umi_per_gene <- log10(cell_attr$umi / cell_attr$gene)
+cell_attr$log_umi <- log10(cell_attr$umi)
+cell_attr$umi_per_gene <- cell_attr$umi / cell_attr$gene
+cell_attr$log_umi_per_gene <- log10(cell_attr$umi_per_gene)
 
 # remove 50 weird 'cells' 
 weird <- cell_attr$log_umi_per_gene < 0.05 | cell_attr$log_umi_per_gene > 0.35

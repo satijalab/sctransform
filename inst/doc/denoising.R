@@ -34,7 +34,7 @@ maturation_score <- pricu$lambda/max(pricu$lambda)
 y_smooth <- sctransform::smooth_via_pca(vst_out$y, do_plot = TRUE)
 
 ## ------------------------------------------------------------------------
-cm_denoised <- sctransform::denoise(vst_out, data = y_smooth)
+cm_denoised <- sctransform::denoise(vst_out, data = y_smooth, show_progress = FALSE)
 
 ## ---- fig.width=7, fig.height=7, out.width='100%'------------------------
 goi <- c('Nes', 'Ccnd2', 'Tuba1a')
