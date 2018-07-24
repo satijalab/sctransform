@@ -1,8 +1,3 @@
----
-pagetitle: "README for sctransform R package"
-author: "Christoph Hafemeister"
----
-
 # sctransform
 R package for modeling single cell UMI expression data using regularized negative binomial regression
 
