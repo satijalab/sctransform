@@ -16,6 +16,9 @@
 #' }
 #'
 plot_model_pars <- function(vst_out) {
+  if (! 'mean' %in% names(vst_out$gene_attr)) {
+    stop('vst_out must contain a data frame named gene_attr with a column named mean (perhaps call vst with return_gene_attr = TRUE)')
+  }
   # show estimated and regularized parameters
   df <- melt(vst_out$model_pars, varnames = c('gene', 'parameter'), as.is = TRUE)
   df_fit <- melt(vst_out$model_pars_fit, varnames = c('gene', 'parameter'), as.is = TRUE)
