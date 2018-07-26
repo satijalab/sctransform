@@ -8,6 +8,7 @@
 #' @param method Either 'LRT' for likelihood ratio test, or 't_test' for t-test
 #' @param bin_size Number of genes that are processed between updates of progress bar
 #' @param cell_attr Data frame of cell meta data
+#' @param y Only used if methtod = 't_test', this is the residual matrix; default is x$y
 #' @param min_cells A gene has to be detected in at least this many cells in at least one of the groups being compared to be tested
 #' @param show_progress Show progress bar
 #'
@@ -28,7 +29,8 @@
 #' }
 #'
 compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_size = 256,
-                               cell_attr = x$cell_attr, min_cells = 5, show_progress = TRUE) {
+                               cell_attr = x$cell_attr, y = x$y, min_cells = 5,
+                               show_progress = TRUE) {
   if (! method %in% c('LRT', 't_test')) {
     stop('method needs to be either \'LRT\' or \'t_test\'')
   }
@@ -63,7 +65,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
     genes_bin <- genes[bin_ind == i]
     if (do_fast) {
       bin_res <- mclapply(genes_bin, function(gene) {
-        model_comparison_ttest(x$y[gene, use_cells], group)
+        model_comparison_ttest(y[gene, use_cells], group)
       })
     } else {
       mu <- x$model_pars_fit[genes_bin, -1, drop=FALSE] %*% t(regressor_data)  # in log space
