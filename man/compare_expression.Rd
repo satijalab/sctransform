@@ -5,7 +5,7 @@
 \title{Compare gene expression between two groups}
 \usage{
 compare_expression(x, umi, group, val1, val2, method = "LRT",
-  bin_size = 256, cell_attr = x$cell_attr, min_cells = 5,
+  bin_size = 256, cell_attr = x$cell_attr, y = x$y, min_cells = 5,
   show_progress = TRUE)
 }
 \arguments{
@@ -24,6 +24,8 @@ compare_expression(x, umi, group, val1, val2, method = "LRT",
 \item{bin_size}{Number of genes that are processed between updates of progress bar}
 
 \item{cell_attr}{Data frame of cell meta data}
+
+\item{y}{Only used if methtod = 't_test', this is the residual matrix; default is x$y}
 
 \item{min_cells}{A gene has to be detected in at least this many cells in at least one of the groups being compared to be tested}
 
