@@ -10,9 +10,11 @@
 #' @param cell_attr A data frame containing the dependent variables; if omitted a data frame with umi and gene will be generated
 #' @param latent_var The dependent variables to regress out as a character vector; must match column names in cell_attr; default is c("log_umi_per_gene")
 #' @param batch_var The dependent variables indicating which batch a cell belongs to; no batch interaction terms used if omiited
+#' @param latent_var_nonreg The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
 #' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'
+#' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param min_cells Only use genes that have been detected in at least this many cells
@@ -59,10 +61,12 @@ vst <- function(umi,
                 cell_attr = NULL,
                 latent_var = c('log_umi_per_gene'),
                 batch_var = NULL,
+                latent_var_nonreg = NULL,
                 n_genes = 2000,
                 n_cells = NULL,
                 method = 'poisson',
-                res_clip_range = c(-50, 50),
+                do_regularize = TRUE,
+                res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                 bin_size = 256,
                 min_cells = 5,
                 return_cell_attr = FALSE,
@@ -76,7 +80,8 @@ vst <- function(umi,
                             gene = colSums(umi > 0))
     cell_attr$log_umi <- log10(cell_attr$umi)
     cell_attr$log_gene <- log10(cell_attr$gene)
-    cell_attr$log_umi_per_gene <- log10(cell_attr$umi / cell_attr$gene)
+    cell_attr$umi_per_gene <- cell_attr$umi / cell_attr$gene
+    cell_attr$log_umi_per_gene <- log10(cell_attr$umi_per_gene)
   }
   if (!all(latent_var %in% colnames(cell_attr))) {
     stop('Not all latent variables present in cell attributes')
@@ -187,56 +192,103 @@ vst <- function(umi,
   rownames(model_pars) <- genes_step1
   colnames(model_pars)[1] <- 'theta'
 
-  # look for outliers in the parameters
-  # outliers are thos that do not fit the relationship with the mean
-  outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_mean_step1, 100))
-  outliers <- apply(outliers, 1, any)
-  if (sum(outliers) > 0) {
-    message('Found ', sum(outliers), ' outliers - those will be ignored in fitting/regularization step\n')
-    model_pars <- model_pars[!outliers, ]
-    genes_step1 <- rownames(model_pars)
-    genes_log_mean_step1 <- genes_log_mean_step1[!outliers]
-  }
-
-  # for parameter predictions
-  x_points <- pmax(genes_log_mean, min(genes_log_mean_step1))
-  x_points <- pmin(x_points, max(genes_log_mean_step1))
-
-  # take results from step 1 and fit/predict parameters to all genes
-  o <- order(x_points)
-  model_pars_fit <- matrix(NA, length(genes), ncol(model_pars),
-                           dimnames = list(genes, colnames(model_pars)))
-  # fit / regularize theta
-  model_pars_fit[o, 'theta'] <- 10 ^ ksmooth(x = genes_log_mean_step1, y = log10(model_pars[, 'theta']),
-                                             x.points = x_points, bandwidth = 0.3)$y
-
-  if (is.null(batch_var)){
-    # global fit / regularization for all coefficients
-    for (i in 2:ncol(model_pars)) {
-      model_pars_fit[o, i] <- ksmooth(x = genes_log_mean_step1, y = model_pars[, i],
-                                      x.points = x_points, bandwidth = 0.3)$y
+  if (do_regularize) {
+    # look for outliers in the parameters
+    # outliers are those that do not fit the overall relationship with the mean at all
+    outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_mean_step1, 100))
+    outliers <- apply(outliers, 1, any)
+    if (sum(outliers) > 0) {
+      message('Found ', sum(outliers), ' outliers - those will be ignored in fitting/regularization step\n')
+      model_pars <- model_pars[!outliers, ]
+      genes_step1 <- rownames(model_pars)
+      genes_log_mean_step1 <- genes_log_mean_step1[!outliers]
     }
-  } else {
-    # fit / regularize per batch
-    batches <- unique(cell_attr[, batch_var])
-    for (b in batches) {
-      sel <- cell_attr[, batch_var] == b & rownames(cell_attr) %in% cells_step1
-      batch_genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
-      sel <- cell_attr[, batch_var] == b
-      batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
-      # in case some genes have not been observed in this batch
-      batch_genes_log_mean <- pmax(batch_genes_log_mean, min(genes_log_mean))
-      batch_o <- order(batch_genes_log_mean)
-      for (i in which(grepl(paste0(batch_var, b), colnames(model_pars)))) {
-        model_pars_fit[batch_o, i] <- ksmooth(x = batch_genes_log_mean_step1, y = model_pars[, i],
-                                              x.points = batch_genes_log_mean, bandwidth = 0.3)$y
+
+    # for parameter predictions
+    x_points <- pmax(genes_log_mean, min(genes_log_mean_step1))
+    x_points <- pmin(x_points, max(genes_log_mean_step1))
+
+    # take results from step 1 and fit/predict parameters to all genes
+    o <- order(x_points)
+    model_pars_fit <- matrix(NA, length(genes), ncol(model_pars),
+                             dimnames = list(genes, colnames(model_pars)))
+    # fit / regularize theta
+    model_pars_fit[o, 'theta'] <- 10 ^ ksmooth(x = genes_log_mean_step1, y = log10(model_pars[, 'theta']),
+                                               x.points = x_points, bandwidth = 0.3)$y
+
+    if (is.null(batch_var)){
+      # global fit / regularization for all coefficients
+      for (i in 2:ncol(model_pars)) {
+        model_pars_fit[o, i] <- ksmooth(x = genes_log_mean_step1, y = model_pars[, i],
+                                        x.points = x_points, bandwidth = 0.3)$y
+      }
+    } else {
+      # fit / regularize per batch
+      batches <- unique(cell_attr[, batch_var])
+      for (b in batches) {
+        sel <- cell_attr[, batch_var] == b & rownames(cell_attr) %in% cells_step1
+        batch_genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
+        sel <- cell_attr[, batch_var] == b
+        batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
+        # in case some genes have not been observed in this batch
+        batch_genes_log_mean <- pmax(batch_genes_log_mean, min(genes_log_mean))
+        batch_o <- order(batch_genes_log_mean)
+        for (i in which(grepl(paste0(batch_var, b), colnames(model_pars)))) {
+          model_pars_fit[batch_o, i] <- ksmooth(x = batch_genes_log_mean_step1, y = model_pars[, i],
+                                                x.points = batch_genes_log_mean, bandwidth = 0.3)$y
+        }
       }
     }
+  } else {
+    model_pars_fit <- model_pars
+  }
+
+
+
+  # use all fitted values in NB model
+  regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), cell_attr)
+
+  if (!is.null(latent_var_nonreg)) {
+    message('Estimating parameters for following non-regularized variables: ', latent_var_nonreg)
+    if (!is.null(batch_var)) {
+      model_str2 <- paste0('y ~ 0 +(', paste(latent_var_nonreg, collapse = ' + '), ') : ', batch_var, ' + ', batch_var, ' + 0')
+    } else {
+      model_str2 <- paste0('y ~ 0 + ', paste(latent_var_nonreg, collapse = ' + '))
+    }
+
+    bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
+    max_bin <- max(bin_ind)
+    if (show_progress) {
+      pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
+    }
+    model_pars_nonreg <- list()
+    for (i in 1:max_bin) {
+      genes_bin <- genes[bin_ind == i]
+      mu <- tcrossprod(model_pars_fit[genes_bin, -1, drop=FALSE], regressor_data)
+      umi_bin <- as.matrix(umi[genes_bin, ])
+      model_pars_nonreg[[i]] <- do.call(rbind,
+                                        mclapply(genes_bin, function(gene) {
+                                          fam <- negative.binomial(theta = model_pars_fit[gene, 'theta'], link = 'log')
+                                          y <- umi_bin[gene, ]
+                                          offs <- mu[gene, ]
+                                          fit <- glm(as.formula(model_str2), data = cell_attr, family = fam, offset=offs)
+                                          return(fit$coefficients)
+                                          }))
+      if (show_progress) {
+        setTxtProgressBar(pb, i)
+      }
+    }
+    if (show_progress) {
+      close(pb)
+    }
+    model_pars_nonreg <- do.call(rbind, model_pars_nonreg)
+    rownames(model_pars_nonreg) <- genes
+    regressor_data <- cbind(regressor_data, model.matrix(as.formula(gsub('^y', '', model_str2)), cell_attr))
+    model_pars_fit <- cbind(model_pars_fit, model_pars_nonreg)
+    model_str <- paste0(model_str, gsub('^y ~ 0', '', model_str2))
   }
 
   message('Second step: Pearson residuals using fitted parameters for ', length(x = genes), ' genes')
-  # use all fitted values in NB model
-  regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), cell_attr)
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
   if (show_progress) {
