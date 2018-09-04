@@ -5,9 +5,10 @@
 \title{Variance stabilizing transformation for UMI count data}
 \usage{
 vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
-  batch_var = NULL, n_genes = 2000, n_cells = NULL, method = "poisson",
-  res_clip_range = c(-50, 50), bin_size = 256, min_cells = 5,
-  return_cell_attr = FALSE, return_gene_attr = FALSE,
+  batch_var = NULL, latent_var_nonreg = NULL, n_genes = 2000,
+  n_cells = NULL, method = "poisson", do_regularize = TRUE,
+  res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))), bin_size = 256,
+  min_cells = 5, return_cell_attr = FALSE, return_gene_attr = FALSE,
   show_progress = TRUE)
 }
 \arguments{
@@ -19,11 +20,15 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
 
 \item{batch_var}{The dependent variables indicating which batch a cell belongs to; no batch interaction terms used if omiited}
 
+\item{latent_var_nonreg}{The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL}
+
 \item{n_genes}{Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)}
 
 \item{n_cells}{Number of cells to use when estimating parameters (default uses all cells)}
 
 \item{method}{Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'}
+
+\item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization}
 
 \item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to}
 
