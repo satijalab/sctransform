@@ -47,7 +47,7 @@
 #' @import Matrix
 #' @import parallel
 #' @importFrom MASS theta.ml glm.nb negative.binomial
-#' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var
+#' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var bw.SJ
 #' @importFrom utils txtProgressBar setTxtProgressBar capture.output
 #'
 #' @export
@@ -204,6 +204,9 @@ vst <- function(umi,
       genes_log_mean_step1 <- genes_log_mean_step1[!outliers]
     }
 
+    # select bandwidth to be used for smoothing
+    bw <- bw.SJ(genes_log_mean_step1)
+
     # for parameter predictions
     x_points <- pmax(genes_log_mean, min(genes_log_mean_step1))
     x_points <- pmin(x_points, max(genes_log_mean_step1))
@@ -214,13 +217,13 @@ vst <- function(umi,
                              dimnames = list(genes, colnames(model_pars)))
     # fit / regularize theta
     model_pars_fit[o, 'theta'] <- 10 ^ ksmooth(x = genes_log_mean_step1, y = log10(model_pars[, 'theta']),
-                                               x.points = x_points, bandwidth = 0.3)$y
+                                               x.points = x_points, bandwidth = bw, kernel='normal')$y
 
     if (is.null(batch_var)){
       # global fit / regularization for all coefficients
       for (i in 2:ncol(model_pars)) {
         model_pars_fit[o, i] <- ksmooth(x = genes_log_mean_step1, y = model_pars[, i],
-                                        x.points = x_points, bandwidth = 0.3)$y
+                                        x.points = x_points, bandwidth = bw, kernel='normal')$y
       }
     } else {
       # fit / regularize per batch
@@ -235,7 +238,7 @@ vst <- function(umi,
         batch_o <- order(batch_genes_log_mean)
         for (i in which(grepl(paste0(batch_var, b), colnames(model_pars)))) {
           model_pars_fit[batch_o, i] <- ksmooth(x = batch_genes_log_mean_step1, y = model_pars[, i],
-                                                x.points = batch_genes_log_mean, bandwidth = 0.3)$y
+                                                x.points = batch_genes_log_mean, bandwidth = bw, kernel='normal')$y
         }
       }
     }
