@@ -4,14 +4,12 @@
 \alias{is_outlier}
 \title{Identify outliers}
 \usage{
-is_outlier(y, x, n, th = 40)
+is_outlier(y, x, th = 10)
 }
 \arguments{
 \item{y}{Dependent variable}
 
 \item{x}{Independent variable}
-
-\item{n}{Number of observations per bin}
 
 \item{th}{Outlier score threshold}
 }
