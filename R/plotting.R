@@ -19,15 +19,25 @@ plot_model_pars <- function(vst_out) {
   if (! 'mean' %in% names(vst_out$gene_attr)) {
     stop('vst_out must contain a data frame named gene_attr with a column named mean (perhaps call vst with return_gene_attr = TRUE)')
   }
+  #tmp model pars
+  mp <- rbind(vst_out$model_pars, vst_out$model_pars_outliers)
+  mp[, 1] <- log10(mp[, 1])
+  colnames(mp)[1] <- 'log10(theta)'
+  mp_fit <- vst_out$model_pars_fit
+  mp_fit[, 1] <- log10(mp_fit[, 1])
+  colnames(mp_fit)[1] <- 'log10(theta)'
   # show estimated and regularized parameters
-  df <- melt(vst_out$model_pars, varnames = c('gene', 'parameter'), as.is = TRUE)
-  df_fit <- melt(vst_out$model_pars_fit, varnames = c('gene', 'parameter'), as.is = TRUE)
+  df <- melt(mp, varnames = c('gene', 'parameter'), as.is = TRUE)
+  df_fit <- melt(mp_fit, varnames = c('gene', 'parameter'), as.is = TRUE)
   df$gene_mean <- vst_out$gene_attr[df$gene, 'mean']
+  df$is_outl <- c(rep(FALSE, nrow(vst_out$model_pars)), rep(TRUE, nrow(vst_out$model_pars_outliers)))
   df_fit$gene_mean <- vst_out$gene_attr[df_fit$gene, 'mean']
-  df$type = 'single gene estimate'
-  df_fit$type = 'regularized'
+  df$type <- 'single gene estimate'
+  df_fit$type <- 'regularized'
+  df_fit$is_outl <- FALSE
   g <- ggplot(rbind(df, df_fit), aes_(x=~log10(gene_mean), y=~value, color=~type)) +
-    geom_point(data=df, size=0.5, alpha=0.5, shape=16) +
+    geom_point(data=df, aes_(shape=~is_outl), size=0.5, alpha=0.5) +
+    scale_shape_manual(values=c(16, 4), guide = FALSE) +
     geom_point(data=df_fit, size=0.66, alpha=0.5, shape=16) +
     facet_wrap(~ parameter, scales = 'free_y') +
     theme(legend.position='bottom')

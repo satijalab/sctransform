@@ -200,6 +200,7 @@ vst <- function(umi,
     outliers <- apply(outliers, 1, any)
     if (sum(outliers) > 0) {
       message('Found ', sum(outliers), ' outliers - those will be ignored in fitting/regularization step\n')
+      model_pars_outliers <- model_pars[outliers, ]
       model_pars <- model_pars[!outliers, ]
       genes_step1 <- rownames(model_pars)
       genes_log_mean_step1 <- genes_log_mean_step1[!outliers]
@@ -317,6 +318,7 @@ vst <- function(umi,
   rv <- list(y = res,
              model_str = model_str,
              model_pars = model_pars,
+             model_pars_outliers = model_pars_outliers,
              model_pars_fit = model_pars_fit,
              arguments = arguments,
              genes_log_mean_step1 = genes_log_mean_step1,
