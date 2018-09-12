@@ -195,7 +195,8 @@ vst <- function(umi,
   if (do_regularize) {
     # look for outliers in the parameters
     # outliers are those that do not fit the overall relationship with the mean at all
-    outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_mean_step1, 100))
+    outliers <- cbind(is_outlier(log10(model_pars[, 1]), genes_log_mean_step1),
+                      apply(model_pars[, -1, drop=FALSE], 2, function(y) is_outlier(y, genes_log_mean_step1)))
     outliers <- apply(outliers, 1, any)
     if (sum(outliers) > 0) {
       message('Found ', sum(outliers), ' outliers - those will be ignored in fitting/regularization step\n')
