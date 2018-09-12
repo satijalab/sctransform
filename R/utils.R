@@ -14,8 +14,8 @@ is_outlier <- function(y, x, th = 10) {
   eps <- .Machine$double.eps * 10
   breaks1 <- seq(from = min(x) - eps, to = max(x) + bin.width, by = bin.width)
   breaks2 <- seq(from = min(x) - eps - bin.width/2, to = max(x) + bin.width, by = bin.width)
-  score1 <- robust_scale_binned(x, breaks1)
-  score2 <- robust_scale_binned(x, breaks2)
+  score1 <- robust_scale_binned(y, x, breaks1)
+  score2 <- robust_scale_binned(y, x, breaks2)
   return(pmin(abs(score1), abs(score2)) > th)
 }
 
@@ -28,7 +28,7 @@ is_outlier <- function(y, x, th = 10) {
 #'
 #' @importFrom stats aggregate
 #'
-robust_scale_binned <- function(x, breaks) {
+robust_scale_binned <- function(y, x, breaks) {
   bins <- cut(x = x, breaks = breaks, ordered_result = TRUE)
   tmp <- aggregate(x = y, by = list(bin=bins), FUN = robust_scale)
   score <- rep(0, length(x))

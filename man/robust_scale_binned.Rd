@@ -4,7 +4,7 @@
 \alias{robust_scale_binned}
 \title{Robust scale using median and mad per bin}
 \usage{
-robust_scale_binned(x, breaks)
+robust_scale_binned(y, x, breaks)
 }
 \arguments{
 \item{x}{Numeric vector}
