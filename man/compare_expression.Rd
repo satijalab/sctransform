@@ -6,7 +6,7 @@
 \usage{
 compare_expression(x, umi, group, val1, val2, method = "LRT",
   bin_size = 256, cell_attr = x$cell_attr, y = x$y, min_cells = 5,
-  show_progress = TRUE)
+  weighted = TRUE, randomize = FALSE, show_progress = TRUE)
 }
 \arguments{
 \item{x}{A list that provides model parameters and optionally meta data; use output of vst function}
@@ -28,6 +28,8 @@ compare_expression(x, umi, group, val1, val2, method = "LRT",
 \item{y}{Only used if methtod = 't_test', this is the residual matrix; default is x$y}
 
 \item{min_cells}{A gene has to be detected in at least this many cells in at least one of the groups being compared to be tested}
+
+\item{randomize}{Boolean indicating whether to shuffle group labels - only set to TRUE when testing methods}
 
 \item{show_progress}{Show progress bar}
 }
