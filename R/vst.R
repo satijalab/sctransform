@@ -147,7 +147,7 @@ vst <- function(umi,
   model_pars <- list()
   for (i in 1:max_bin) {
     genes_bin_regress <- genes_step1[bin_ind == i]
-    umi_bin <- as.matrix(umi[genes_bin_regress, cells_step1])
+    umi_bin <- as.matrix(umi[genes_bin_regress, cells_step1, drop=FALSE])
     model_pars[[i]] <- do.call(rbind,
                                mclapply(
                                  X = genes_bin_regress,
@@ -219,7 +219,7 @@ vst <- function(umi,
                              dimnames = list(genes, colnames(model_pars)))
     # fit / regularize theta
     model_pars_fit[o, 'theta'] <- 10 ^ ksmooth(x = genes_log_mean_step1, y = log10(model_pars[, 'theta']),
-                                               x.points = x_points, bandwidth = bw, kernel='normal')$y
+                                               x.points = x_points, bandwidth = bw*3, kernel='normal')$y
 
     if (is.null(batch_var)){
       # global fit / regularization for all coefficients
@@ -246,6 +246,7 @@ vst <- function(umi,
     }
   } else {
     model_pars_fit <- model_pars
+    model_pars_outliers <- model_pars[c(), ]
   }
 
 
@@ -258,7 +259,7 @@ vst <- function(umi,
     if (!is.null(batch_var)) {
       model_str2 <- paste0('y ~ 0 +(', paste(latent_var_nonreg, collapse = ' + '), ') : ', batch_var, ' + ', batch_var, ' + 0')
     } else {
-      model_str2 <- paste0('y ~ 0 + ', paste(latent_var_nonreg, collapse = ' + '))
+      model_str2 <- paste0('y ~ 1 + ', paste(latent_var_nonreg, collapse = ' + '))
     }
 
     bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
@@ -288,9 +289,10 @@ vst <- function(umi,
     }
     model_pars_nonreg <- do.call(rbind, model_pars_nonreg)
     rownames(model_pars_nonreg) <- genes
-    regressor_data <- cbind(regressor_data, model.matrix(as.formula(gsub('^y', '', model_str2)), cell_attr))
-    model_pars_fit <- cbind(model_pars_fit, model_pars_nonreg)
-    model_str <- paste0(model_str, gsub('^y ~ 0', '', model_str2))
+    regressor_data <- cbind(regressor_data, model.matrix(as.formula(gsub('^y', '', model_str2)), cell_attr)[, -1, drop=FALSE])
+    model_pars_fit[, '(Intercept)'] <- model_pars_fit[, '(Intercept)'] + model_pars_nonreg[, 1]
+    model_pars_fit <- cbind(model_pars_fit, model_pars_nonreg[, -1, drop=FALSE])
+    model_str <- paste0(model_str, gsub('^y ~ 1', '', model_str2))
   }
 
   message('Second step: Pearson residuals using fitted parameters for ', length(x = genes), ' genes')
@@ -303,7 +305,7 @@ vst <- function(umi,
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     mu <- exp(tcrossprod(model_pars_fit[genes_bin, -1, drop=FALSE], regressor_data))
-    y <- as.matrix(umi[genes_bin, ])
+    y <- as.matrix(umi[genes_bin, , drop=FALSE])
     res[genes_bin, ] <- (y - mu) / sqrt(mu + mu^2 / model_pars_fit[genes_bin, 'theta'])
     if (show_progress) {
       setTxtProgressBar(pb, i)
