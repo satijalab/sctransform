@@ -68,6 +68,11 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   message('Testing ', length(genes), ' genes')
 
   regressor_data <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
+  if (!is.null(dim(x$model_pars_nonreg))) {
+    regressor_data_nonreg <- model.matrix(as.formula(gsub('^y', '', x$model_str_nonreg)), cell_attr)
+    regressor_data <- cbind(regressor_data, regressor_data_nonreg)
+  }
+
   # process genes in batches
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
@@ -104,7 +109,10 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_log_mean <- pmax(LB, pmin(y_log_mean, UB))
       names(y_log_mean) <- rownames(y)
       mp <- reg_pars(x$genes_log_mean_step1, x$model_pars, y_log_mean)
-      mu <- exp(tcrossprod(mp[genes_bin, -1, drop=FALSE], regressor_data))
+      if (!is.null(dim(x$model_pars_nonreg))) {
+        mp <- cbind(mp, x$model_pars_nonreg[genes_bin, ])
+      }
+      mu <- exp(tcrossprod(mp[, -1, drop=FALSE], regressor_data))
       sq_dev <- sapply(1:nrow(mu), function(i) my_dev_resids(y[i, ], mu[i, ], 1, mp[i, 'theta']))
 
       # same per group
@@ -113,7 +121,10 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_log_mean0 <- pmax(LB, pmin(y_log_mean0, UB))
       names(y_log_mean0) <- rownames(y)
       mp0 <- reg_pars(x$genes_log_mean_step1, x$model_pars, y_log_mean0)
-      mu0 <- exp(tcrossprod(mp0[genes_bin, -1, drop=FALSE], regressor_data[group==0, ]))
+      if (!is.null(dim(x$model_pars_nonreg))) {
+        mp0 <- cbind(mp0, x$model_pars_nonreg[genes_bin, ])
+      }
+      mu0 <- exp(tcrossprod(mp0[, -1, drop=FALSE], regressor_data[group==0, ]))
       sq_dev0 <- sapply(1:nrow(mu0), function(i) my_dev_resids(y0[i, ], mu0[i, ], 1, mp0[i, 'theta']))
 
       y1 <- y[, group==1]
@@ -121,7 +132,10 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_log_mean1 <- pmax(LB, pmin(y_log_mean1, UB))
       names(y_log_mean1) <- rownames(y)
       mp1 <- reg_pars(x$genes_log_mean_step1, x$model_pars, y_log_mean1)
-      mu1 <- exp(tcrossprod(mp1[genes_bin, -1, drop=FALSE], regressor_data[group==1, ]))
+      if (!is.null(dim(x$model_pars_nonreg))) {
+        mp1 <- cbind(mp1, x$model_pars_nonreg[genes_bin, ])
+      }
+      mu1 <- exp(tcrossprod(mp1[, -1, drop=FALSE], regressor_data[group==1, ]))
       sq_dev1 <- sapply(1:nrow(mu1), function(i) my_dev_resids(y1[i, ], mu1[i, ], 1, mp1[i, 'theta']))
 
       #pvals <- pchisq(base::rowSums(cbind(sq_dev0, sq_dev1)) - base::rowSums(sq_dev), df = 1, lower.tail = FALSE)
@@ -131,8 +145,8 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
 
       #fold_change <- log2(10 ^ (y_log_mean1 - y_log_mean0))
       # tmp stuff for fold change
-      mu0 <- tcrossprod(mp0[genes_bin, -1, drop=FALSE], regressor_data)
-      mu1 <- tcrossprod(mp1[genes_bin, -1, drop=FALSE], regressor_data)
+      mu0 <- tcrossprod(mp0[, -1, drop=FALSE], regressor_data)
+      mu1 <- tcrossprod(mp1[, -1, drop=FALSE], regressor_data)
       fold_change <- apply(log2(exp(mu1 - mu0)), 1, mean)
       #if (max(fold_change) > 0.4) browser()
       bin_res <- list(cbind(pvals, fold_change))
@@ -190,11 +204,6 @@ reg_pars <- function(x, y.mat, x.points) {
     browser()
   }
   return(y.mat.out)
-}
-
-# NB squared deviance residuals
-my_dev_resids <- function(y, mu, wt, theta) {
-  2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta)))
 }
 
 
