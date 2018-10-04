@@ -9,7 +9,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
   n_cells = NULL, method = "poisson", do_regularize = TRUE,
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))), bin_size = 256,
   min_cells = 5, return_cell_attr = FALSE, return_gene_attr = FALSE,
-  show_progress = TRUE)
+  bw_adjust = 1, show_progress = TRUE)
 }
 \arguments{
 \item{umi}{A matrix of UMI counts with genes as rows and cells as columns}
@@ -39,6 +39,8 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
 \item{return_cell_attr}{Make cell attributes part of the output}
 
 \item{return_gene_attr}{Calculate gene attributes and make part of output}
+
+\item{bw_adjust}{Kernel bandwidth adjustment used during regurlarization; default is 1, so output of bw.SJ is used directly}
 
 \item{show_progress}{Whether to print progress bar}
 }

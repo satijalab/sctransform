@@ -20,17 +20,22 @@ plot_model_pars <- function(vst_out) {
     stop('vst_out must contain a data frame named gene_attr with a column named mean (perhaps call vst with return_gene_attr = TRUE)')
   }
   #tmp model pars
-  mp <- rbind(vst_out$model_pars, vst_out$model_pars_outliers)
+  mp <- vst_out$model_pars
   mp[, 1] <- log10(mp[, 1])
   colnames(mp)[1] <- 'log10(theta)'
   mp_fit <- vst_out$model_pars_fit
   mp_fit[, 1] <- log10(mp_fit[, 1])
   colnames(mp_fit)[1] <- 'log10(theta)'
+  mpnr <- vst_out$model_pars_nonreg
+  if (!is.null(dim(mpnr))) {
+    colnames(mpnr) <- paste0('nonreg:', colnames(mpnr))
+    mp_fit <- cbind(mp_fit, mpnr)
+  }
   # show estimated and regularized parameters
   df <- melt(mp, varnames = c('gene', 'parameter'), as.is = TRUE)
   df_fit <- melt(mp_fit, varnames = c('gene', 'parameter'), as.is = TRUE)
   df$gene_mean <- vst_out$gene_attr[df$gene, 'mean']
-  df$is_outl <- c(rep(FALSE, nrow(vst_out$model_pars)), rep(TRUE, nrow(vst_out$model_pars_outliers)))
+  df$is_outl <- vst_out$model_pars_outliers
   df_fit$gene_mean <- vst_out$gene_attr[df_fit$gene, 'mean']
   df$type <- 'single gene estimate'
   df_fit$type <- 'regularized'
