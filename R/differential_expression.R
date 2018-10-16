@@ -113,7 +113,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
         mp <- cbind(mp, x$model_pars_nonreg[genes_bin, ])
       }
       mu <- exp(tcrossprod(mp[, -1, drop=FALSE], regressor_data))
-      sq_dev <- sapply(1:nrow(mu), function(i) my_dev_resids(y[i, ], mu[i, ], 1, mp[i, 'theta']))
+      sq_dev <- sapply(1:nrow(mu), function(i) sq_deviance_residual(y[i, ], mu[i, ], mp[i, 'theta']))
 
       # same per group
       y0 <- y[, group==0]
@@ -125,7 +125,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
         mp0 <- cbind(mp0, x$model_pars_nonreg[genes_bin, ])
       }
       mu0 <- exp(tcrossprod(mp0[, -1, drop=FALSE], regressor_data[group==0, ]))
-      sq_dev0 <- sapply(1:nrow(mu0), function(i) my_dev_resids(y0[i, ], mu0[i, ], 1, mp0[i, 'theta']))
+      sq_dev0 <- sapply(1:nrow(mu0), function(i) sq_deviance_residual(y0[i, ], mu0[i, ], mp0[i, 'theta']))
 
       y1 <- y[, group==1]
       y_log_mean1 <- log10(base::rowMeans(y1))
@@ -136,7 +136,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
         mp1 <- cbind(mp1, x$model_pars_nonreg[genes_bin, ])
       }
       mu1 <- exp(tcrossprod(mp1[, -1, drop=FALSE], regressor_data[group==1, ]))
-      sq_dev1 <- sapply(1:nrow(mu1), function(i) my_dev_resids(y1[i, ], mu1[i, ], 1, mp1[i, 'theta']))
+      sq_dev1 <- sapply(1:nrow(mu1), function(i) sq_deviance_residual(y1[i, ], mu1[i, ], mp1[i, 'theta']))
 
       #pvals <- pchisq(base::rowSums(cbind(sq_dev0, sq_dev1)) - base::rowSums(sq_dev), df = 1, lower.tail = FALSE)
       pvals <- pchisq(base::colSums(sq_dev * weights) -
