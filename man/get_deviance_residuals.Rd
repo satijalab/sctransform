@@ -5,14 +5,18 @@
 \title{Return deviance residuals of regularized models}
 \usage{
 get_deviance_residuals(vst_out, umi, cell_attr = vst_out$cell_attr,
-  bin_size = 256)
+  bin_size = 256, show_progress = TRUE)
 }
 \arguments{
 \item{vst_out}{The output of a vst run}
 
 \item{umi}{The UMI count matrix that will be converted}
 
+\item{cell_attr}{Data frame of cell meta data}
+
 \item{bin_size}{Number of genes to put in each bin (to show progress)}
+
+\item{show_progress}{Whether to print progress bar}
 }
 \value{
 A matrix of deviance residuals

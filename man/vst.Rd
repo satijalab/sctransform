@@ -4,12 +4,12 @@
 \alias{vst}
 \title{Variance stabilizing transformation for UMI count data}
 \usage{
-vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
-  batch_var = NULL, latent_var_nonreg = NULL, n_genes = 2000,
-  n_cells = NULL, method = "poisson", do_regularize = TRUE,
+vst(umi, cell_attr = NULL, latent_var = c("log_umi"), batch_var = NULL,
+  latent_var_nonreg = NULL, n_genes = 2000, n_cells = NULL,
+  method = "poisson", do_regularize = TRUE,
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))), bin_size = 256,
   min_cells = 5, return_cell_attr = FALSE, return_gene_attr = FALSE,
-  bw_adjust = 1, show_progress = TRUE)
+  return_dev_residuals = FALSE, bw_adjust = 3, show_progress = TRUE)
 }
 \arguments{
 \item{umi}{A matrix of UMI counts with genes as rows and cells as columns}
@@ -40,7 +40,9 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi_per_gene"),
 
 \item{return_gene_attr}{Calculate gene attributes and make part of output}
 
-\item{bw_adjust}{Kernel bandwidth adjustment used during regurlarization; default is 1, so output of bw.SJ is used directly}
+\item{return_dev_residuals}{If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE}
+
+\item{bw_adjust}{Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3}
 
 \item{show_progress}{Whether to print progress bar}
 }
