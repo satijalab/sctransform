@@ -20,7 +20,8 @@
 #' @param min_cells Only use genes that have been detected in at least this many cells
 #' @param return_cell_attr Make cell attributes part of the output
 #' @param return_gene_attr Calculate gene attributes and make part of output
-#' @param bw_adjust Kernel bandwidth adjustment used during regurlarization; default is 1, so output of bw.SJ is used directly
+#' @param return_dev_residuals If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE
+#' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param show_progress Whether to print progress bar
 #'
 #' @return A list with components
@@ -60,7 +61,7 @@
 #'
 vst <- function(umi,
                 cell_attr = NULL,
-                latent_var = c('log_umi_per_gene'),
+                latent_var = c('log_umi'),
                 batch_var = NULL,
                 latent_var_nonreg = NULL,
                 n_genes = 2000,
@@ -72,7 +73,8 @@ vst <- function(umi,
                 min_cells = 5,
                 return_cell_attr = FALSE,
                 return_gene_attr = FALSE,
-                bw_adjust = 1,
+                return_dev_residuals = FALSE,
+                bw_adjust = 3,
                 show_progress = TRUE) {
   arguments <- as.list(environment())[-c(1, 2)]
   start_time <- Sys.time()
@@ -145,7 +147,8 @@ vst <- function(umi,
 
   if (do_regularize) {
     model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
-    model_pars_fit <- reg_model_pars(model_pars, genes_log_mean_step1, genes_log_mean, cell_attr, batch_var, bw_adjust)
+    model_pars_fit <- reg_model_pars(model_pars, genes_log_mean_step1, genes_log_mean, cell_attr,
+                                     batch_var, cells_step1, genes_step1, umi, bw_adjust)
     model_pars[, 'theta'] <- 10^model_pars[, 'theta']
     model_pars_fit[, 'theta'] <- 10^model_pars_fit[, 'theta']
     model_pars_outliers <- attr(model_pars_fit, 'outliers')
@@ -191,7 +194,11 @@ vst <- function(umi,
     genes_bin <- genes[bin_ind == i]
     mu <- exp(tcrossprod(model_pars_final[genes_bin, -1, drop=FALSE], regressor_data_final))
     y <- as.matrix(umi[genes_bin, , drop=FALSE])
-    res[genes_bin, ] <- (y - mu) / sqrt(mu + mu^2 / model_pars_final[genes_bin, 'theta'])
+    if (return_dev_residuals) {
+      res[genes_bin, ] <- deviance_residual(y, mu, model_pars_final[genes_bin, 'theta'])
+    } else {
+      res[genes_bin, ] <- (y - mu) / sqrt(mu + mu^2 / model_pars_final[genes_bin, 'theta'])
+    }
     if (show_progress) {
       setTxtProgressBar(pb, i)
     }
@@ -329,7 +336,8 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
   return(model_pars_nonreg)
 }
 
-reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cell_attr, batch_var, bw_adjust) {
+reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cell_attr,
+                           batch_var, cells_step1, genes_step1, umi, bw_adjust) {
   genes <- names(genes_log_mean)
   # look for outliers in the parameters
   # outliers are those that do not fit the overall relationship with the mean at all
@@ -377,7 +385,7 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
       batch_o <- order(batch_genes_log_mean)
       for (i in which(grepl(paste0(batch_var, b), colnames(model_pars)))) {
         model_pars_fit[batch_o, i] <- ksmooth(x = batch_genes_log_mean_step1, y = model_pars[, i],
-                                              x.points = batch_genes_log_mean, bandwidth = bw[i], kernel='normal')$y
+                                              x.points = batch_genes_log_mean, bandwidth = bw, kernel='normal')$y
       }
     }
   }
