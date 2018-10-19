@@ -15,7 +15,7 @@
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
 #' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization
-#' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to
+#' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is no clipping
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param min_cells Only use genes that have been detected in at least this many cells
 #' @param return_cell_attr Make cell attributes part of the output
@@ -68,7 +68,7 @@ vst <- function(umi,
                 n_cells = NULL,
                 method = 'poisson',
                 do_regularize = TRUE,
-                res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
+                res_clip_range = c(-Inf, Inf),
                 bin_size = 256,
                 min_cells = 5,
                 return_cell_attr = FALSE,

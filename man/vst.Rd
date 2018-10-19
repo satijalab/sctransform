@@ -4,11 +4,11 @@
 \alias{vst}
 \title{Variance stabilizing transformation for UMI count data}
 \usage{
-vst(umi, cell_attr = NULL, latent_var = c("log_umi"), batch_var = NULL,
-  latent_var_nonreg = NULL, n_genes = 2000, n_cells = NULL,
-  method = "poisson", do_regularize = TRUE,
-  res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))), bin_size = 256,
-  min_cells = 5, return_cell_attr = FALSE, return_gene_attr = FALSE,
+vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
+  batch_var = NULL, latent_var_nonreg = NULL, n_genes = 2000,
+  n_cells = NULL, method = "poisson", do_regularize = TRUE,
+  res_clip_range = c(-Inf, Inf), bin_size = 256, min_cells = 5,
+  return_cell_attr = FALSE, return_gene_attr = FALSE,
   return_dev_residuals = FALSE, bw_adjust = 3, show_progress = TRUE)
 }
 \arguments{
@@ -30,7 +30,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"), batch_var = NULL,
 
 \item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization}
 
-\item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to}
+\item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to; default is no clipping}
 
 \item{bin_size}{Number of genes to put in each bin (to show progress)}
 
