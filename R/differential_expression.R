@@ -108,7 +108,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_log_mean <- log10(apply(y, 1, function(x) mean(x * weights)))
       y_log_mean <- pmax(LB, pmin(y_log_mean, UB))
       names(y_log_mean) <- rownames(y)
-      mp <- reg_pars(x$genes_log_mean_step1, x$model_pars, y_log_mean)
+      mp <- reg_pars(x$genes_log_mean_step1, x$model_pars, y_log_mean, x$arguments$bw_adjust)
       if (!is.null(dim(x$model_pars_nonreg))) {
         mp <- cbind(mp, x$model_pars_nonreg[genes_bin, ])
       }
@@ -120,7 +120,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_log_mean0 <- log10(base::rowMeans(y0))
       y_log_mean0 <- pmax(LB, pmin(y_log_mean0, UB))
       names(y_log_mean0) <- rownames(y)
-      mp0 <- reg_pars(x$genes_log_mean_step1, x$model_pars, y_log_mean0)
+      mp0 <- reg_pars(x$genes_log_mean_step1, x$model_pars, y_log_mean0, x$arguments$bw_adjust)
       if (!is.null(dim(x$model_pars_nonreg))) {
         mp0 <- cbind(mp0, x$model_pars_nonreg[genes_bin, ])
       }
@@ -131,7 +131,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_log_mean1 <- log10(base::rowMeans(y1))
       y_log_mean1 <- pmax(LB, pmin(y_log_mean1, UB))
       names(y_log_mean1) <- rownames(y)
-      mp1 <- reg_pars(x$genes_log_mean_step1, x$model_pars, y_log_mean1)
+      mp1 <- reg_pars(x$genes_log_mean_step1, x$model_pars, y_log_mean1, x$arguments$bw_adjust)
       if (!is.null(dim(x$model_pars_nonreg))) {
         mp1 <- cbind(mp1, x$model_pars_nonreg[genes_bin, ])
       }
@@ -188,8 +188,8 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
 
 
 # function to get regularized model parameters
-reg_pars <- function(x, y.mat, x.points) {
-  bw <- bw.SJ(x)
+reg_pars <- function(x, y.mat, x.points, bw.adjust) {
+  bw <- bw.SJ(x) * bw.adjust
   o <- order(x.points)
   y.mat.out <- matrix(NA, length(x.points), ncol(y.mat))
   y.mat.out[o, 1] <- 10 ^ ksmooth(x = x, y = log10(y.mat[, 1]), x.points = x.points,
