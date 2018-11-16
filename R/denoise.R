@@ -92,6 +92,7 @@ denoise <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
   if (show_progress) {
+    message('Computing de-noised UMI count matrix')
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   denoised_data <- matrix(NA, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))

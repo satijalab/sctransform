@@ -149,6 +149,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       mu1 <- tcrossprod(mp1[, -1, drop=FALSE], regressor_data)
       fold_change <- apply(log2(exp(mu1 - mu0)), 1, mean)
       #if (max(fold_change) > 0.4) browser()
+      if ('SON' %in% genes_bin) browser()
       bin_res <- list(cbind(pvals, fold_change))
     }
     if (method == 'LRT_free') {
@@ -183,6 +184,135 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   res$mean2 <- rowMeans(umi[rownames(res), sel2])
   res$mean <- rowMeans(umi[rownames(res), use_cells])
   res$mean_weighted <- (res$mean1 + res$mean2) / 2
+  return(res)
+}
+
+#' @export
+compare_expression_full <- function(umi, cell_attr, group, val1, val2,
+                                    latent_var = c('log_umi'),
+                                    batch_var = NULL,
+                                    latent_var_nonreg = NULL,
+                                    n_genes = 2000,
+                                    method = 'poisson',
+                                    bin_size = 256,
+                                    min_cells = 3,
+                                    bw_adjust = 2,
+                                    min_frac = 0,
+                                    show_progress = TRUE) {
+  sel1 <- which(group %in% val1)
+  sel2 <- which(group %in% val2)
+
+  det1 <- rowMeans(umi[, sel1] > 0)
+  det2 <- rowMeans(umi[, sel2] > 0)
+  umi <- umi[det1 >= min_frac | det2 >= min_frac, ]
+
+  cells1 <- rowSums(umi[, sel1] > 0)
+  cells2 <- rowSums(umi[, sel2] > 0)
+  umi <- umi[cells1 >= min_cells | cells2 >= min_cells, ]
+
+  vst.out0 <- vst(umi = umi[, c(sel1, sel2)],
+                  cell_attr = cell_attr[c(sel1, sel2), ],
+                  latent_var = latent_var,
+                  batch_var = batch_var,
+                  latent_var_nonreg = latent_var_nonreg,
+                  n_genes = n_genes,
+                  n_cells = NULL,
+                  method = method,
+                  do_regularize = TRUE,
+                  res_clip_range = c(-Inf, Inf),
+                  bin_size = bin_size,
+                  min_cells = min_cells,
+                  return_cell_attr = FALSE,
+                  return_gene_attr = FALSE,
+                  return_dev_residuals = TRUE,
+                  bw_adjust = bw_adjust,
+                  show_progress = show_progress)
+
+  vst.out1 <- vst(umi = umi[, sel1],
+                  cell_attr = cell_attr[sel1, ],
+                  latent_var = latent_var,
+                  batch_var = batch_var,
+                  latent_var_nonreg = latent_var_nonreg,
+                  n_genes = n_genes,
+                  n_cells = NULL,
+                  method = 'nb_theta_given', #method,
+                  do_regularize = TRUE,
+                  res_clip_range = c(-Inf, Inf),
+                  bin_size = bin_size,
+                  min_cells = min_cells,
+                  return_cell_attr = FALSE,
+                  return_gene_attr = FALSE,
+                  return_dev_residuals = TRUE,
+                  bw_adjust = bw_adjust,
+                  theta_given = vst.out0$model_pars_fit[, 'theta'],
+                  show_progress = show_progress)
+
+  vst.out2 <- vst(umi = umi[, sel2],
+                  cell_attr = cell_attr[sel2, ],
+                  latent_var = latent_var,
+                  batch_var = batch_var,
+                  latent_var_nonreg = latent_var_nonreg,
+                  n_genes = n_genes,
+                  n_cells = NULL,
+                  method = 'nb_theta_given', #method
+                  do_regularize = TRUE,
+                  res_clip_range = c(-Inf, Inf),
+                  bin_size = bin_size,
+                  min_cells = min_cells,
+                  return_cell_attr = FALSE,
+                  return_gene_attr = FALSE,
+                  return_dev_residuals = TRUE,
+                  bw_adjust = bw_adjust,
+                  theta_given = vst.out0$model_pars_fit[, 'theta'],
+                  show_progress = show_progress)
+
+  genes <- union(rownames(vst.out1$y), rownames(vst.out2$y))
+  genes_both <- intersect(rownames(vst.out1$y), rownames(vst.out2$y))
+  genes1 <- setdiff(rownames(vst.out1$y), genes_both)
+  genes2 <- setdiff(rownames(vst.out2$y), genes_both)
+
+  sq_dev_one <- base::rowSums(vst.out0$y[genes, ]^2 * 1)
+  sq_dev_two <- rep(0, length(sq_dev_one))
+  names(sq_dev_two) <- genes
+  sq_dev_two[rownames(vst.out1$y)] <- base::rowSums(vst.out1$y^2 * 1)
+  sq_dev_two[rownames(vst.out2$y)] <- sq_dev_two[rownames(vst.out2$y)] + base::rowSums(vst.out2$y^2 * 1)
+  pvals <- pchisq(sq_dev_one - sq_dev_two,
+                  df = 3, lower.tail = FALSE)
+  # get log-fold change
+  log_fc <- rep(NA, length(sq_dev_one))
+  names(log_fc) <- genes
+
+  regressor_data <- model.matrix(as.formula(gsub('^y', '', vst.out0$model_str)), cell_attr[c(sel1, sel2), ])
+  if (!is.null(dim(vst.out0$model_pars_nonreg))) {
+    regressor_data_nonreg <- model.matrix(as.formula(gsub('^y', '', vst.out0$model_str_nonreg)), cell_attr[c(sel1, sel2), ])
+    regressor_data <- cbind(regressor_data, regressor_data_nonreg)
+  }
+  mp1 <- cbind(vst.out1$model_pars_fit, vst.out1$model_pars_nonreg)
+  mp2 <- cbind(vst.out2$model_pars_fit, vst.out2$model_pars_nonreg)
+  mu1 <- tcrossprod(mp1[genes_both, -1, drop=FALSE], regressor_data)
+  mu2 <- tcrossprod(mp2[genes_both, -1, drop=FALSE], regressor_data)
+  log_fc[genes_both] <- apply(log2(exp(mu2 - mu1)), 1, mean)
+  log_fc[genes1] <- -Inf
+  log_fc[genes2] <- Inf
+
+  res <- data.frame(p_value = pvals, log_fc = log_fc)
+  res$fdr <- p.adjust(res$p_value, method='fdr')
+  res <- res[order(res$p_value, -abs(res$log_fc)), ]
+  res$mean1 <- rowMeans(umi[rownames(res), sel1])
+  res$mean2 <- rowMeans(umi[rownames(res), sel2])
+  res$det1 <- rowMeans(umi[rownames(res), sel1] > 0)
+  res$det2 <- rowMeans(umi[rownames(res), sel2] > 0)
+
+  # tmp stuff
+  # goi <- 'MALAT1'
+  # y <- umi[goi, c(sel1, sel2)]
+  # grp <- c(rep('A', length(sel1)), rep('B', length(sel2)))
+  # df <- data.frame(y=y, log_umi=cell_attr[c(sel1, sel2), 'log_umi'], grp=grp)
+  # mod0 <- glm.nb(y ~ log_umi, data = df)
+  # mod1 <- glm.nb(y ~ log_umi + grp, data = df)
+  # mod1 <- glm(y ~ log_umi + grp, data = df, family = negative.binomial(theta=mod0$theta))
+  # mod1 <- glm(y ~ log_umi:grp, data = df, family = negative.binomial(theta=mod0$theta))
+
   return(res)
 }
 
