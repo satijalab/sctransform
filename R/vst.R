@@ -15,20 +15,28 @@
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
 #' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization
-#' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is no clipping
+#' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param min_cells Only use genes that have been detected in at least this many cells
 #' @param return_cell_attr Make cell attributes part of the output
 #' @param return_gene_attr Calculate gene attributes and make part of output
 #' @param return_dev_residuals If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE
+#' @param return_corrected_umi If set to TRUE output will contain corrected UMI matrix; see \code{denoise} function
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
+#' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
 #' @param show_progress Whether to print progress bar
 #'
 #' @return A list with components
 #' \item{y}{Matrix of transformed data, i.e. Pearson residuals}
+#' \item{umi_corrected}{Matrix of corrected UMI counts (optional)}
 #' \item{model_str}{Character representation of the model formula}
 #' \item{model_pars}{Matrix of estimated model parameters per gene (theta and regression coefficients)}
+#' \item{model_pars_outliers}{Vector indicating whether a gene was considered to be an outlier}
 #' \item{model_pars_fit}{Matrix of fitted / regularized model parameters}
+#' \item{model_str_nonreg}{Character representation of model for non-regularized variables}
+#' \item{model_pars_nonreg}{Model parameters for non-regularized variables}
+#' \item{genes_log_mean_step1}{log-mean of genes used in initial step of parameter estimation}
+#' \item{cells_step1}{Cells used in initial step of parameter estimation}
 #' \item{arguments}{List of function call arguments}
 #' \item{cell_attr}{Data frame of cell meta data (optional)}
 #' \item{gene_attr}{Data frame with gene attributes such as mean, detection rate, etc. (optional)}
@@ -68,13 +76,15 @@ vst <- function(umi,
                 n_cells = NULL,
                 method = 'poisson',
                 do_regularize = TRUE,
-                res_clip_range = c(-Inf, Inf),
+                res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                 bin_size = 256,
                 min_cells = 5,
                 return_cell_attr = FALSE,
                 return_gene_attr = FALSE,
                 return_dev_residuals = FALSE,
+                return_corrected_umi = FALSE,
                 bw_adjust = 3,
+                theta_given = NULL,
                 show_progress = TRUE) {
   arguments <- as.list(environment())[-c(1, 2)]
   start_time <- Sys.time()
@@ -104,7 +114,7 @@ vst <- function(umi,
   umi <- umi[genes, ]
   genes_log_mean <- log10(rowMeans(umi))
 
-  if (!is.null(n_cells)) {
+  if (!is.null(n_cells) && n_cells < ncol(umi)) {
     # downsample cells to speed up the first step
     cells_step1 <- sample(x = colnames(umi), size = n_cells)
     if (!is.null(batch_var)) {
@@ -124,7 +134,7 @@ vst <- function(umi,
 
   data_step1 <- cell_attr[cells_step1, ]
 
-  if (!is.null(n_genes)) {
+  if (!is.null(n_genes) && n_genes < length(genes_step1)) {
     # density-sample genes to speed up the first step
     log_mean_dens <- density(x = genes_log_mean_step1, bw = 'nrd', adjust = 1)
     sampling_prob <- 1 / (approx(x = log_mean_dens$x, y = log_mean_dens$y, xout = genes_log_mean_step1)$y + .Machine$double.eps)
@@ -143,7 +153,7 @@ vst <- function(umi,
   message('Variance stabilizing transformation of count matrix of size ', nrow(umi), ' by ', ncol(umi))
   message('Model formula is ', model_str)
 
-  model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, show_progress)
+  model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, show_progress)
 
   if (do_regularize) {
     model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
@@ -206,9 +216,6 @@ vst <- function(umi,
   if (show_progress) {
     close(pb)
   }
-  res[res < res_clip_range[1]] <- res_clip_range[1]
-  res[res > res_clip_range[2]] <- res_clip_range[2]
-
   rv <- list(y = res,
              model_str = model_str,
              model_pars = model_pars,
@@ -218,10 +225,22 @@ vst <- function(umi,
              model_pars_nonreg = model_pars_nonreg,
              arguments = arguments,
              genes_log_mean_step1 = genes_log_mean_step1,
-             cells_step1 = cells_step1)
+             cells_step1 = cells_step1,
+             cell_attr = cell_attr)
+  rm(res)
+  gc(verbose = FALSE)
 
-  if (return_cell_attr) {
-    rv[['cell_attr']] <- cell_attr
+  if (return_corrected_umi) {
+    rv$umi_corrected <- sctransform::denoise(rv, do_round = TRUE, do_pos = TRUE,
+                                             show_progress = show_progress)
+    rv$umi_corrected <- as(object = rv$umi_corrected, Class = 'dgCMatrix')
+  }
+
+  rv$y[rv$y < res_clip_range[1]] <- res_clip_range[1]
+  rv$y[rv$y > res_clip_range[2]] <- res_clip_range[2]
+
+  if (!return_cell_attr) {
+    rv[['cell_attr']] <- NULL
   }
 
   if (return_gene_attr) {
@@ -230,13 +249,13 @@ vst <- function(umi,
       detection_rate = genes_cell_count[genes] / ncol(umi),
       mean = 10 ^ genes_log_mean,
       variance = apply(umi, 1, var),
-      residual_mean = rowMeans(res)
+      residual_mean = rowMeans(rv$y)
     )
     if (requireNamespace('matrixStats', quietly = TRUE)) {
-      gene_attr$residual_variance = matrixStats::rowVars(res)
+      gene_attr$residual_variance = matrixStats::rowVars(rv$y)
     } else {
       message('Consider installing matrixStats package for faster gene attribute calculation.')
-      gene_attr$residual_variance = apply(res, 1, var)
+      gene_attr$residual_variance = apply(rv$y, 1, var)
     }
     rv[['gene_attr']] <- gene_attr
   }
@@ -246,7 +265,7 @@ vst <- function(umi,
 }
 
 
-get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, show_progress) {
+get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, show_progress) {
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
   message('Get Negative Binomial regression parameters per gene')
@@ -268,6 +287,16 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
                                      fit <- glm(as.formula(model_str), data = data_step1, family = poisson)
                                      theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
                                      return(c(theta, fit$coefficients))
+                                   }
+                                   if (method == 'nb_theta_given') {
+                                     theta <- theta_given[j]
+                                     fit2 <- 0
+                                     try(fit2 <- glm(as.formula(model_str), data = data_step1, family = negative.binomial(theta=theta)), silent=TRUE)
+                                     if (class(fit2)[1] == 'numeric') {
+                                       return(c(theta, glm(as.formula(model_str), data = data_step1, family = poisson)$coefficients))
+                                     } else {
+                                       return(c(theta, fit2$coefficients))
+                                     }
                                    }
                                    if (method == 'nb_fast') {
                                      fit <- glm(as.formula(model_str), data = data_step1, family = poisson)

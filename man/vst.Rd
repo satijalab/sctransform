@@ -7,9 +7,11 @@
 vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
   batch_var = NULL, latent_var_nonreg = NULL, n_genes = 2000,
   n_cells = NULL, method = "poisson", do_regularize = TRUE,
-  res_clip_range = c(-Inf, Inf), bin_size = 256, min_cells = 5,
-  return_cell_attr = FALSE, return_gene_attr = FALSE,
-  return_dev_residuals = FALSE, bw_adjust = 3, show_progress = TRUE)
+  res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
+  bin_size = 256, min_cells = 5, return_cell_attr = FALSE,
+  return_gene_attr = FALSE, return_dev_residuals = FALSE,
+  return_corrected_umi = FALSE, bw_adjust = 3, theta_given = NULL,
+  show_progress = TRUE)
 }
 \arguments{
 \item{umi}{A matrix of UMI counts with genes as rows and cells as columns}
@@ -30,7 +32,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization}
 
-\item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to; default is no clipping}
+\item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))}
 
 \item{bin_size}{Number of genes to put in each bin (to show progress)}
 
@@ -42,16 +44,26 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{return_dev_residuals}{If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE}
 
+\item{return_corrected_umi}{If set to TRUE output will contain corrected UMI matrix; see \code{denoise} function}
+
 \item{bw_adjust}{Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3}
+
+\item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
 
 \item{show_progress}{Whether to print progress bar}
 }
 \value{
 A list with components
 \item{y}{Matrix of transformed data, i.e. Pearson residuals}
+\item{umi_corrected}{Matrix of corrected UMI counts (optional)}
 \item{model_str}{Character representation of the model formula}
 \item{model_pars}{Matrix of estimated model parameters per gene (theta and regression coefficients)}
+\item{model_pars_outliers}{Vector indicating whether a gene was considered to be an outlier}
 \item{model_pars_fit}{Matrix of fitted / regularized model parameters}
+\item{model_str_nonreg}{Character representation of model for non-regularized variables}
+\item{model_pars_nonreg}{Model parameters for non-regularized variables}
+\item{genes_log_mean_step1}{log-mean of genes used in initial step of parameter estimation}
+\item{cells_step1}{Cells used in initial step of parameter estimation}
 \item{arguments}{List of function call arguments}
 \item{cell_attr}{Data frame of cell meta data (optional)}
 \item{gene_attr}{Data frame with gene attributes such as mean, detection rate, etc. (optional)}
