@@ -13,7 +13,7 @@
 #' @param latent_var_nonreg The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
-#' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'
+#' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
 #' @param bin_size Number of genes to put in each bin (to show progress)
@@ -89,21 +89,28 @@ vst <- function(umi,
   arguments <- as.list(environment())[-c(1, 2)]
   start_time <- Sys.time()
   if (is.null(cell_attr)) {
-    message('Calculating cell meta data for input UMI matrix')
-    cell_attr <- data.frame(umi = colSums(umi),
-                            gene = colSums(umi > 0))
-    cell_attr$log_umi <- log10(cell_attr$umi)
-    cell_attr$log_gene <- log10(cell_attr$gene)
-    cell_attr$umi_per_gene <- cell_attr$umi / cell_attr$gene
-    cell_attr$log_umi_per_gene <- log10(cell_attr$umi_per_gene)
+    cell_attr <- data.frame(row.names = colnames(umi))
   }
+  known_attr <- c('umi', 'gene', 'log_umi', 'log_gene', 'umi_per_gene', 'log_umi_per_gene')
+  if (all(setdiff(latent_var, colnames(cell_attr)) %in% known_attr)) {
+    message('Calculating cell attributes for input UMI matrix')
+    tmp_attr <- data.frame(umi = colSums(umi),
+                           gene = colSums(umi > 0))
+    tmp_attr$log_umi <- log10(tmp_attr$umi)
+    tmp_attr$log_gene <- log10(tmp_attr$gene)
+    tmp_attr$umi_per_gene <- tmp_attr$umi / tmp_attr$gene
+    tmp_attr$log_umi_per_gene <- log10(tmp_attr$umi_per_gene)
+    cell_attr <- cbind(cell_attr, tmp_attr[, setdiff(colnames(tmp_attr), colnames(cell_attr)), drop = TRUE])
+  }
+
   if (!all(latent_var %in% colnames(cell_attr))) {
     stop('Not all latent variables present in cell attributes')
   }
   if (!is.null(batch_var)) {
     if (!batch_var %in% colnames(cell_attr)) {
-      stop('Batch variable not present in cell attributes')
+      stop('Batch variable not present in cell attributes; batch_var should be a column name of cell attributes')
     }
+    cell_attr[, batch_var] <- as.factor(cell_attr[, batch_var])
     batch_levels <- levels(cell_attr[, batch_var])
   }
 
@@ -113,6 +120,11 @@ vst <- function(umi,
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
   genes_log_mean <- log10(rowMeans(umi))
+
+  if (!do_regularize && !is.null(n_cells) && n_cells < ncol(umi)) {
+    message('do_regularize is set to FALSE, will use all genes')
+    n_cells <- NULL
+  }
 
   if (!is.null(n_cells) && n_cells < ncol(umi)) {
     # downsample cells to speed up the first step
