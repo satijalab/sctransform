@@ -119,7 +119,8 @@ vst <- function(umi,
   genes_cell_count <- rowSums(umi > 0)
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
-  genes_log_mean <- log10(rowMeans(umi))
+  #genes_log_mean <- log10(rowMeans(umi))
+  genes_log_mean <- log10(apply(umi, 1, gmean))
 
   if (!do_regularize && !is.null(n_cells) && n_cells < ncol(umi)) {
     message('do_regularize is set to FALSE, will use all genes')
@@ -137,7 +138,8 @@ vst <- function(umi,
     }
     genes_cell_count_step1 <- rowSums(umi[, cells_step1] > 0)
     genes_step1 <- rownames(umi)[genes_cell_count_step1 >= min_cells]
-    genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
+    #genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
+    genes_log_mean_step1 <- log10(apply(umi[genes_step1, cells_step1], 1, gmean))
   } else {
     cells_step1 <- colnames(umi)
     genes_step1 <- genes
@@ -151,7 +153,8 @@ vst <- function(umi,
     log_mean_dens <- density(x = genes_log_mean_step1, bw = 'nrd', adjust = 1)
     sampling_prob <- 1 / (approx(x = log_mean_dens$x, y = log_mean_dens$y, xout = genes_log_mean_step1)$y + .Machine$double.eps)
     genes_step1 <- sample(x = genes_step1, size = n_genes, prob = sampling_prob)
-    genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
+    #genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
+    genes_log_mean_step1 <- log10(apply(umi[genes_step1, cells_step1], 1, gmean))
   }
 
   if (!is.null(batch_var)) {
@@ -259,7 +262,8 @@ vst <- function(umi,
     message('Calculating gene attributes')
     gene_attr <- data.frame(
       detection_rate = genes_cell_count[genes] / ncol(umi),
-      mean = 10 ^ genes_log_mean,
+      #mean = 10 ^ genes_log_mean,
+      mean = apply(umi, 1, gmean),
       variance = apply(umi, 1, var),
       residual_mean = rowMeans(rv$y)
     )
@@ -418,9 +422,11 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
     batches <- unique(cell_attr[, batch_var])
     for (b in batches) {
       sel <- cell_attr[, batch_var] == b & rownames(cell_attr) %in% cells_step1
-      batch_genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
+      #batch_genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
+      batch_genes_log_mean_step1 <- log10(apply(umi[genes_step1, sel], 1, gmean))
       sel <- cell_attr[, batch_var] == b
-      batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
+      #batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
+      batch_genes_log_mean <- log10(apply(umi[, sel], 1, gmean))
       # in case some genes have not been observed in this batch
       batch_genes_log_mean <- pmax(batch_genes_log_mean, min(genes_log_mean))
       batch_o <- order(batch_genes_log_mean)

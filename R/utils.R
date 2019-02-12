@@ -1,3 +1,13 @@
+#' Geometric mean
+#'
+#' @param x array
+#' @param eps small value to add to x to avoid log(0); default is 1
+#'
+#' @return geometric mean
+gmean <- function(x, eps=1) {
+  exp(sum(log(x+eps))/length(x))-eps
+}
+
 #' Identify outliers
 #'
 #' @param y Dependent variable
