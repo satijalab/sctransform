@@ -10,8 +10,8 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
   bin_size = 256, min_cells = 5, return_cell_attr = FALSE,
   return_gene_attr = FALSE, return_dev_residuals = FALSE,
-  return_corrected_umi = FALSE, bw_adjust = 3, theta_given = NULL,
-  show_progress = TRUE)
+  return_corrected_umi = FALSE, bw_adjust = 3, gmean_eps = 1,
+  theta_given = NULL, show_progress = TRUE)
 }
 \arguments{
 \item{umi}{A matrix of UMI counts with genes as rows and cells as columns}
@@ -28,7 +28,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{n_cells}{Number of cells to use when estimating parameters (default uses all cells)}
 
-\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb'}
+\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given'}
 
 \item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization}
 
@@ -47,6 +47,8 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 \item{return_corrected_umi}{If set to TRUE output will contain corrected UMI matrix; see \code{denoise} function}
 
 \item{bw_adjust}{Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3}
+
+\item{gmean_eps}{Pseudocount added when calculating geometric mean of a gene to avoid log(0); default is 1}
 
 \item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
 

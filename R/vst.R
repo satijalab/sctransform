@@ -23,6 +23,7 @@
 #' @param return_dev_residuals If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE
 #' @param return_corrected_umi If set to TRUE output will contain corrected UMI matrix; see \code{denoise} function
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
+#' @param gmean_eps Pseudocount added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
 #' @param show_progress Whether to print progress bar
 #'
@@ -84,6 +85,7 @@ vst <- function(umi,
                 return_dev_residuals = FALSE,
                 return_corrected_umi = FALSE,
                 bw_adjust = 3,
+                gmean_eps = 1,
                 theta_given = NULL,
                 show_progress = TRUE) {
   arguments <- as.list(environment())[-c(1, 2)]
@@ -120,7 +122,7 @@ vst <- function(umi,
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
   #genes_log_mean <- log10(rowMeans(umi))
-  genes_log_mean <- log10(apply(umi, 1, gmean))
+  genes_log_mean <- log10(apply(umi, 1, gmean, eps = gmean_eps))
 
   if (!do_regularize && !is.null(n_cells) && n_cells < ncol(umi)) {
     message('do_regularize is set to FALSE, will use all genes')
@@ -139,7 +141,7 @@ vst <- function(umi,
     genes_cell_count_step1 <- rowSums(umi[, cells_step1] > 0)
     genes_step1 <- rownames(umi)[genes_cell_count_step1 >= min_cells]
     #genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
-    genes_log_mean_step1 <- log10(apply(umi[genes_step1, cells_step1], 1, gmean))
+    genes_log_mean_step1 <- log10(apply(umi[genes_step1, cells_step1], 1, gmean, eps = gmean_eps))
   } else {
     cells_step1 <- colnames(umi)
     genes_step1 <- genes
@@ -154,7 +156,7 @@ vst <- function(umi,
     sampling_prob <- 1 / (approx(x = log_mean_dens$x, y = log_mean_dens$y, xout = genes_log_mean_step1)$y + .Machine$double.eps)
     genes_step1 <- sample(x = genes_step1, size = n_genes, prob = sampling_prob)
     #genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
-    genes_log_mean_step1 <- log10(apply(umi[genes_step1, cells_step1], 1, gmean))
+    genes_log_mean_step1 <- log10(apply(umi[genes_step1, cells_step1], 1, gmean, eps = gmean_eps))
   }
 
   if (!is.null(batch_var)) {
@@ -263,7 +265,7 @@ vst <- function(umi,
     gene_attr <- data.frame(
       detection_rate = genes_cell_count[genes] / ncol(umi),
       #mean = 10 ^ genes_log_mean,
-      mean = apply(umi, 1, gmean),
+      mean = apply(umi, 1, gmean, eps = gmean_eps),
       variance = apply(umi, 1, var),
       residual_mean = rowMeans(rv$y)
     )
@@ -423,10 +425,10 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
     for (b in batches) {
       sel <- cell_attr[, batch_var] == b & rownames(cell_attr) %in% cells_step1
       #batch_genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
-      batch_genes_log_mean_step1 <- log10(apply(umi[genes_step1, sel], 1, gmean))
+      batch_genes_log_mean_step1 <- log10(apply(umi[genes_step1, sel], 1, gmean, eps = gmean_eps))
       sel <- cell_attr[, batch_var] == b
       #batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
-      batch_genes_log_mean <- log10(apply(umi[, sel], 1, gmean))
+      batch_genes_log_mean <- log10(apply(umi[, sel], 1, gmean, eps = gmean_eps))
       # in case some genes have not been observed in this batch
       batch_genes_log_mean <- pmax(batch_genes_log_mean, min(genes_log_mean))
       batch_o <- order(batch_genes_log_mean)
