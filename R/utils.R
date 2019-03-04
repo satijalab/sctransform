@@ -5,7 +5,7 @@
 #'
 #' @return geometric mean
 gmean <- function(x, eps=1) {
-  exp(sum(log(x+eps))/length(x))-eps
+  exp(mean(log(x+eps)))-eps
 }
 
 #' Identify outliers
