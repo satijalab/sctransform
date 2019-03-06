@@ -56,6 +56,12 @@ cell_attr <- cell_attr[!weird, ]
 bad_genes <- Matrix::rowSums(cm > 0) < 30 | Matrix::rowSums(cm) < 60
 cm <- cm[!bad_genes, ]
 
+# use fewer cells to speed up vignette compilation
+set.seed(42)
+keep <- sample(1:ncol(cm), 10000)
+cm <- cm[, keep]
+cell_attr <- cell_attr[keep, ]
+
 # apply vst
 set.seed(42)
 vst_out <- vst(cm, cell_attr = cell_attr, latent_var = 'log_umi_per_gene', bin_size = 128, show_progress = FALSE)

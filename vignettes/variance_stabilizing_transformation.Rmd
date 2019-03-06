@@ -86,20 +86,20 @@ The more UMI counts a cell has, the more genes are detected. In this data set th
 
 ### General idea of transformation
 Based on the observations above, which are not unique to this particular data set, we propose to model
-the expression of each gene as a negative binomial random variable with a mean that depends on latent factors.
-Here the latent factors can be used to model the differences in sequencing depth between cells and are used as dependent variables in a regression model. In order to avoid overfitting, we will first fit model parameters per gene, and then use the relationship between gene mean and parameter values to fit parameters, thereby combining information across genes. Given the fitted model parameters, we transform each observed UMI count into a Pearson residual which can be interpreted as the number of standard deviations an observed count was away from the expected mean. If the model accurately describes the mean-variance relationship and the dependency of mean and latent factors, then the result should have mean zero and a stable variance across the range of expression.
+the expression of each gene as a negative binomial random variable with a mean that depends on other variables.
+Here the other variables can be used to model the differences in sequencing depth between cells and are used as independent variables in a regression model. In order to avoid overfitting, we will first fit model parameters per gene, and then use the relationship between gene mean and parameter values to fit parameters, thereby combining information across genes. Given the fitted model parameters, we transform each observed UMI count into a Pearson residual which can be interpreted as the number of standard deviations an observed count was away from the expected mean. If the model accurately describes the mean-variance relationship and the dependency of mean and latent factors, then the result should have mean zero and a stable variance across the range of expression.
 
 ### Estimate model parameters and transform data
-The `vst` function estimates model parameters and performs the variance stabilizing transformation. Here we use the log10 of the average UMI counts per gene as latent variable for sequencing depth for each cell. After data transformation we plot the model parameters as a function of gene mean.
+The `vst` function estimates model parameters and performs the variance stabilizing transformation. Here we use the log10 of the total UMI counts of a cell as variable for sequencing depth for each cell. After data transformation we plot the model parameters as a function of gene mean (geometric mean).
 
 ```{r, fig.width=4, fig.height=2.5}
-options(mc.cores = 7)
-set.seed(43)
-vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi_per_gene'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
+options(mc.cores = 4)
+set.seed(44)
+vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
 sctransform::plot_model_pars(vst_out)
 ```
 
-Internally `vst` performs Poisson regression per gene with $log(\mu) = \beta_0 + \beta_1 x$, where $x$ is `log_umi_per_gene`, the base 10 logarithm of the average number of UMI counts per gene in each cell, and $\mu$ are the expected number of UMI counts of the given gene. The previous plot shows $\beta_0$ `(Intercept)`, the $\beta_1$ coefficient `log_umi_per_gene`, and the maximum likelihood estimate of the overdispersion parameter theta under the negative binomial model. Under the negative binomial model the variance of a gene depends on the expected UMI counts and theta: $\mu + \frac{\mu^2}{\theta}$. In a second step the regularized model parameters are used to turn observed UMI counts into Pearson residuals.
+Internally `vst` performs Poisson regression per gene with $log(\mu) = \beta_0 + \beta_1 x$, where $x$ is `log_umi`, the base 10 logarithm of the total number of UMI counts in each cell, and $\mu$ are the expected number of UMI counts of the given gene. The previous plot shows $\beta_0$ `(Intercept)`, the $\beta_1$ coefficient `log_umi`, and the maximum likelihood estimate of the overdispersion parameter theta under the negative binomial model. Under the negative binomial model the variance of a gene depends on the expected UMI counts and theta: $\mu + \frac{\mu^2}{\theta}$. In a second step the regularized model parameters are used to turn observed UMI counts into Pearson residuals.
 
 ### Inspect model
 We will look at several genes in more detail.
@@ -126,7 +126,7 @@ GNLY is detected in cells with few UMI and genes and the unconstrained model has
 Examine the overall properties of the transformed data.
 ```{r, fig.keep=TRUE}
 ggplot(vst_out$gene_attr, aes(residual_mean)) + geom_histogram(binwidth=0.01)
-ggplot(vst_out$gene_attr, aes(residual_variance)) + geom_histogram(binwidth=0.1) + geom_vline(xintercept=1, color='red')
+ggplot(vst_out$gene_attr, aes(residual_variance)) + geom_histogram(binwidth=0.1) + geom_vline(xintercept=1, color='red') + xlim(0, 10)
 ```
 
 After transformation the mean of the genes is close to zero, and most genes have a variance around one. This suggests that overall the regularized negative binomial model is a suitable model that describes the effect of sequencing depth on UMI counts. Further, after transformation there is no relationship between gene mean and variance, as the next plot shows.

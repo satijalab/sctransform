@@ -51,9 +51,9 @@ ggplot(cell_attr, aes(n_umi, n_gene)) +
   geom_density_2d(size = 0.3)
 
 ## ---- fig.width=4, fig.height=2.5----------------------------------------
-options(mc.cores = 7)
-set.seed(43)
-vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi_per_gene'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
+options(mc.cores = 4)
+set.seed(44)
+vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
 sctransform::plot_model_pars(vst_out)
 
 ## ---- fig.width=5, fig.height=3.5, warning=FALSE-------------------------
@@ -67,7 +67,7 @@ sctransform::plot_model(vst_out, pbmc_data, c('GNLY', 'S100A9'), plot_residual =
 
 ## ---- fig.keep=TRUE------------------------------------------------------
 ggplot(vst_out$gene_attr, aes(residual_mean)) + geom_histogram(binwidth=0.01)
-ggplot(vst_out$gene_attr, aes(residual_variance)) + geom_histogram(binwidth=0.1) + geom_vline(xintercept=1, color='red')
+ggplot(vst_out$gene_attr, aes(residual_variance)) + geom_histogram(binwidth=0.1) + geom_vline(xintercept=1, color='red') + xlim(0, 10)
 
 ## ------------------------------------------------------------------------
 ggplot(vst_out$gene_attr, aes(log10(mean), residual_variance)) + geom_point(alpha=0.3, shape=16) +
