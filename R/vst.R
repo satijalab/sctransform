@@ -175,7 +175,7 @@ vst <- function(umi,
   if (do_regularize) {
     model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
     model_pars_fit <- reg_model_pars(model_pars, genes_log_mean_step1, genes_log_mean, cell_attr,
-                                     batch_var, cells_step1, genes_step1, umi, bw_adjust)
+                                     batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps)
     model_pars[, 'theta'] <- 10^model_pars[, 'theta']
     model_pars_fit[, 'theta'] <- 10^model_pars_fit[, 'theta']
     model_pars_outliers <- attr(model_pars_fit, 'outliers')
@@ -384,7 +384,7 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
 }
 
 reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cell_attr,
-                           batch_var, cells_step1, genes_step1, umi, bw_adjust) {
+                           batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps) {
   genes <- names(genes_log_mean)
   # look for outliers in the parameters
   # outliers are those that do not fit the overall relationship with the mean at all
