@@ -23,7 +23,7 @@ class(pbmc_data)
 dim(pbmc_data)
 
 ## ---- fig.width=4, fig.height=2.5----------------------------------------
-options(mc.cores = 7)
+options(mc.cores = 4)
 set.seed(43)
 vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi_per_gene'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
 
