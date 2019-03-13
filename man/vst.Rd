@@ -44,7 +44,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{return_dev_residuals}{If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE}
 
-\item{return_corrected_umi}{If set to TRUE output will contain corrected UMI matrix; see \code{denoise} function}
+\item{return_corrected_umi}{If set to TRUE output will contain corrected UMI matrix; see \code{correct} function}
 
 \item{bw_adjust}{Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3}
 

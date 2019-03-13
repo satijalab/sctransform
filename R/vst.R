@@ -21,7 +21,7 @@
 #' @param return_cell_attr Make cell attributes part of the output
 #' @param return_gene_attr Calculate gene attributes and make part of output
 #' @param return_dev_residuals If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE
-#' @param return_corrected_umi If set to TRUE output will contain corrected UMI matrix; see \code{denoise} function
+#' @param return_corrected_umi If set to TRUE output will contain corrected UMI matrix; see \code{correct} function
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Pseudocount added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
@@ -248,7 +248,7 @@ vst <- function(umi,
   gc(verbose = FALSE)
 
   if (return_corrected_umi) {
-    rv$umi_corrected <- sctransform::denoise(rv, do_round = TRUE, do_pos = TRUE,
+    rv$umi_corrected <- sctransform::correct(rv, do_round = TRUE, do_pos = TRUE,
                                              show_progress = show_progress)
     rv$umi_corrected <- as(object = rv$umi_corrected, Class = 'dgCMatrix')
   }
