@@ -1,0 +1,52 @@
+---
+title: "Using sctransform in Seurat"
+author: "Christoph Hafemeister"
+date: '`r Sys.Date()`'
+output:
+  html_document: default
+  pdf_document: default
+vignette: |
+  %\VignetteIndexEntry{Using sctransform in Seurat}  %\VignetteEngine{knitr::rmarkdown}  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library('Matrix')
+library('ggplot2')
+library('reshape2')
+library('sctransform')
+library('knitr')
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  digits = 2,
+  fig.width=8, fig.height=5, dpi=100, out.width = '70%'
+)
+library('Seurat')
+#old_theme <- theme_set(theme_classic(base_size=8))
+```
+
+This vignette shows how to use the sctransform wrapper in Seurat.
+
+Load data
+```{r load_data}
+pbmc_data <- readRDS(file = "~/Projects/data/pbmc3k_umi_counts.Rds")
+class(x = pbmc_data)
+dim(x = pbmc_data)
+```
+
+Create Seurat object
+```{r create_s, warning=FALSE}
+s <- CreateSeuratObject(counts = pbmc_data)
+```
+
+Apply sctransform normalization
+```{r apply_sct}
+s <- SCTransform(object = s, verbose = FALSE)
+```
+
+Perform dimensionality reduction by PCA and UMAP embedding
+```{r pca, fig.width=5, fig.height=5}
+s <- RunPCA(object = s, npcs = 20, verbose = FALSE)
+s <- RunUMAP(object = s, dims = 1:20, verbose = FALSE)
+DimPlot(object = s) + NoLegend()
+```
