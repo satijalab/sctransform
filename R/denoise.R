@@ -55,7 +55,7 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 }
 
 
-#' Denoise data by setting all latent factors to their median values and reversing the regression model
+#' Correct data by setting all latent factors to their median values and reversing the regression model
 #'
 #' @param x A list that provides model parameters and optionally meta data; use output of vst function
 #' @param data The name of the entry in x that holds the data
@@ -71,19 +71,19 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @examples
 #' \dontrun{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
-#' umi_denoised <- denoise(vst_out)
+#' umi_corrected <- correct(vst_out)
 #'
 #' # this can also be combined with smoothing
 #' y_smooth <- smooth_via_pca(vst_out$y, do_plot = TRUE)
-#' umi_denoised <- denoise(vst_out, data = y_smooth)
+#' umi_corrected <- correct(vst_out, data = y_smooth)
 #' }
 #'
-denoise <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_pos = TRUE,
+correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_pos = TRUE,
                     show_progress = TRUE) {
   if (is.character(data)) {
     data <- x[[data]]
   }
-  # when denoising, set all latent variables to median values
+  # when correcting, set all latent variables to median values
   cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
   regressor_data <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
 
@@ -92,10 +92,10 @@ denoise <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
   if (show_progress) {
-    message('Computing de-noised UMI count matrix')
+    message('Computing corrected UMI count matrix')
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
-  denoised_data <- matrix(NA, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
+  corrected_data <- matrix(NA, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     pearson_residual <- data[genes_bin, ]
@@ -103,7 +103,7 @@ denoise <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
     theta <- x$model_pars_fit[genes_bin, 1]
     mu <- exp(tcrossprod(coefs, regressor_data))
     variance <- mu + mu^2 / theta
-    denoised_data[genes_bin, ] <- mu + pearson_residual * sqrt(variance)
+    corrected_data[genes_bin, ] <- mu + pearson_residual * sqrt(variance)
     if (show_progress) {
       setTxtProgressBar(pb, i)
     }
@@ -113,12 +113,12 @@ denoise <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
   }
 
   if (do_round) {
-    denoised_data <- round(denoised_data, 0)
+    corrected_data <- round(corrected_data, 0)
   }
   if (do_pos) {
-    denoised_data[denoised_data < 0] <- 0
+    corrected_data[corrected_data < 0] <- 0
   }
-  return(denoised_data)
+  return(corrected_data)
 }
 
 reverse_regression <- function(pearson_residual, theta, coefs, data) {

@@ -2,7 +2,7 @@
 
 export(compare_expression)
 export(compare_expression_full)
-export(denoise)
+export(correct)
 export(get_deviance_residuals)
 export(plot_model)
 export(plot_model_pars)
