@@ -16,4 +16,6 @@ Available vignettes:
 [Using sctransform in Seurat](https://rawgit.com/ChristophH/sctransform/master/inst/doc/seurat.html)  
 
 ## Reference
+[Hafemeister, C. & Satija, R. Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression. bioRxiv 576827 (2019). doi:10.1101/576827](https://www.biorxiv.org/content/10.1101/576827v1)
+
 An early version of this work was used in the paper [Developmental diversification of cortical inhibitory interneurons, Nature 555, 2018](https://github.com/ChristophH/in-lineage).
