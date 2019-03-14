@@ -1,9 +1,7 @@
 # sctransform
-## R package for modeling single cell UMI expression data using regularized negative binomial regression
+## R package for normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression
 
-This packaged was developed by Christoph Hafemeister in [Rahul Satija's lab](https://satijalab.org/) at the New York Genome Center. A previous version of this work was used in the paper [Developmental diversification of cortical inhibitory interneurons, Nature 555, 2018](https://github.com/ChristophH/in-lineage). We are currently working on integrating the functionality of this package into [Seurat](https://satijalab.org/seurat/), an R package designed for QC, analysis, and exploration of single cell RNA-seq data.
-
-This package is in beta status, please sanity check any results, and notify me of any issues you find.
+This packaged was developed by Christoph Hafemeister in [Rahul Satija's lab](https://satijalab.org/) at the New York Genome Center. Core functionality of this package has been integrated into [Seurat](https://satijalab.org/seurat/), an R package designed for QC, analysis, and exploration of single cell RNA-seq data.
 
 ## Quick start
 `devtools::install_github(repo = 'ChristophH/sctransform')`  
@@ -15,6 +13,7 @@ For usage examples see vignettes in inst/doc or use the built-in help after inst
 
 Available vignettes:  
 [Variance stabilizing transformation](https://rawgit.com/ChristophH/sctransform/master/inst/doc/variance_stabilizing_transformation.html)  
-[Differential expression](https://rawgit.com/ChristophH/sctransform/master/inst/doc/differential_expression.html)  
-[Batch correction](https://rawgit.com/ChristophH/sctransform/master/inst/doc/batch_correction.html)  
-[Denoising](https://rawgit.com/ChristophH/sctransform/master/inst/doc/denoising.html)  
+[Using sctransform in Seurat](https://rawgit.com/ChristophH/sctransform/master/inst/doc/seurat.html)  
+
+## Reference
+An early version of this work was used in the paper [Developmental diversification of cortical inhibitory interneurons, Nature 555, 2018](https://github.com/ChristophH/in-lineage).

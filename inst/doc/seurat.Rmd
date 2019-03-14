@@ -29,31 +29,24 @@ library('Seurat')
 
 This vignette shows how to use the sctransform wrapper in Seurat.
 Install sctransform and Seurat v3
-
 ```{r eval=FALSE}
 devtools::install_github(repo = 'ChristophH/sctransform', ref = 'develop')
 devtools::install_github(repo = 'satijalab/seurat', ref = 'release/3.0')
 library(Seurat)
 library(sctransform)
 ```
-
 Load data and create Seurat object
-
 ```{r load_data, warning=FALSE, message=FALSE, cache = T}
 pbmc_data <- Read10X(data.dir = "~/Downloads/pbmc3k_filtered_gene_bc_matrices/hg19/")
 pbmc <- CreateSeuratObject(counts = pbmc_data)
 ```
-
 Apply sctransform normalization
-
 ```{r apply_sct, warning=FALSE, message=FALSE, cache = T}
 # Note that this single command replaces NormalizeData, ScaleData, and FindVariableFeatures.
 # Transformed data will be available in the SCT assay, which is set as the default after running sctransform
 pbmc <- SCTransform(object = pbmc, verbose = FALSE)
 ```
-
 Perform dimensionality reduction by PCA and UMAP embedding
-
 ```{r pca, fig.width=5, fig.height=5, cache = T}
 # These are now standard steps in the Seurat workflow for visualization and clustering
 pbmc <- RunPCA(object = pbmc, verbose = FALSE)
@@ -62,14 +55,11 @@ pbmc <- FindNeighbors(object = pbmc, dims = 1:20, verbose = FALSE)
 pbmc <- FindClusters(object = pbmc, verbose = FALSE)
 DimPlot(object = pbmc, label = TRUE) + NoLegend()
 ```
-
 Users can individually annotate clusters based on canonical markers. However, the sctransform normalization reveals sharper biological distinctions compared to the [standard Seurat workflow](https://satijalab.org/seurat/pbmc3k_tutorial.html), in a few ways:
-
-* Clear separation of three CD8 T cell populations (naive, memory, effector), based on CD8A, GZMK, CCL5, GZMK expression
-* Clear separation of three CD4 T cell populations (naive, memory, IFN-activated) based on S100A4, CCR7, IL32, and ISG15 
-* Additional developmental sub-structure in B cell cluster, based on TCL1A, FCER2
-* Additional separation of NK cells into CD56dim vs. bright clusters, based on XCL1 and FCGR3A 
-
+ * Clear separation of three CD8 T cell populations (naive, memory, effector), based on CD8A, GZMK, CCL5, GZMK expression
+ * Clear separation of three CD4 T cell populations (naive, memory, IFN-activated) based on S100A4, CCR7, IL32, and ISG15 
+ * Additional developmental sub-structure in B cell cluster, based on TCL1A, FCER2
+ * Additional separation of NK cells into CD56dim vs. bright clusters, based on XCL1 and FCGR3A 
 ```{r fplot, fig.width = 10, fig.height=10, cache = F}
 # These are now standard steps in the Seurat workflow for visualization and clustering
 FeaturePlot(object = pbmc, features = c("CD8A","GZMK","CCL5","S100A4"), pt.size = 0.3)
