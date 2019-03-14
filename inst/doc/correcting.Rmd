@@ -1,10 +1,10 @@
 ---
-title: "Denoising"
+title: "Correcting UMI counts"
 author: "Christoph Hafemeister"
 date: "`r Sys.Date()`"
 output: html_document
 vignette: >
-  %\VignetteIndexEntry{Denoising}
+  %\VignetteIndexEntry{Correcting UMI counts}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -26,10 +26,10 @@ knitr::opts_chunk$set(
 old_theme <- theme_set(theme_classic(base_size=8))
 ```
 
-In this vignette we show how the regression model in the variance stabilizing transformation can be used to output de-noised data. Implicitly there are two levels of smoothing/de-noising when we apply the standard workflow using `vst`. First we specify latent variables that are used in the regression model - their contribution to the overall variance in the data will be removed. Second, we usually perform dimensionality reduction, which acts like a smoothing operation. Here we show how to reverse these two operations to obtain de-noised UMI counts.
+In this vignette we show how the regression model in the variance stabilizing transformation can be used to output corrected data. Implicitly there are two levels of smoothing/de-noising when we apply the standard workflow using `vst`. First we specify latent variables that are used in the regression model - their contribution to the overall variance in the data will be removed. Second, we usually perform dimensionality reduction, which acts like a smoothing operation. Here we show how to reverse these two operations to obtain corrected UMI counts.
 
 ## Load data and transform
-We use data from a recent publication: [Mayer, Hafemeister, Bandler et al., Nature 2018](https://dx.doi.org/10.1038/nature25999) [(free read-only version)](http://rdcu.be/JA5l). We load a subset of the cells, namely one of the CGE E12.5 dropseq samples with contaminating cell populations removed. These cells come from a developing continuum and provide a nice example for de-noising.
+We use data from a recent publication: [Mayer, Hafemeister, Bandler et al., Nature 2018](https://dx.doi.org/10.1038/nature25999) [(free read-only version)](http://rdcu.be/JA5l). We load a subset of the cells, namely one of the CGE E12.5 dropseq samples with contaminating cell populations removed. These cells come from a developing continuum and provide a nice example for de-noising and count correction.
 
 First load the data and run variance stabilizing transformation.
 ```{r}
@@ -58,13 +58,13 @@ We will now smooth the Pearson residual by PCA. Internally `smooth_via_pca` perf
 y_smooth <- sctransform::smooth_via_pca(vst_out$y, do_plot = TRUE)
 ```
 
-The data matrix `y_smooth` is in Pearson residual space. Based on these values we can reverse the negative binomial regression model to derive UMI counts per gene. To remove the variability from the latent factor (here `log_umi_per_gene` as a proxy of sequencing depth), we can use a fixed value for all cells. The next step uses the smoothed Pearson residual and the median of all latent factors to obtain de-noised UMI counts.
+The data matrix `y_smooth` is in Pearson residual space. Based on these values we can reverse the negative binomial regression model to derive UMI counts per gene. To remove the variability from the latent factor (here `log_umi_per_gene` as a proxy of sequencing depth), we can use a fixed value for all cells. The next step uses the smoothed Pearson residual and the median of all latent factors to obtain corrected UMI counts.
 
 ```{r}
-cm_denoised <- sctransform::denoise(vst_out, data = y_smooth, show_progress = FALSE)
+cm_corrected <- sctransform::correct(vst_out, data = y_smooth, show_progress = FALSE)
 ```
 
-To give a better idea of what the data really looks like we will plot UMI, Pearson residual, de-noised Pearson residual, and de-noised UMI counts for some key genes related to neuronal development.
+To give a better idea of what the data really looks like we will plot UMI, Pearson residual, corrected Pearson residual, and corrected UMI counts for some key genes related to neuronal development.
 
 ```{r, fig.width=7, fig.height=7, out.width='100%'}
 goi <- c('Nes', 'Ccnd2', 'Tuba1a')
@@ -76,10 +76,10 @@ df[[2]] <- melt(t(as.matrix(vst_out$y[goi, ])), varnames = c('cell', 'gene'), va
 df[[2]]$type <- 'Pearson residual'
 df[[2]]$maturation_rank <- rank(maturation_score)
 df[[3]] <- melt(t(as.matrix(y_smooth[goi, ])), varnames = c('cell', 'gene'), value.name = 'value')
-df[[3]]$type <- 'de-noised Pearson residual'
+df[[3]]$type <- 'corrected Pearson residual'
 df[[3]]$maturation_rank <- rank(maturation_score)
-df[[4]] <- melt(t(as.matrix(cm_denoised[goi, ])), varnames = c('cell', 'gene'), value.name = 'value')
-df[[4]]$type <- 'de-noised UMI'
+df[[4]] <- melt(t(as.matrix(cm_corrected[goi, ])), varnames = c('cell', 'gene'), value.name = 'value')
+df[[4]]$type <- 'corrected UMI'
 df[[4]]$maturation_rank <- rank(maturation_score)
 df <- do.call(rbind, df)
 df$gene <- factor(df$gene, ordered=TRUE, levels=unique(df$gene))

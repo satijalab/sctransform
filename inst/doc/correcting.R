@@ -34,7 +34,7 @@ maturation_score <- pricu$lambda/max(pricu$lambda)
 y_smooth <- sctransform::smooth_via_pca(vst_out$y, do_plot = TRUE)
 
 ## ------------------------------------------------------------------------
-cm_denoised <- sctransform::denoise(vst_out, data = y_smooth, show_progress = FALSE)
+cm_corrected <- sctransform::correct(vst_out, data = y_smooth, show_progress = FALSE)
 
 ## ---- fig.width=7, fig.height=7, out.width='100%'------------------------
 goi <- c('Nes', 'Ccnd2', 'Tuba1a')
@@ -46,10 +46,10 @@ df[[2]] <- melt(t(as.matrix(vst_out$y[goi, ])), varnames = c('cell', 'gene'), va
 df[[2]]$type <- 'Pearson residual'
 df[[2]]$maturation_rank <- rank(maturation_score)
 df[[3]] <- melt(t(as.matrix(y_smooth[goi, ])), varnames = c('cell', 'gene'), value.name = 'value')
-df[[3]]$type <- 'de-noised Pearson residual'
+df[[3]]$type <- 'corrected Pearson residual'
 df[[3]]$maturation_rank <- rank(maturation_score)
-df[[4]] <- melt(t(as.matrix(cm_denoised[goi, ])), varnames = c('cell', 'gene'), value.name = 'value')
-df[[4]]$type <- 'de-noised UMI'
+df[[4]] <- melt(t(as.matrix(cm_corrected[goi, ])), varnames = c('cell', 'gene'), value.name = 'value')
+df[[4]]$type <- 'corrected UMI'
 df[[4]]$maturation_rank <- rank(maturation_score)
 df <- do.call(rbind, df)
 df$gene <- factor(df$gene, ordered=TRUE, levels=unique(df$gene))
