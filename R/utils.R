@@ -8,6 +8,17 @@ gmean <- function(x, eps = 1) {
   exp(mean(log(x+eps)))-eps
 }
 
+#' Geometric mean for sparse data
+#'
+#' @param x array of non-zero values
+#' @param N total number of values (including zeros)
+#' @param eps small value to add to x (and zeros) to avoid log(0); default is 1
+#'
+#' @return geometric mean
+gmean_sparse <- function(x, N, eps = 1) {
+  exp(sum(log(x + eps) / N, (N - length(x)) * log(eps) / N)) - eps
+}
+
 #' Geometric mean per row
 #'
 #' @param x matrix
@@ -15,7 +26,17 @@ gmean <- function(x, eps = 1) {
 #'
 #' @return geometric means
 row_gmeans <- function(x, eps = 1) {
-  exp(rowMeans(log(x + eps))) - eps
+  if (class(x) == 'matrix') {
+    return(exp(rowMeans(log(x + eps))) - eps)
+  }
+  if (class(x) == 'dgCMatrix') {
+    ret <- rep(0, nrow(x))
+    names(ret) <- rownames(x)
+    tmp <- aggregate(x = x@x, by = list(row = x@i), FUN = gmean_sparse, N = ncol(x))
+    ret[tmp$row+1] <- tmp$x
+    return(ret)
+  }
+  stop('matrix x needs to be of class matrix or dgCMatrix')
 }
 
 #' Identify outliers
