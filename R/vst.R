@@ -264,9 +264,8 @@ vst <- function(umi,
     message('Calculating gene attributes')
     gene_attr <- data.frame(
       detection_rate = genes_cell_count[genes] / ncol(umi),
-      #mean = 10 ^ genes_log_mean,
-      mean = row_gmeans(umi, eps = gmean_eps),
-      variance = apply(umi, 1, var),
+      mean = 10 ^ genes_log_mean,
+      #variance = apply(umi, 1, var),
       residual_mean = rowMeans(rv$y)
     )
     if (requireNamespace('matrixStats', quietly = TRUE)) {
