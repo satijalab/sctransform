@@ -4,8 +4,18 @@
 #' @param eps small value to add to x to avoid log(0); default is 1
 #'
 #' @return geometric mean
-gmean <- function(x, eps=1) {
+gmean <- function(x, eps = 1) {
   exp(mean(log(x+eps)))-eps
+}
+
+#' Geometric mean per row
+#'
+#' @param x matrix
+#' @param eps small value to add to x to avoid log(0); default is 1
+#'
+#' @return geometric means
+row_gmeans <- function(x, eps = 1) {
+  exp(rowMeans(log(x + eps))) - eps
 }
 
 #' Identify outliers
