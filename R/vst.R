@@ -2,7 +2,7 @@
 #'
 #' Apply variance stabilizing transformation to UMI count data using a regularized Negative Binomial regression model.
 #' This will remove unwanted effects from UMI data and return Pearson residuals.
-#' Uses mclapply; you can set the number of cores it will use to n with command options(mc.cores = n).
+#' Uses future_lapply; you can set the number of cores it will use to n with plan(strategy = "multicore", workers = n).
 #' If n_genes is set, only a (somewhat-random) subset of genes is used for estimating the
 #' initial model parameters.
 #'
@@ -56,7 +56,7 @@
 #' \code{MASS::glm.nb}.
 #'
 #' @import Matrix
-#' @import parallel
+#' @importFrom future.apply future_lapply
 #' @importFrom MASS theta.ml glm.nb negative.binomial
 #' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var bw.SJ
 #' @importFrom utils txtProgressBar setTxtProgressBar capture.output
@@ -296,7 +296,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
     genes_bin_regress <- genes_step1[bin_ind == i]
     umi_bin <- as.matrix(umi[genes_bin_regress, cells_step1, drop=FALSE])
     model_pars[[i]] <- do.call(rbind,
-                               mclapply(
+                               future_lapply(
                                  X = genes_bin_regress,
                                  FUN = function(j) {
                                    y <- umi_bin[j, ]
@@ -363,7 +363,7 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
     mu <- tcrossprod(model_pars_fit[genes_bin, -1, drop=FALSE], regressor_data)
     umi_bin <- as.matrix(umi[genes_bin, ])
     model_pars_nonreg[[i]] <- do.call(rbind,
-                                      mclapply(genes_bin, function(gene) {
+                                      future_lapply(genes_bin, function(gene) {
                                         fam <- negative.binomial(theta = model_pars_fit[gene, 'theta'], link = 'log')
                                         y <- umi_bin[gene, ]
                                         offs <- mu[gene, ]
