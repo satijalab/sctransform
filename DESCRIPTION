@@ -18,7 +18,8 @@ Depends: R (>= 2.10)
 Imports:
   MASS,
   Matrix,
-  parallel,
+  future,
+  future.apply,
   ggplot2,
   reshape2,
   gridExtra

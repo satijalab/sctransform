@@ -16,7 +16,7 @@
 #' @return Data frame of results
 #'
 #' @import Matrix
-#' @import parallel
+#' @importFrom future.apply future_lapply
 #' @importFrom stats model.matrix p.adjust
 #'
 #' @export
@@ -83,14 +83,14 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     if (method == 't_test') {
-      bin_res <- mclapply(genes_bin, function(gene) {
+      bin_res <- future_lapply(genes_bin, function(gene) {
         model_comparison_ttest(y[gene, use_cells], group)
       })
     }
     if (method == 'LRT') {
       mu <- x$model_pars_fit[genes_bin, -1, drop=FALSE] %*% t(regressor_data)  # in log space
       y <- as.matrix(umi[genes_bin, use_cells])
-      bin_res <- mclapply(genes_bin, function(gene) {
+      bin_res <- future_lapply(genes_bin, function(gene) {
         model_comparison_lrt(y[gene, ], mu[gene, ], x$model_pars_fit[gene, 'theta'], group, weights)
       })
     }
@@ -162,7 +162,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_theta[o] <- 10 ^ ksmooth(x = x$genes_log_mean_step1, y = log10(x$model_pars[, 'theta']),
                                  x.points = y_log_mean, bandwidth = bw, kernel='normal')$y
       names(y_theta) <- genes_bin
-      bin_res <- mclapply(genes_bin, function(gene) {
+      bin_res <- future_lapply(genes_bin, function(gene) {
         return(model_comparison_lrt_free3(gene, y[gene, ], y_theta[gene], x$model_str, cell_attr, group, weights, randomize))
       })
     }
