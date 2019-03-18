@@ -73,7 +73,7 @@ A list with components
 \description{
 Apply variance stabilizing transformation to UMI count data using a regularized Negative Binomial regression model.
 This will remove unwanted effects from UMI data and return Pearson residuals.
-Uses mclapply; you can set the number of cores it will use to n with command options(mc.cores = n).
+Uses future_lapply; you can set the number of cores it will use to n with plan(strategy = "multicore", workers = n).
 If n_genes is set, only a (somewhat-random) subset of genes is used for estimating the
 initial model parameters.
 }
