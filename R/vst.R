@@ -427,7 +427,7 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
       batch_genes_log_mean_step1 <- log10(row_gmeans(umi[genes_step1, sel], eps = gmean_eps))
       sel <- cell_attr[, batch_var] == b
       #batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
-      batch_genes_log_mean <- log10(row_gmean(umi[, sel], eps = gmean_eps))
+      batch_genes_log_mean <- log10(row_gmeans(umi[, sel], eps = gmean_eps))
       # in case some genes have not been observed in this batch
       batch_genes_log_mean <- pmax(batch_genes_log_mean, min(genes_log_mean))
       batch_o <- order(batch_genes_log_mean)
