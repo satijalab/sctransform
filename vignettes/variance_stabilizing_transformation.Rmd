@@ -93,7 +93,10 @@ Here the other variables can be used to model the differences in sequencing dept
 The `vst` function estimates model parameters and performs the variance stabilizing transformation. Here we use the log10 of the total UMI counts of a cell as variable for sequencing depth for each cell. After data transformation we plot the model parameters as a function of gene mean (geometric mean).
 
 ```{r, fig.width=4, fig.height=2.5}
-options(mc.cores = 4)
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 4)
+options(future.globals.maxSize = 10 * 1024 ^ 3)
+
 set.seed(44)
 vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
 sctransform::plot_model_pars(vst_out)

@@ -33,7 +33,10 @@ We use data from a recent publication: [Mayer, Hafemeister, Bandler et al., Natu
 
 First load the data and run variance stabilizing transformation.
 ```{r}
-options(mc.cores = 4)
+# some of the vst steps can use multiple cores
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 4)
+options(future.globals.maxSize = 10 * 1024 ^ 3)
 
 cm <- readRDS('~/Projects/data/in-lineage_dropseq_CGE3_digitial_expression.Rds')
 

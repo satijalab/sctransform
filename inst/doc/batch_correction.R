@@ -15,8 +15,10 @@ knitr::opts_chunk$set(
 old_theme <- theme_set(theme_classic(base_size=8))
 
 ## ------------------------------------------------------------------------
-# some of the vst steps can use multiple cores, set number here
-options(mc.cores = 4)
+# some of the vst steps can use multiple cores
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 4)
+options(future.globals.maxSize = 10 * 1024 ^ 3)
 
 # load data and cluster identities, and calculate some cell attributes
 cm <- readRDS(file = '~/Projects/data/BipolarCell2016_GSE81904_sparse_matrix.Rds')

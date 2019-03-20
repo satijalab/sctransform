@@ -51,7 +51,10 @@ ggplot(cell_attr, aes(n_umi, n_gene)) +
   geom_density_2d(size = 0.3)
 
 ## ---- fig.width=4, fig.height=2.5----------------------------------------
-options(mc.cores = 4)
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 4)
+options(future.globals.maxSize = 10 * 1024 ^ 3)
+
 set.seed(44)
 vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
 sctransform::plot_model_pars(vst_out)

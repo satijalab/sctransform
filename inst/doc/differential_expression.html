@@ -11,7 +11,7 @@
 
 <meta name="author" content="Christoph Hafemeister" />
 
-<meta name="date" content="2019-03-14" />
+<meta name="date" content="2019-03-20" />
 
 <title>Differential Expression</title>
 
@@ -309,7 +309,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Differential Expression</h1>
 <h4 class="author"><em>Christoph Hafemeister</em></h4>
-<h4 class="date"><em>2019-03-14</em></h4>
+<h4 class="date"><em>2019-03-20</em></h4>
 
 </div>
 
@@ -329,7 +329,11 @@ class(pbmc_data)
 dim(pbmc_data)
 #&gt; [1] 32738  2638</code></pre>
 <p><code>pbmc_data</code> is a sparse matrix of UMI counts (32,738 genes as rows and 2,638 cells as columns). Perform the variance stabilizing transformation:</p>
-<pre class="r"><code>options(mc.cores = 4)
+<pre class="r"><code># some of the vst steps can use multiple cores
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 4)
+options(future.globals.maxSize = 10 * 1024 ^ 3)
+
 set.seed(43)
 vst_out &lt;- sctransform::vst(pbmc_data, latent_var = c('log_umi_per_gene'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
 #&gt; Calculating cell attributes for input UMI matrix
@@ -340,7 +344,7 @@ vst_out &lt;- sctransform::vst(pbmc_data, latent_var = c('log_umi_per_gene'), re
 #&gt; Found 14 outliers - those will be ignored in fitting/regularization step
 #&gt; Second step: Pearson residuals using fitted parameters for 12519 genes
 #&gt; Calculating gene attributes
-#&gt; Wall clock passed: Time difference of 33.44188 secs</code></pre>
+#&gt; Wall clock passed: Time difference of 28.50119 secs</code></pre>
 <p>Perform differential expression test between the two monocyte clusters.</p>
 <pre class="r"><code>res1 &lt;- sctransform::compare_expression(x = vst_out, umi = pbmc_data, group = pbmc_clusters, 
                                         val1 = 'CD14+ Monocytes', 

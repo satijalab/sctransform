@@ -23,7 +23,11 @@ class(pbmc_data)
 dim(pbmc_data)
 
 ## ---- fig.width=4, fig.height=2.5----------------------------------------
-options(mc.cores = 4)
+# some of the vst steps can use multiple cores
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 4)
+options(future.globals.maxSize = 10 * 1024 ^ 3)
+
 set.seed(43)
 vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi_per_gene'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
 

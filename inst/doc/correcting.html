@@ -11,7 +11,7 @@
 
 <meta name="author" content="Christoph Hafemeister" />
 
-<meta name="date" content="2019-03-14" />
+<meta name="date" content="2019-03-20" />
 
 <title>Correcting UMI counts</title>
 
@@ -309,7 +309,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Correcting UMI counts</h1>
 <h4 class="author"><em>Christoph Hafemeister</em></h4>
-<h4 class="date"><em>2019-03-14</em></h4>
+<h4 class="date"><em>2019-03-20</em></h4>
 
 </div>
 
@@ -319,7 +319,10 @@ $(document).ready(function () {
 <h2>Load data and transform</h2>
 <p>We use data from a recent publication: <a href="https://dx.doi.org/10.1038/nature25999">Mayer, Hafemeister, Bandler et al., Nature 2018</a> <a href="http://rdcu.be/JA5l">(free read-only version)</a>. We load a subset of the cells, namely one of the CGE E12.5 dropseq samples with contaminating cell populations removed. These cells come from a developing continuum and provide a nice example for de-noising and count correction.</p>
 <p>First load the data and run variance stabilizing transformation.</p>
-<pre class="r"><code>options(mc.cores = 4)
+<pre class="r"><code># some of the vst steps can use multiple cores
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 4)
+options(future.globals.maxSize = 10 * 1024 ^ 3)
 
 cm &lt;- readRDS('~/Projects/data/in-lineage_dropseq_CGE3_digitial_expression.Rds')
 
@@ -331,7 +334,7 @@ vst_out &lt;- sctransform::vst(cm, latent_var = 'log_umi_per_gene', bin_size = 1
 #&gt; Get Negative Binomial regression parameters per gene
 #&gt; Using 2000 genes, 4686 cells
 #&gt; Second step: Pearson residuals using fitted parameters for 19249 genes
-#&gt; Wall clock passed: Time difference of 1.003154 mins</code></pre>
+#&gt; Wall clock passed: Time difference of 52.24091 secs</code></pre>
 <p>To place the cells on a maturation trajectory, we perform PCA and fit a principal curve to the first two dimensions, similar to the approach used in the original publication.</p>
 <pre class="r"><code>pca &lt;- irlba::prcomp_irlba(t(vst_out$y), n = 2)
 
