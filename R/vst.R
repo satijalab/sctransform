@@ -14,7 +14,7 @@
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
 #' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given'
-#' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization
+#' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param min_cells Only use genes that have been detected in at least this many cells
@@ -124,9 +124,9 @@ vst <- function(umi,
   #genes_log_mean <- log10(rowMeans(umi))
   genes_log_mean <- log10(row_gmeans(umi, eps = gmean_eps))
 
-  if (!do_regularize && !is.null(n_cells) && n_cells < ncol(umi)) {
+  if (!do_regularize) {
     message('do_regularize is set to FALSE, will use all genes')
-    n_cells <- NULL
+    n_genes <- NULL
   }
 
   if (!is.null(n_cells) && n_cells < ncol(umi)) {
