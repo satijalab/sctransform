@@ -30,7 +30,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{method}{Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given'}
 
-\item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization}
+\item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).}
 
 \item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))}
 
