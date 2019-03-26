@@ -383,7 +383,8 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
 }
 
 reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cell_attr,
-                           batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps) {
+                           batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
+                           verbose = TRUE) {
   genes <- names(genes_log_mean)
   # look for outliers in the parameters
   # outliers are those that do not fit the overall relationship with the mean at all
@@ -425,11 +426,17 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
       sel <- cell_attr[, batch_var] == b & rownames(cell_attr) %in% cells_step1
       #batch_genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
       batch_genes_log_mean_step1 <- log10(row_gmeans(umi[genes_step1, sel], eps = gmean_eps))
+      if (any(is.infinite(batch_genes_log_mean_step1))) {
+        if (verbose) {
+          message('Some genes not detected in batch ', b, ' -- assuming a low mean.')
+        }
+        batch_genes_log_mean_step1[is.infinite(batch_genes_log_mean_step1) & batch_genes_log_mean_step1 < 0] <- min(batch_genes_log_mean_step1[!is.infinite(batch_genes_log_mean_step1)])
+      }
       sel <- cell_attr[, batch_var] == b
       #batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
       batch_genes_log_mean <- log10(row_gmeans(umi[, sel], eps = gmean_eps))
       # in case some genes have not been observed in this batch
-      batch_genes_log_mean <- pmax(batch_genes_log_mean, min(genes_log_mean))
+      batch_genes_log_mean <- pmax(batch_genes_log_mean, min(batch_genes_log_mean_step1))
       batch_o <- order(batch_genes_log_mean)
       for (i in which(grepl(paste0(batch_var, b), colnames(model_pars)))) {
         model_pars_fit[batch_o, i] <- ksmooth(x = batch_genes_log_mean_step1, y = model_pars[, i],
