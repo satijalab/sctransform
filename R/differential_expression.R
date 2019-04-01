@@ -158,7 +158,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       bw <- bw.SJ(x$genes_log_mean_step1)
       y_log_mean <- log10(base::rowMeans(y))
       o <- order(y_log_mean)
-      y_theta <- rep(NA, nrow(y))
+      y_theta <- rep(NA_real_, nrow(y))
       y_theta[o] <- 10 ^ ksmooth(x = x$genes_log_mean_step1, y = log10(x$model_pars[, 'theta']),
                                  x.points = y_log_mean, bandwidth = bw, kernel='normal')$y
       names(y_theta) <- genes_bin
@@ -279,7 +279,7 @@ compare_expression_full <- function(umi, cell_attr, group, val1, val2,
   pvals <- pchisq(sq_dev_one - sq_dev_two,
                   df = 3, lower.tail = FALSE)
   # get log-fold change
-  log_fc <- rep(NA, length(sq_dev_one))
+  log_fc <- rep(NA_real_, length(sq_dev_one))
   names(log_fc) <- genes
 
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst.out0$model_str)), cell_attr[c(sel1, sel2), ])
@@ -321,7 +321,7 @@ compare_expression_full <- function(umi, cell_attr, group, val1, val2,
 reg_pars <- function(x, y.mat, x.points, bw.adjust) {
   bw <- bw.SJ(x) * bw.adjust
   o <- order(x.points)
-  y.mat.out <- matrix(NA, length(x.points), ncol(y.mat))
+  y.mat.out <- matrix(NA_real_, length(x.points), ncol(y.mat))
   y.mat.out[o, 1] <- 10 ^ ksmooth(x = x, y = log10(y.mat[, 1]), x.points = x.points,
                                   bandwidth = bw*3, kernel='normal')$y
   for (i in 2:ncol(y.mat)) {

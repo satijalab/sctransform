@@ -95,7 +95,7 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
     message('Computing corrected UMI count matrix')
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
-  corrected_data <- matrix(NA, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
+  corrected_data <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     pearson_residual <- data[genes_bin, ]

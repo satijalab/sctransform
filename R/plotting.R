@@ -77,9 +77,9 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
     ret_df$res_nr <- pmin(ret_df$res_nr, x$arguments$res_clip_range[2])
     ret_df$res_nr <- pmax(ret_df$res_nr, x$arguments$res_clip_range[1])
   } else {
-    ret_df$mu_nr <- NA
-    ret_df$sd_nr <- NA
-    ret_df$res_nr <- NA
+    ret_df$mu_nr <- NA_real_
+    ret_df$sd_nr <- NA_real_
+    ret_df$res_nr <- NA_real_
   }
   return(ret_df)
 }
