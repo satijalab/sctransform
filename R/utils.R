@@ -141,7 +141,7 @@ get_deviance_residuals <- function(vst_out, umi, cell_attr = vst_out$cell_attr,
   if (show_progress) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
-  res <- matrix(NA, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
+  res <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     mu <- exp(tcrossprod(model_pars[genes_bin, -1, drop=FALSE], regressor_data))
