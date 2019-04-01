@@ -216,7 +216,7 @@ vst <- function(umi,
   if (show_progress) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
-  res <- matrix(NA, length(genes), nrow(regressor_data_final), dimnames = list(genes, rownames(regressor_data_final)))
+  res <- matrix(NA_real_, length(genes), nrow(regressor_data_final), dimnames = list(genes, rownames(regressor_data_final)))
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     mu <- exp(tcrossprod(model_pars_final[genes_bin, -1, drop=FALSE], regressor_data_final))
@@ -406,7 +406,7 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
 
   # take results from step 1 and fit/predict parameters to all genes
   o <- order(x_points)
-  model_pars_fit <- matrix(NA, length(genes), ncol(model_pars),
+  model_pars_fit <- matrix(NA_real_, length(genes), ncol(model_pars),
                            dimnames = list(genes, colnames(model_pars)))
 
   # fit / regularize theta
