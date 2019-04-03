@@ -22,10 +22,11 @@ Imports:
   future.apply,
   ggplot2,
   reshape2,
-  gridExtra
+  gridExtra,
+  Rcpp
+LinkingTo: Rcpp (>= 0.11.0), RcppEigen
 Suggests:
   irlba,
-  matrixStats,
   testthat
 RoxygenNote: 6.1.1
 VignetteBuilder: knitr

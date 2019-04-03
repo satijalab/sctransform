@@ -1,3 +1,7 @@
+#' @useDynLib sctransform
+NULL
+
+
 #' Variance stabilizing transformation for UMI count data
 #'
 #' Apply variance stabilizing transformation to UMI count data using a regularized Negative Binomial regression model.
@@ -122,7 +126,7 @@ vst <- function(umi,
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
   #genes_log_mean <- log10(rowMeans(umi))
-  genes_log_mean <- log10(row_gmeans(umi, eps = gmean_eps))
+  genes_log_mean <- log10(row_gmean(umi, eps = gmean_eps))
 
   if (!do_regularize) {
     message('do_regularize is set to FALSE, will use all genes')
@@ -141,7 +145,7 @@ vst <- function(umi,
     genes_cell_count_step1 <- rowSums(umi[, cells_step1] > 0)
     genes_step1 <- rownames(umi)[genes_cell_count_step1 >= min_cells]
     #genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
-    genes_log_mean_step1 <- log10(row_gmeans(umi[genes_step1, cells_step1], eps = gmean_eps))
+    genes_log_mean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
   } else {
     cells_step1 <- colnames(umi)
     genes_step1 <- genes
@@ -156,7 +160,7 @@ vst <- function(umi,
     sampling_prob <- 1 / (approx(x = log_mean_dens$x, y = log_mean_dens$y, xout = genes_log_mean_step1)$y + .Machine$double.eps)
     genes_step1 <- sample(x = genes_step1, size = n_genes, prob = sampling_prob)
     #genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
-    genes_log_mean_step1 <- log10(row_gmeans(umi[genes_step1, cells_step1], eps = gmean_eps))
+    genes_log_mean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
   }
 
   if (!is.null(batch_var)) {
@@ -265,15 +269,10 @@ vst <- function(umi,
     gene_attr <- data.frame(
       detection_rate = genes_cell_count[genes] / ncol(umi),
       mean = 10 ^ genes_log_mean,
-      #variance = apply(umi, 1, var),
-      residual_mean = rowMeans(rv$y)
+      variance = row_var(umi),
+      residual_mean = rowMeans(rv$y),
+      residual_variance = row_var(rv$y)
     )
-    if (requireNamespace('matrixStats', quietly = TRUE)) {
-      gene_attr$residual_variance = matrixStats::rowVars(rv$y)
-    } else {
-      message('Consider installing matrixStats package for faster gene attribute calculation.')
-      gene_attr$residual_variance = apply(rv$y, 1, var)
-    }
     rv[['gene_attr']] <- gene_attr
   }
 
@@ -425,7 +424,7 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
     for (b in batches) {
       sel <- cell_attr[, batch_var] == b & rownames(cell_attr) %in% cells_step1
       #batch_genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
-      batch_genes_log_mean_step1 <- log10(row_gmeans(umi[genes_step1, sel], eps = gmean_eps))
+      batch_genes_log_mean_step1 <- log10(row_gmean(umi[genes_step1, sel], eps = gmean_eps))
       if (any(is.infinite(batch_genes_log_mean_step1))) {
         if (verbose) {
           message('Some genes not detected in batch ', b, ' -- assuming a low mean.')
@@ -434,7 +433,7 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
       }
       sel <- cell_attr[, batch_var] == b
       #batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
-      batch_genes_log_mean <- log10(row_gmeans(umi[, sel], eps = gmean_eps))
+      batch_genes_log_mean <- log10(row_gmean(umi[, sel], eps = gmean_eps))
       # in case some genes have not been observed in this batch
       batch_genes_log_mean <- pmax(batch_genes_log_mean, min(batch_genes_log_mean_step1))
       batch_o <- order(batch_genes_log_mean)
