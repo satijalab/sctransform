@@ -7,7 +7,7 @@
 row_gmean(x, eps = 1)
 }
 \arguments{
-\item{x}{matrix}
+\item{x}{matrix of class \code{matrix} or \code{dgCMatrix}}
 
 \item{eps}{small value to add to x to avoid log(0); default is 1}
 }

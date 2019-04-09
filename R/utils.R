@@ -1,7 +1,7 @@
 
 #' Geometric mean per row
 #'
-#' @param x matrix
+#' @param x matrix of class \code{matrix} or \code{dgCMatrix}
 #' @param eps small value to add to x to avoid log(0); default is 1
 #'
 #' @return geometric means
@@ -10,7 +10,7 @@ row_gmean <- function(x, eps = 1) {
     return(exp(rowMeans(log(x + eps))) - eps)
   }
   if (class(x) == 'dgCMatrix') {
-    ret <- row_gmean_dgcmatrix(x = x@x, i = x@i, rows = nrow(x), cols = ncol(x), eps)
+    ret <- row_gmean_dgcmatrix(x = x@x, i = x@i, rows = nrow(x), cols = ncol(x), eps = eps)
     names(ret) <- rownames(x)
     return(ret)
   }
@@ -19,7 +19,7 @@ row_gmean <- function(x, eps = 1) {
 
 #' Variance per row
 #'
-#' @param x matrix
+#' @param x matrix of class \code{matrix} or \code{dgCMatrix}
 #'
 #' @return variances
 row_var <- function(x) {

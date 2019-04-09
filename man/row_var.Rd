@@ -7,7 +7,7 @@
 row_var(x)
 }
 \arguments{
-\item{x}{matrix}
+\item{x}{matrix of class \code{matrix} or \code{dgCMatrix}}
 }
 \value{
 variances
