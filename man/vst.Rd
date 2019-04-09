@@ -8,8 +8,8 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
   batch_var = NULL, latent_var_nonreg = NULL, n_genes = 2000,
   n_cells = NULL, method = "poisson", do_regularize = TRUE,
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
-  bin_size = 256, min_cells = 5, return_cell_attr = FALSE,
-  return_gene_attr = TRUE, return_dev_residuals = FALSE,
+  bin_size = 256, min_cells = 5, residual_type = "pearson",
+  return_cell_attr = FALSE, return_gene_attr = TRUE,
   return_corrected_umi = FALSE, bw_adjust = 3, gmean_eps = 1,
   theta_given = NULL, show_progress = TRUE)
 }
@@ -38,11 +38,11 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{min_cells}{Only use genes that have been detected in at least this many cells; default is 5}
 
+\item{residual_type}{What type of residuals to return; can be 'pearson', 'deviance', or 'none'; default is 'pearson'}
+
 \item{return_cell_attr}{Make cell attributes part of the output; default is FALSE}
 
 \item{return_gene_attr}{Calculate gene attributes and make part of output; default is TRUE}
-
-\item{return_dev_residuals}{If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE}
 
 \item{return_corrected_umi}{If set to TRUE output will contain corrected UMI matrix; see \code{correct} function}
 
@@ -56,7 +56,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 }
 \value{
 A list with components
-\item{y}{Matrix of transformed data, i.e. Pearson residuals}
+\item{y}{Matrix of transformed data, i.e. Pearson residuals, or deviance residuals; empty if \code{residual_type = 'none'}}
 \item{umi_corrected}{Matrix of corrected UMI counts (optional)}
 \item{model_str}{Character representation of the model formula}
 \item{model_pars}{Matrix of estimated model parameters per gene (theta and regression coefficients)}
