@@ -21,13 +21,13 @@ NULL
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
 #' @param bin_size Number of genes to put in each bin (to show progress)
-#' @param min_cells Only use genes that have been detected in at least this many cells
-#' @param return_cell_attr Make cell attributes part of the output
-#' @param return_gene_attr Calculate gene attributes and make part of output
+#' @param min_cells Only use genes that have been detected in at least this many cells; default is 5
+#' @param return_cell_attr Make cell attributes part of the output; default is FALSE
+#' @param return_gene_attr Calculate gene attributes and make part of output; default is TRUE
 #' @param return_dev_residuals If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE
 #' @param return_corrected_umi If set to TRUE output will contain corrected UMI matrix; see \code{correct} function
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
-#' @param gmean_eps Pseudocount added when calculating geometric mean of a gene to avoid log(0); default is 1
+#' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
 #' @param show_progress Whether to print progress bar
 #'
@@ -40,7 +40,7 @@ NULL
 #' \item{model_pars_fit}{Matrix of fitted / regularized model parameters}
 #' \item{model_str_nonreg}{Character representation of model for non-regularized variables}
 #' \item{model_pars_nonreg}{Model parameters for non-regularized variables}
-#' \item{genes_log_mean_step1}{log-mean of genes used in initial step of parameter estimation}
+#' \item{genes_log_gmean_step1}{log-geometric mean of genes used in initial step of parameter estimation}
 #' \item{cells_step1}{Cells used in initial step of parameter estimation}
 #' \item{arguments}{List of function call arguments}
 #' \item{cell_attr}{Data frame of cell meta data (optional)}
@@ -85,7 +85,7 @@ vst <- function(umi,
                 bin_size = 256,
                 min_cells = 5,
                 return_cell_attr = FALSE,
-                return_gene_attr = FALSE,
+                return_gene_attr = TRUE,
                 return_dev_residuals = FALSE,
                 return_corrected_umi = FALSE,
                 bw_adjust = 3,
@@ -125,8 +125,7 @@ vst <- function(umi,
   genes_cell_count <- rowSums(umi > 0)
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
-  #genes_log_mean <- log10(rowMeans(umi))
-  genes_log_mean <- log10(row_gmean(umi, eps = gmean_eps))
+  genes_log_gmean <- log10(row_gmean(umi, eps = gmean_eps))
 
   if (!do_regularize) {
     message('do_regularize is set to FALSE, will use all genes')
@@ -144,23 +143,21 @@ vst <- function(umi,
     }
     genes_cell_count_step1 <- rowSums(umi[, cells_step1] > 0)
     genes_step1 <- rownames(umi)[genes_cell_count_step1 >= min_cells]
-    #genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
-    genes_log_mean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
+    genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
   } else {
     cells_step1 <- colnames(umi)
     genes_step1 <- genes
-    genes_log_mean_step1 <- genes_log_mean
+    genes_log_gmean_step1 <- genes_log_gmean
   }
 
   data_step1 <- cell_attr[cells_step1, ]
 
   if (!is.null(n_genes) && n_genes < length(genes_step1)) {
     # density-sample genes to speed up the first step
-    log_mean_dens <- density(x = genes_log_mean_step1, bw = 'nrd', adjust = 1)
-    sampling_prob <- 1 / (approx(x = log_mean_dens$x, y = log_mean_dens$y, xout = genes_log_mean_step1)$y + .Machine$double.eps)
+    log_gmean_dens <- density(x = genes_log_gmean_step1, bw = 'nrd', adjust = 1)
+    sampling_prob <- 1 / (approx(x = log_gmean_dens$x, y = log_gmean_dens$y, xout = genes_log_gmean_step1)$y + .Machine$double.eps)
     genes_step1 <- sample(x = genes_step1, size = n_genes, prob = sampling_prob)
-    #genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
-    genes_log_mean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
+    genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
   }
 
   if (!is.null(batch_var)) {
@@ -178,7 +175,7 @@ vst <- function(umi,
 
   if (do_regularize) {
     model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
-    model_pars_fit <- reg_model_pars(model_pars, genes_log_mean_step1, genes_log_mean, cell_attr,
+    model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                                      batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps)
     model_pars[, 'theta'] <- 10^model_pars[, 'theta']
     model_pars_fit[, 'theta'] <- 10^model_pars_fit[, 'theta']
@@ -245,7 +242,7 @@ vst <- function(umi,
              model_str_nonreg = model_str_nonreg,
              model_pars_nonreg = model_pars_nonreg,
              arguments = arguments,
-             genes_log_mean_step1 = genes_log_mean_step1,
+             genes_log_gmean_step1 = genes_log_gmean_step1,
              cells_step1 = cells_step1,
              cell_attr = cell_attr)
   rm(res)
@@ -268,7 +265,7 @@ vst <- function(umi,
     message('Calculating gene attributes')
     gene_attr <- data.frame(
       detection_rate = genes_cell_count[genes] / ncol(umi),
-      mean = 10 ^ genes_log_mean,
+      gmean = 10 ^ genes_log_gmean,
       variance = row_var(umi),
       residual_mean = rowMeans(rv$y),
       residual_variance = row_var(rv$y)
@@ -381,27 +378,27 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
   return(model_pars_nonreg)
 }
 
-reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cell_attr,
+reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                            batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
                            verbose = TRUE) {
-  genes <- names(genes_log_mean)
+  genes <- names(genes_log_gmean)
   # look for outliers in the parameters
   # outliers are those that do not fit the overall relationship with the mean at all
-  outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_mean_step1))
+  outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_gmean_step1))
   outliers <- apply(outliers, 1, any)
   if (sum(outliers) > 0) {
     message('Found ', sum(outliers), ' outliers - those will be ignored in fitting/regularization step\n')
     model_pars <- model_pars[!outliers, ]
     genes_step1 <- rownames(model_pars)
-    genes_log_mean_step1 <- genes_log_mean_step1[!outliers]
+    genes_log_gmean_step1 <- genes_log_gmean_step1[!outliers]
   }
 
   # select bandwidth to be used for smoothing
-  bw <- bw.SJ(genes_log_mean_step1) * bw_adjust
+  bw <- bw.SJ(genes_log_gmean_step1) * bw_adjust
 
   # for parameter predictions
-  x_points <- pmax(genes_log_mean, min(genes_log_mean_step1))
-  x_points <- pmin(x_points, max(genes_log_mean_step1))
+  x_points <- pmax(genes_log_gmean, min(genes_log_gmean_step1))
+  x_points <- pmin(x_points, max(genes_log_gmean_step1))
 
   # take results from step 1 and fit/predict parameters to all genes
   o <- order(x_points)
@@ -409,13 +406,13 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
                            dimnames = list(genes, colnames(model_pars)))
 
   # fit / regularize theta
-  model_pars_fit[o, 'theta'] <- ksmooth(x = genes_log_mean_step1, y = model_pars[, 'theta'],
+  model_pars_fit[o, 'theta'] <- ksmooth(x = genes_log_gmean_step1, y = model_pars[, 'theta'],
                                              x.points = x_points, bandwidth = bw, kernel='normal')$y
 
   if (is.null(batch_var)){
     # global fit / regularization for all coefficients
     for (i in 2:ncol(model_pars)) {
-      model_pars_fit[o, i] <- ksmooth(x = genes_log_mean_step1, y = model_pars[, i],
+      model_pars_fit[o, i] <- ksmooth(x = genes_log_gmean_step1, y = model_pars[, i],
                                       x.points = x_points, bandwidth = bw, kernel='normal')$y
     }
   } else {
@@ -423,23 +420,23 @@ reg_model_pars <- function(model_pars, genes_log_mean_step1, genes_log_mean, cel
     batches <- unique(cell_attr[, batch_var])
     for (b in batches) {
       sel <- cell_attr[, batch_var] == b & rownames(cell_attr) %in% cells_step1
-      #batch_genes_log_mean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
-      batch_genes_log_mean_step1 <- log10(row_gmean(umi[genes_step1, sel], eps = gmean_eps))
-      if (any(is.infinite(batch_genes_log_mean_step1))) {
+      #batch_genes_log_gmean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
+      batch_genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, sel], eps = gmean_eps))
+      if (any(is.infinite(batch_genes_log_gmean_step1))) {
         if (verbose) {
           message('Some genes not detected in batch ', b, ' -- assuming a low mean.')
         }
-        batch_genes_log_mean_step1[is.infinite(batch_genes_log_mean_step1) & batch_genes_log_mean_step1 < 0] <- min(batch_genes_log_mean_step1[!is.infinite(batch_genes_log_mean_step1)])
+        batch_genes_log_gmean_step1[is.infinite(batch_genes_log_gmean_step1) & batch_genes_log_gmean_step1 < 0] <- min(batch_genes_log_gmean_step1[!is.infinite(batch_genes_log_gmean_step1)])
       }
       sel <- cell_attr[, batch_var] == b
-      #batch_genes_log_mean <- log10(rowMeans(umi[, sel]))
-      batch_genes_log_mean <- log10(row_gmean(umi[, sel], eps = gmean_eps))
+      #batch_genes_log_gmean <- log10(rowMeans(umi[, sel]))
+      batch_genes_log_gmean <- log10(row_gmean(umi[, sel], eps = gmean_eps))
       # in case some genes have not been observed in this batch
-      batch_genes_log_mean <- pmax(batch_genes_log_mean, min(batch_genes_log_mean_step1))
-      batch_o <- order(batch_genes_log_mean)
+      batch_genes_log_gmean <- pmax(batch_genes_log_gmean, min(batch_genes_log_gmean_step1))
+      batch_o <- order(batch_genes_log_gmean)
       for (i in which(grepl(paste0(batch_var, b), colnames(model_pars)))) {
-        model_pars_fit[batch_o, i] <- ksmooth(x = batch_genes_log_mean_step1, y = model_pars[, i],
-                                              x.points = batch_genes_log_mean, bandwidth = bw, kernel='normal')$y
+        model_pars_fit[batch_o, i] <- ksmooth(x = batch_genes_log_gmean_step1, y = model_pars[, i],
+                                              x.points = batch_genes_log_gmean, bandwidth = bw, kernel='normal')$y
       }
     }
   }

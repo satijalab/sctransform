@@ -9,7 +9,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
   n_cells = NULL, method = "poisson", do_regularize = TRUE,
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
   bin_size = 256, min_cells = 5, return_cell_attr = FALSE,
-  return_gene_attr = FALSE, return_dev_residuals = FALSE,
+  return_gene_attr = TRUE, return_dev_residuals = FALSE,
   return_corrected_umi = FALSE, bw_adjust = 3, gmean_eps = 1,
   theta_given = NULL, show_progress = TRUE)
 }
@@ -36,11 +36,11 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{bin_size}{Number of genes to put in each bin (to show progress)}
 
-\item{min_cells}{Only use genes that have been detected in at least this many cells}
+\item{min_cells}{Only use genes that have been detected in at least this many cells; default is 5}
 
-\item{return_cell_attr}{Make cell attributes part of the output}
+\item{return_cell_attr}{Make cell attributes part of the output; default is FALSE}
 
-\item{return_gene_attr}{Calculate gene attributes and make part of output}
+\item{return_gene_attr}{Calculate gene attributes and make part of output; default is TRUE}
 
 \item{return_dev_residuals}{If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE}
 
@@ -48,7 +48,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{bw_adjust}{Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3}
 
-\item{gmean_eps}{Pseudocount added when calculating geometric mean of a gene to avoid log(0); default is 1}
+\item{gmean_eps}{Small value added when calculating geometric mean of a gene to avoid log(0); default is 1}
 
 \item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
 
@@ -64,7 +64,7 @@ A list with components
 \item{model_pars_fit}{Matrix of fitted / regularized model parameters}
 \item{model_str_nonreg}{Character representation of model for non-regularized variables}
 \item{model_pars_nonreg}{Model parameters for non-regularized variables}
-\item{genes_log_mean_step1}{log-mean of genes used in initial step of parameter estimation}
+\item{genes_log_gmean_step1}{log-geometric mean of genes used in initial step of parameter estimation}
 \item{cells_step1}{Cells used in initial step of parameter estimation}
 \item{arguments}{List of function call arguments}
 \item{cell_attr}{Data frame of cell meta data (optional)}
