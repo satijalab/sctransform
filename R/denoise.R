@@ -64,7 +64,7 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @param do_pos Set negative values in the result to zero
 #' @param show_progress Whether to print progress bar
 #'
-#' @return De-noised data as UMI counts
+#' @return Corrected data as UMI counts
 #'
 #' @export
 #'
@@ -123,28 +123,26 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
 
 #' Correct data by setting all latent factors to their median values and reversing the regression model
 #'
-#' This version does not need a matrix pf Pearson residuals. It takes the count matrix as input and
-#' calculates the residuals on the fly.
+#' This version does not need a matrix of Pearson residuals. It takes the count matrix as input and
+#' calculates the residuals on the fly. The corrected UMI counts will be rounded to the nearest
+#' integer and negative values clipped to 0.
 #'
 #' @param x A list that provides model parameters and optionally meta data; use output of vst function
 #' @param data The count matrix
 #' @param cell_attr Provide cell meta data holding latent data info
-#' @param do_round Round the result to integers
-#' @param do_pos Set negative values in the result to zero
 #' @param show_progress Whether to print progress bar
 #'
-#' @return De-noised data as UMI counts
+#' @return Corrected data as UMI counts
 #'
 #' @export
 #'
 #' @examples
 #' \dontrun{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
-#' umi_corrected <- correct_counts(vst_out)
+#' umi_corrected <- correct_counts(vst_out, pbmc)
 #' }
 #'
-correct_counts <- function(x, umi, cell_attr = x$cell_attr, do_round = TRUE, do_pos = TRUE,
-                    show_progress = TRUE) {
+correct_counts <- function(x, umi, cell_attr = x$cell_attr, show_progress = TRUE) {
   regressor_data_orig <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
   # when correcting, set all latent variables to median values
   cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
@@ -158,7 +156,8 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, do_round = TRUE, do_
     message('Computing corrected UMI count matrix')
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
-  corrected_data <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
+  #corrected_data <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
+  corrected_data <- list()
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     coefs <- x$model_pars_fit[genes_bin, -1]
@@ -171,7 +170,10 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, do_round = TRUE, do_
     # generate output
     mu <- exp(tcrossprod(coefs, regressor_data))
     variance <- mu + mu^2 / theta
-    corrected_data[genes_bin, ] <- mu + pearson_residual * sqrt(variance)
+    y.res <- mu + pearson_residual * sqrt(variance)
+    y.res <- round(y.res, 0)
+    y.res[y.res < 0] <- 0
+    corrected_data[[length(corrected_data) + 1]] <- as(y.res, Class = 'dgCMatrix')
     if (show_progress) {
       setTxtProgressBar(pb, i)
     }
@@ -179,13 +181,8 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, do_round = TRUE, do_
   if (show_progress) {
     close(pb)
   }
+  corrected_data <- do.call(what = rbind, args = corrected_data)
 
-  if (do_round) {
-    corrected_data <- round(corrected_data, 0)
-  }
-  if (do_pos) {
-    corrected_data[corrected_data < 0] <- 0
-  }
   return(corrected_data)
 }
 
