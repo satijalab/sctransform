@@ -22,9 +22,9 @@ NULL
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param min_cells Only use genes that have been detected in at least this many cells; default is 5
+#' @param residual_type What type of residuals to return; can be 'pearson', 'deviance', or 'none'; default is 'pearson'
 #' @param return_cell_attr Make cell attributes part of the output; default is FALSE
 #' @param return_gene_attr Calculate gene attributes and make part of output; default is TRUE
-#' @param return_dev_residuals If set to TRUE output will be deviance residuals, NOT Pearson residuals; default is FALSE
 #' @param return_corrected_umi If set to TRUE output will contain corrected UMI matrix; see \code{correct} function
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
@@ -32,7 +32,7 @@ NULL
 #' @param show_progress Whether to print progress bar
 #'
 #' @return A list with components
-#' \item{y}{Matrix of transformed data, i.e. Pearson residuals}
+#' \item{y}{Matrix of transformed data, i.e. Pearson residuals, or deviance residuals; empty if \code{residual_type = 'none'}}
 #' \item{umi_corrected}{Matrix of corrected UMI counts (optional)}
 #' \item{model_str}{Character representation of the model formula}
 #' \item{model_pars}{Matrix of estimated model parameters per gene (theta and regression coefficients)}
@@ -84,9 +84,9 @@ vst <- function(umi,
                 res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                 bin_size = 256,
                 min_cells = 5,
+                residual_type = 'pearson',
                 return_cell_attr = FALSE,
                 return_gene_attr = TRUE,
-                return_dev_residuals = FALSE,
                 return_corrected_umi = FALSE,
                 bw_adjust = 3,
                 gmean_eps = 1,
@@ -211,29 +211,34 @@ vst <- function(umi,
     regressor_data_final <- regressor_data
   }
 
-  message('Second step: Pearson residuals using fitted parameters for ', length(x = genes), ' genes')
-  bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
-  max_bin <- max(bin_ind)
-  if (show_progress) {
-    pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
-  }
-  res <- matrix(NA_real_, length(genes), nrow(regressor_data_final), dimnames = list(genes, rownames(regressor_data_final)))
-  for (i in 1:max_bin) {
-    genes_bin <- genes[bin_ind == i]
-    mu <- exp(tcrossprod(model_pars_final[genes_bin, -1, drop=FALSE], regressor_data_final))
-    y <- as.matrix(umi[genes_bin, , drop=FALSE])
-    if (return_dev_residuals) {
-      res[genes_bin, ] <- deviance_residual(y, mu, model_pars_final[genes_bin, 'theta'])
-    } else {
-      res[genes_bin, ] <- (y - mu) / sqrt(mu + mu^2 / model_pars_final[genes_bin, 'theta'])
+  if (!residual_type == 'none') {
+    message('Second step: Get residuals using fitted parameters for ', length(x = genes), ' genes')
+    bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
+    max_bin <- max(bin_ind)
+    if (show_progress) {
+      pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
+    }
+    res <- matrix(NA_real_, length(genes), nrow(regressor_data_final), dimnames = list(genes, rownames(regressor_data_final)))
+    for (i in 1:max_bin) {
+      genes_bin <- genes[bin_ind == i]
+      mu <- exp(tcrossprod(model_pars_final[genes_bin, -1, drop=FALSE], regressor_data_final))
+      y <- as.matrix(umi[genes_bin, , drop=FALSE])
+      res[genes_bin, ] <- switch(residual_type,
+        'pearson' = (y - mu) / sqrt(mu + mu^2 / model_pars_final[genes_bin, 'theta']),
+        'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta'])
+      )
+      if (show_progress) {
+        setTxtProgressBar(pb, i)
+      }
     }
     if (show_progress) {
-      setTxtProgressBar(pb, i)
+      close(pb)
     }
+  } else {
+    message('Skip calculation of full residual matrix')
+    res <- matrix(data = NA, nrow = 0, ncol = 0)
   }
-  if (show_progress) {
-    close(pb)
-  }
+
   rv <- list(y = res,
              model_str = model_str,
              model_pars = model_pars,
@@ -249,9 +254,13 @@ vst <- function(umi,
   gc(verbose = FALSE)
 
   if (return_corrected_umi) {
-    rv$umi_corrected <- sctransform::correct(rv, do_round = TRUE, do_pos = TRUE,
-                                             show_progress = show_progress)
-    rv$umi_corrected <- as(object = rv$umi_corrected, Class = 'dgCMatrix')
+    if (residual_type != 'pearson') {
+      message("Will not return corrected UMI because residual type is not set to 'pearson'")
+    } else {
+      rv$umi_corrected <- sctransform::correct(rv, do_round = TRUE, do_pos = TRUE,
+                                               show_progress = show_progress)
+      rv$umi_corrected <- as(object = rv$umi_corrected, Class = 'dgCMatrix')
+    }
   }
 
   rv$y[rv$y < res_clip_range[1]] <- res_clip_range[1]
@@ -266,10 +275,11 @@ vst <- function(umi,
     gene_attr <- data.frame(
       detection_rate = genes_cell_count[genes] / ncol(umi),
       gmean = 10 ^ genes_log_gmean,
-      variance = row_var(umi),
-      residual_mean = rowMeans(rv$y),
-      residual_variance = row_var(rv$y)
-    )
+      variance = row_var(umi))
+    if (ncol(rv$y) > 0) {
+      gene_attr$residual_mean = rowMeans(rv$y)
+      gene_attr$residual_variance = row_var(rv$y)
+    }
     rv[['gene_attr']] <- gene_attr
   }
 
