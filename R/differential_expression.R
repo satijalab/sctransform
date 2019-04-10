@@ -62,10 +62,12 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   cells_group1 <- rowSums(umi[genes, sel1] > 0)
   cells_group2 <- rowSums(umi[genes, sel2] > 0)
   genes <- genes[cells_group1 >= min_cells | cells_group2 >= min_cells]
-  message('Testing for differential gene expression between two groups')
-  message('Cells in group 1: ', length(sel1))
-  message('Cells in group 2: ', length(sel2))
-  message('Testing ', length(genes), ' genes')
+  if (show_progress) {
+    message('Testing for differential gene expression between two groups')
+    message('Cells in group 1: ', length(sel1))
+    message('Cells in group 2: ', length(sel2))
+    message('Testing ', length(genes), ' genes')
+  }
 
   regressor_data <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
   if (!is.null(dim(x$model_pars_nonreg))) {

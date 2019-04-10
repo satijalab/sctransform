@@ -21,7 +21,7 @@ correct(x, data = "y", cell_attr = x$cell_attr, do_round = TRUE,
 \item{show_progress}{Whether to print progress bar}
 }
 \value{
-De-noised data as UMI counts
+Corrected data as UMI counts
 }
 \description{
 Correct data by setting all latent factors to their median values and reversing the regression model

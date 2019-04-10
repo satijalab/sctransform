@@ -4,33 +4,29 @@
 \alias{correct_counts}
 \title{Correct data by setting all latent factors to their median values and reversing the regression model}
 \usage{
-correct_counts(x, umi, cell_attr = x$cell_attr, do_round = TRUE,
-  do_pos = TRUE, show_progress = TRUE)
+correct_counts(x, umi, cell_attr = x$cell_attr, show_progress = TRUE)
 }
 \arguments{
 \item{x}{A list that provides model parameters and optionally meta data; use output of vst function}
 
 \item{cell_attr}{Provide cell meta data holding latent data info}
 
-\item{do_round}{Round the result to integers}
-
-\item{do_pos}{Set negative values in the result to zero}
-
 \item{show_progress}{Whether to print progress bar}
 
 \item{data}{The count matrix}
 }
 \value{
-De-noised data as UMI counts
+Corrected data as UMI counts
 }
 \description{
-This version does not need a matrix pf Pearson residuals. It takes the count matrix as input and
-calculates the residuals on the fly.
+This version does not need a matrix of Pearson residuals. It takes the count matrix as input and
+calculates the residuals on the fly. The corrected UMI counts will be rounded to the nearest
+integer and negative values clipped to 0.
 }
 \examples{
 \dontrun{
 vst_out <- vst(pbmc, return_cell_attr = TRUE)
-umi_corrected <- correct_counts(vst_out)
+umi_corrected <- correct_counts(vst_out, pbmc)
 }
 
 }

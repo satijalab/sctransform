@@ -138,7 +138,9 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson', res_clip_rang
   }
 
   genes <- rownames(umi)[rownames(umi) %in% rownames(model_pars)]
-  message('Calculating residuals of type ', residual_type, ' for ', length(genes), ' genes')
+  if (show_progress) {
+    message('Calculating residuals of type ', residual_type, ' for ', length(genes), ' genes')
+  }
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
   if (show_progress) {
@@ -198,7 +200,9 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson', res_clip_r
   }
 
   genes <- rownames(umi)[rownames(umi) %in% rownames(model_pars)]
-  message('Calculating variance for residuals of type ', residual_type, ' for ', length(genes), ' genes')
+  if (show_progress) {
+    message('Calculating variance for residuals of type ', residual_type, ' for ', length(genes), ' genes')
+  }
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
   if (show_progress) {
