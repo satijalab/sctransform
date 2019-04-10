@@ -29,7 +29,7 @@ NULL
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
-#' @param show_progress Whether to print progress bar
+#' @param show_progress Whether to print messages and show progress bar
 #'
 #' @return A list with components
 #' \item{y}{Matrix of transformed data, i.e. Pearson residuals, or deviance residuals; empty if \code{residual_type = 'none'}}
@@ -99,7 +99,9 @@ vst <- function(umi,
   }
   known_attr <- c('umi', 'gene', 'log_umi', 'log_gene', 'umi_per_gene', 'log_umi_per_gene')
   if (all(setdiff(latent_var, colnames(cell_attr)) %in% known_attr)) {
-    message('Calculating cell attributes for input UMI matrix')
+    if (show_progress) {
+      message('Calculating cell attributes for input UMI matrix')
+    }
     tmp_attr <- data.frame(umi = colSums(umi),
                            gene = colSums(umi > 0))
     tmp_attr$log_umi <- log10(tmp_attr$umi)
@@ -128,7 +130,9 @@ vst <- function(umi,
   genes_log_gmean <- log10(row_gmean(umi, eps = gmean_eps))
 
   if (!do_regularize) {
-    message('do_regularize is set to FALSE, will use all genes')
+    if (show_progress) {
+      message('do_regularize is set to FALSE, will use all genes')
+    }
     n_genes <- NULL
   }
 
@@ -168,15 +172,17 @@ vst <- function(umi,
 
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
-  message('Variance stabilizing transformation of count matrix of size ', nrow(umi), ' by ', ncol(umi))
-  message('Model formula is ', model_str)
+  if (show_progress) {
+    message('Variance stabilizing transformation of count matrix of size ', nrow(umi), ' by ', ncol(umi))
+    message('Model formula is ', model_str)
+  }
 
   model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, show_progress)
 
   if (do_regularize) {
     model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
     model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
-                                     batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps)
+                                     batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps, show_progress)
     model_pars[, 'theta'] <- 10^model_pars[, 'theta']
     model_pars_fit[, 'theta'] <- 10^model_pars_fit[, 'theta']
     model_pars_outliers <- attr(model_pars_fit, 'outliers')
@@ -189,7 +195,9 @@ vst <- function(umi,
   regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), cell_attr)
 
   if (!is.null(latent_var_nonreg)) {
-    message('Estimating parameters for following non-regularized variables: ', latent_var_nonreg)
+    if (show_progress) {
+      message('Estimating parameters for following non-regularized variables: ', latent_var_nonreg)
+    }
     if (!is.null(batch_var)) {
       model_str_nonreg <- paste0('y ~ (', paste(latent_var_nonreg, collapse = ' + '), ') : ', batch_var, ' + ', batch_var, ' + 0')
     } else {
@@ -212,7 +220,9 @@ vst <- function(umi,
   }
 
   if (!residual_type == 'none') {
-    message('Second step: Get residuals using fitted parameters for ', length(x = genes), ' genes')
+    if (show_progress) {
+      message('Second step: Get residuals using fitted parameters for ', length(x = genes), ' genes')
+    }
     bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
     max_bin <- max(bin_ind)
     if (show_progress) {
@@ -235,7 +245,9 @@ vst <- function(umi,
       close(pb)
     }
   } else {
-    message('Skip calculation of full residual matrix')
+    if (show_progress) {
+      message('Skip calculation of full residual matrix')
+    }
     res <- matrix(data = NA, nrow = 0, ncol = 0)
   }
 
@@ -255,7 +267,7 @@ vst <- function(umi,
 
   if (return_corrected_umi) {
     if (residual_type != 'pearson') {
-      message("Will not return corrected UMI because residual type is not set to 'pearson'")
+      warning("Will not return corrected UMI because residual type is not set to 'pearson'")
     } else {
       rv$umi_corrected <- sctransform::correct(rv, do_round = TRUE, do_pos = TRUE,
                                                show_progress = show_progress)
@@ -271,7 +283,9 @@ vst <- function(umi,
   }
 
   if (return_gene_attr) {
-    message('Calculating gene attributes')
+    if (show_progress) {
+      message('Calculating gene attributes')
+    }
     gene_attr <- data.frame(
       detection_rate = genes_cell_count[genes] / ncol(umi),
       gmean = 10 ^ genes_log_gmean,
@@ -283,7 +297,9 @@ vst <- function(umi,
     rv[['gene_attr']] <- gene_attr
   }
 
-  message('Wall clock passed: ', capture.output(print(Sys.time() - start_time)))
+  if (show_progress) {
+    message('Wall clock passed: ', capture.output(print(Sys.time() - start_time)))
+  }
   return(rv)
 }
 
@@ -291,8 +307,10 @@ vst <- function(umi,
 get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, show_progress) {
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
-  message('Get Negative Binomial regression parameters per gene')
-  message('Using ', length(x = genes_step1), ' genes, ', length(x = cells_step1), ' cells')
+  if (show_progress) {
+    message('Get Negative Binomial regression parameters per gene')
+    message('Using ', length(x = genes_step1), ' genes, ', length(x = cells_step1), ' cells')
+  }
 
   if (show_progress) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
@@ -390,14 +408,16 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
 
 reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                            batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
-                           verbose = TRUE) {
+                           verbose) {
   genes <- names(genes_log_gmean)
   # look for outliers in the parameters
   # outliers are those that do not fit the overall relationship with the mean at all
   outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_gmean_step1))
   outliers <- apply(outliers, 1, any)
   if (sum(outliers) > 0) {
-    message('Found ', sum(outliers), ' outliers - those will be ignored in fitting/regularization step\n')
+    if (verbose) {
+      message('Found ', sum(outliers), ' outliers - those will be ignored in fitting/regularization step\n')
+    }
     model_pars <- model_pars[!outliers, ]
     genes_step1 <- rownames(model_pars)
     genes_log_gmean_step1 <- genes_log_gmean_step1[!outliers]

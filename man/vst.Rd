@@ -52,7 +52,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
 
-\item{show_progress}{Whether to print progress bar}
+\item{show_progress}{Whether to print messages and show progress bar}
 }
 \value{
 A list with components
