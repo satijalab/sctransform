@@ -30,7 +30,7 @@ In this vignette we show how the regression model in the variance stabilizing tr
 
 We first load the data and transform without using the batch information.
 
-```{r}
+```{r, warning=FALSE}
 # some of the vst steps can use multiple cores
 # We use the Future API for parallel processing; set parameters here
 future::plan(strategy = 'multicore', workers = 4)
@@ -86,7 +86,7 @@ We can see a clear separation between batches, while the main source of variabil
 
 We will now repeat the analysis but this time specify a batch variable when calling `vst`. This changes the regression model specification, adding batch indicator variable and its interaction with the regression coefficients. This effectively fits the regression model per batch, but keeps a single theta variable (overdispersion parameter) per gene. Parameter regularization is performed per batch.
 
-```{r, fig.width=4.5, fig.height=5.5, out.width='49%', fig.show='hold'}
+```{r, fig.width=4.5, fig.height=5.5, out.width='49%', fig.show='hold', warning=FALSE}
 set.seed(42)
 vst_out2 <- vst(cm, cell_attr = cell_attr, latent_var = 'log_umi_per_gene', batch_var = 'batch', bin_size = 128, show_progress = FALSE)
 
