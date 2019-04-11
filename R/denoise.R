@@ -17,10 +17,8 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
 #' vst_out <- vst(pbmc)
 #' y_smooth <- smooth_via_pca(vst_out$y, do_plot = TRUE)
-#' }
 #'
 smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, do_plot = FALSE,
                            scale. = FALSE) {
@@ -69,14 +67,8 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @export
 #'
 #' @examples
-#' \dontrun{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' umi_corrected <- correct(vst_out)
-#'
-#' # this can also be combined with smoothing
-#' y_smooth <- smooth_via_pca(vst_out$y, do_plot = TRUE)
-#' umi_corrected <- correct(vst_out, data = y_smooth)
-#' }
 #'
 correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_pos = TRUE,
                     show_progress = TRUE) {
@@ -128,19 +120,19 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
 #' integer and negative values clipped to 0.
 #'
 #' @param x A list that provides model parameters and optionally meta data; use output of vst function
-#' @param data The count matrix
+#' @param umi The count matrix
 #' @param cell_attr Provide cell meta data holding latent data info
 #' @param show_progress Whether to print progress bar
 #'
 #' @return Corrected data as UMI counts
 #'
+#' @importFrom methods as
+#'
 #' @export
 #'
 #' @examples
-#' \dontrun{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' umi_corrected <- correct_counts(vst_out, pbmc)
-#' }
 #'
 correct_counts <- function(x, umi, cell_attr = x$cell_attr, show_progress = TRUE) {
   regressor_data_orig <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)

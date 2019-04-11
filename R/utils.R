@@ -61,6 +61,7 @@ is_outlier <- function(y, x, th = 10) {
 
 #' Robust scale using median and mad per bin
 #'
+#' @param y Numeric vector
 #' @param x Numeric vector
 #' @param breaks Numeric vector of breaks
 #'

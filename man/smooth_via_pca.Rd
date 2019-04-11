@@ -27,9 +27,7 @@ Smoothed data
 Perform PCA, identify significant dimensions, and reverse the rotation using only significant dimensions.
 }
 \examples{
-\dontrun{
 vst_out <- vst(pbmc)
 y_smooth <- smooth_via_pca(vst_out$y, do_plot = TRUE)
-}
 
 }
