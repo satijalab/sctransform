@@ -10,6 +10,7 @@
 #' @param cell_attr Data frame of cell meta data
 #' @param y Only used if methtod = 't_test', this is the residual matrix; default is x$y
 #' @param min_cells A gene has to be detected in at least this many cells in at least one of the groups being compared to be tested
+#' @param weighted Balance the groups by using the appropriate weights
 #' @param randomize Boolean indicating whether to shuffle group labels - only set to TRUE when testing methods
 #' @param show_progress Show progress bar
 #'
@@ -17,9 +18,7 @@
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
-#' @importFrom stats model.matrix p.adjust
-#'
-#' @export
+#' @importFrom stats model.matrix p.adjust pchisq
 #'
 #' @examples
 #' \dontrun{
@@ -189,7 +188,6 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   return(res)
 }
 
-#' @export
 compare_expression_full <- function(umi, cell_attr, group, val1, val2,
                                     latent_var = c('log_umi'),
                                     batch_var = NULL,
@@ -366,6 +364,7 @@ model_comparison_lrt_free1 <- function(gene, y, theta, model_str, cell_attr, gro
 
 # fixed overdispersion (theta)
 # fixed slopes
+#' @importFrom stats pchisq
 model_comparison_lrt_free2 <- function(gene, y, theta, model_str, cell_attr, group, weights = NULL, randomize = FALSE) {
   if (randomize) {
     y <- sample(y)
@@ -381,6 +380,7 @@ model_comparison_lrt_free2 <- function(gene, y, theta, model_str, cell_attr, gro
 
 # fixed overdispersion (theta)
 # different per-group slopes
+#' @importFrom stats predict
 model_comparison_lrt_free3 <- function(gene, y, theta, model_str, cell_attr, group, weights = NULL, randomize = FALSE) {
   if (randomize) {
     y <- sample(y)

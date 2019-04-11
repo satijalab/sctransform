@@ -7,6 +7,8 @@
 robust_scale_binned(y, x, breaks)
 }
 \arguments{
+\item{y}{Numeric vector}
+
 \item{x}{Numeric vector}
 
 \item{breaks}{Numeric vector of breaks}

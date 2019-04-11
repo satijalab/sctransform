@@ -9,11 +9,11 @@ correct_counts(x, umi, cell_attr = x$cell_attr, show_progress = TRUE)
 \arguments{
 \item{x}{A list that provides model parameters and optionally meta data; use output of vst function}
 
+\item{umi}{The count matrix}
+
 \item{cell_attr}{Provide cell meta data holding latent data info}
 
 \item{show_progress}{Whether to print progress bar}
-
-\item{data}{The count matrix}
 }
 \value{
 Corrected data as UMI counts
@@ -24,9 +24,7 @@ calculates the residuals on the fly. The corrected UMI counts will be rounded to
 integer and negative values clipped to 0.
 }
 \examples{
-\dontrun{
 vst_out <- vst(pbmc, return_cell_attr = TRUE)
 umi_corrected <- correct_counts(vst_out, pbmc)
-}
 
 }

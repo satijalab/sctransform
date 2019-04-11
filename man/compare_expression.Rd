@@ -29,6 +29,8 @@ compare_expression(x, umi, group, val1, val2, method = "LRT",
 
 \item{min_cells}{A gene has to be detected in at least this many cells in at least one of the groups being compared to be tested}
 
+\item{weighted}{Balance the groups by using the appropriate weights}
+
 \item{randomize}{Boolean indicating whether to shuffle group labels - only set to TRUE when testing methods}
 
 \item{show_progress}{Show progress bar}
