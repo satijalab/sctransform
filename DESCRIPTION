@@ -19,12 +19,10 @@ Imports:
   MASS,
   Matrix,
   methods,
-  future,
   future.apply,
   ggplot2,
   reshape2,
-  gridExtra,
-  Rcpp
+  gridExtra
 LinkingTo: Rcpp (>= 0.11.0), RcppEigen
 Suggests:
   irlba,
