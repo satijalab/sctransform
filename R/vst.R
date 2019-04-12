@@ -12,7 +12,7 @@ NULL
 #'
 #' @param umi A matrix of UMI counts with genes as rows and cells as columns
 #' @param cell_attr A data frame containing the dependent variables; if omitted a data frame with umi and gene will be generated
-#' @param latent_var The dependent variables to regress out as a character vector; must match column names in cell_attr; default is c("log_umi_per_gene")
+#' @param latent_var The independent variables to regress out as a character vector; must match column names in cell_attr; default is c("log_umi")
 #' @param batch_var The dependent variables indicating which batch a cell belongs to; no batch interaction terms used if omiited
 #' @param latent_var_nonreg The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)

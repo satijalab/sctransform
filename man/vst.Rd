@@ -18,7 +18,7 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{cell_attr}{A data frame containing the dependent variables; if omitted a data frame with umi and gene will be generated}
 
-\item{latent_var}{The dependent variables to regress out as a character vector; must match column names in cell_attr; default is c("log_umi_per_gene")}
+\item{latent_var}{The independent variables to regress out as a character vector; must match column names in cell_attr; default is c("log_umi")}
 
 \item{batch_var}{The dependent variables indicating which batch a cell belongs to; no batch interaction terms used if omiited}
 
