@@ -10,8 +10,8 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
   bin_size = 256, min_cells = 5, residual_type = "pearson",
   return_cell_attr = FALSE, return_gene_attr = TRUE,
-  return_corrected_umi = FALSE, bw_adjust = 3, gmean_eps = 1,
-  theta_given = NULL, show_progress = TRUE)
+  return_corrected_umi = FALSE, min_variance = 0.001, bw_adjust = 3,
+  gmean_eps = 1, theta_given = NULL, show_progress = TRUE)
 }
 \arguments{
 \item{umi}{A matrix of UMI counts with genes as rows and cells as columns}
@@ -45,6 +45,8 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 \item{return_gene_attr}{Calculate gene attributes and make part of output; default is TRUE}
 
 \item{return_corrected_umi}{If set to TRUE output will contain corrected UMI matrix; see \code{correct} function}
+
+\item{min_variance}{Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is 0.001}
 
 \item{bw_adjust}{Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3}
 
