@@ -26,6 +26,7 @@ NULL
 #' @param return_cell_attr Make cell attributes part of the output; default is FALSE
 #' @param return_gene_attr Calculate gene attributes and make part of output; default is TRUE
 #' @param return_corrected_umi If set to TRUE output will contain corrected UMI matrix; see \code{correct} function
+#' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is 0.001
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
@@ -87,6 +88,7 @@ vst <- function(umi,
                 return_cell_attr = FALSE,
                 return_gene_attr = TRUE,
                 return_corrected_umi = FALSE,
+                min_variance = 0.001,
                 bw_adjust = 3,
                 gmean_eps = 1,
                 theta_given = NULL,
@@ -233,7 +235,7 @@ vst <- function(umi,
       mu <- exp(tcrossprod(model_pars_final[genes_bin, -1, drop=FALSE], regressor_data_final))
       y <- as.matrix(umi[genes_bin, , drop=FALSE])
       res[genes_bin, ] <- switch(residual_type,
-        'pearson' = (y - mu) / sqrt(mu + mu^2 / model_pars_final[genes_bin, 'theta']),
+        'pearson' = pearson_residual(y, mu, model_pars_final[genes_bin, 'theta'], min_var = min_variance),
         'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta'])
       )
       if (show_progress) {

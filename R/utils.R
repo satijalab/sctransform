@@ -94,8 +94,10 @@ robust_scale <- function(x) {
   return((x - median(x)) / (mad(x) + .Machine$double.eps))
 }
 
-pearson_residual <- function(y, mu, theta) {
-  (y - mu) / sqrt(mu + mu^2 / theta)
+pearson_residual <- function(y, mu, theta, min_var = -Inf) {
+  model_var <- mu + mu^2 / theta
+  model_var[model_var < min_var] <- min_var
+  return((y - mu) / sqrt(model_var))
 }
 
 sq_deviance_residual <- function(y, mu, theta, wt=1) {
@@ -113,6 +115,7 @@ deviance_residual <- function(y, mu, theta, wt=1) {
 #' @param umi The UMI count matrix that will be used
 #' @param residual_type What type of residuals to return; can be 'pearson' or 'deviance'; default is 'pearson'
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
+#' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is vst_out$arguments$min_variance
 #' @param cell_attr Data frame of cell meta data
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param show_progress Whether to print progress bar
@@ -128,7 +131,9 @@ deviance_residual <- function(y, mu, theta, wt=1) {
 #' deviance_res <- get_residuals(vst_out, pbmc, residual_type = 'deviance')
 #' }
 #'
-get_residuals <- function(vst_out, umi, residual_type = 'pearson', res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
+get_residuals <- function(vst_out, umi, residual_type = 'pearson',
+                          res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
+                          min_variance = vst_out$arguments$min_variance,
                           cell_attr = vst_out$cell_attr, bin_size = 256, show_progress = TRUE) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
@@ -153,7 +158,7 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson', res_clip_rang
     mu <- exp(tcrossprod(model_pars[genes_bin, -1, drop=FALSE], regressor_data))
     y <- as.matrix(umi[genes_bin, , drop=FALSE])
     res[genes_bin, ] <- switch(residual_type,
-      'pearson' = (y - mu) / sqrt(mu + mu^2 / model_pars[genes_bin, 'theta']),
+      'pearson' = pearson_residual(y, mu, model_pars[genes_bin, 'theta'], min_var = min_variance),
       'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta'])
     )
     if (show_progress) {
@@ -176,6 +181,7 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson', res_clip_rang
 #' @param umi The UMI count matrix that will be used
 #' @param residual_type What type of residuals to return; can be 'pearson' or 'deviance'; default is 'pearson'
 #' @param res_clip_range Numeric of length two specifying the min and max values the residuals will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
+#' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is vst_out$arguments$min_variance
 #' @param cell_attr Data frame of cell meta data
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param show_progress Whether to print progress bar
@@ -190,8 +196,10 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson', res_clip_rang
 #' res_var <- get_residual_var(vst_out, pbmc)
 #' }
 #'
-get_residual_var <- function(vst_out, umi, residual_type = 'pearson', res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
-                          cell_attr = vst_out$cell_attr, bin_size = 256, show_progress = TRUE) {
+get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
+                             res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
+                             min_variance = vst_out$arguments$min_variance,
+                             cell_attr = vst_out$cell_attr, bin_size = 256, show_progress = TRUE) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
   if (!is.null(dim(vst_out$model_pars_nonreg))) {
@@ -216,11 +224,70 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson', res_clip_r
     mu <- exp(tcrossprod(model_pars[genes_bin, -1, drop=FALSE], regressor_data))
     y <- as.matrix(umi[genes_bin, , drop=FALSE])
     res_mat <- switch(residual_type,
-                      'pearson' = (y - mu) / sqrt(mu + mu^2 / model_pars[genes_bin, 'theta']),
+                      'pearson' = pearson_residual(y, mu, model_pars[genes_bin, 'theta'], min_var = min_variance),
                       'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']))
     res_mat[res_mat < res_clip_range[1]] <- res_clip_range[1]
     res_mat[res_mat > res_clip_range[2]] <- res_clip_range[2]
     res[genes_bin] <- row_var(res_mat)
+    if (show_progress) {
+      setTxtProgressBar(pb, i)
+    }
+  }
+  if (show_progress) {
+    close(pb)
+  }
+  return(res)
+}
+
+#' Return average variance under negative binomial model
+#'
+#' This is based on the formula var = mu + mu^2 / theta
+#'
+#' @param vst_out The output of a vst run
+#' @param cell_attr Data frame of cell meta data
+#' @param use_nonreg Use the non-regularized parameter estimates; boolean; default is FALSE
+#' @param bin_size Number of genes to put in each bin (to show progress)
+#' @param show_progress Whether to print progress bar
+#'
+#' @return A vector of variances
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' vst_out <- vst(pbmc)
+#' res_var <- get_model_var(vst_out)
+#' }
+#'
+get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = FALSE, bin_size = 256, show_progress = TRUE) {
+  regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
+  if (use_nonreg) {
+    model_pars <- vst_out$model_pars
+  } else {
+    model_pars <- vst_out$model_pars_fit
+  }
+  if (!is.null(dim(vst_out$model_pars_nonreg))) {
+    regressor_data_nonreg <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str_nonreg)), cell_attr)
+    regressor_data <- cbind(regressor_data, regressor_data_nonreg)
+    model_pars <- cbind(vst_out$model_pars_fit, vst_out$model_pars_nonreg)
+  }
+
+  genes <- rownames(model_pars)
+  if (show_progress) {
+    message('Calculating model variance for ', length(genes), ' genes')
+  }
+  bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
+  max_bin <- max(bin_ind)
+  if (show_progress) {
+    pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
+  }
+  res <- matrix(NA_real_, length(genes))
+  names(res) <- genes
+  for (i in 1:max_bin) {
+    genes_bin <- genes[bin_ind == i]
+    mu <- exp(tcrossprod(model_pars[genes_bin, -1, drop=FALSE], regressor_data))
+    model_var = mu + mu^2 / model_pars[genes_bin, 'theta']
+    res[genes_bin] <- rowMeans(model_var)
     if (show_progress) {
       setTxtProgressBar(pb, i)
     }
