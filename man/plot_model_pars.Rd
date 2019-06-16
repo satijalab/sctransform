@@ -4,10 +4,12 @@
 \alias{plot_model_pars}
 \title{Plot estimated and fitted model parameters}
 \usage{
-plot_model_pars(vst_out)
+plot_model_pars(vst_out, show_var = FALSE)
 }
 \arguments{
 \item{vst_out}{The output of a vst run}
+
+\item{show_var}{Whether to show the average model variance; boolean; default is FALSE}
 }
 \value{
 A ggplot object

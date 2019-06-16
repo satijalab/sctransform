@@ -6,6 +6,7 @@
 \usage{
 get_residuals(vst_out, umi, residual_type = "pearson",
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
+  min_variance = vst_out$arguments$min_variance,
   cell_attr = vst_out$cell_attr, bin_size = 256,
   show_progress = TRUE)
 }
@@ -17,6 +18,8 @@ get_residuals(vst_out, umi, residual_type = "pearson",
 \item{residual_type}{What type of residuals to return; can be 'pearson' or 'deviance'; default is 'pearson'}
 
 \item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))}
+
+\item{min_variance}{Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is vst_out$arguments$min_variance}
 
 \item{cell_attr}{Data frame of cell meta data}
 
