@@ -1,6 +1,7 @@
 #' Plot estimated and fitted model parameters
 #'
 #' @param vst_out The output of a vst run
+#' @param show_var Whether to show the average model variance; boolean; default is FALSE
 #'
 #' @return A ggplot object
 #'
@@ -15,7 +16,7 @@
 #' plot_model_pars(vst_out)
 #' }
 #'
-plot_model_pars <- function(vst_out) {
+plot_model_pars <- function(vst_out, show_var = FALSE) {
   if (! 'gmean' %in% names(vst_out$gene_attr)) {
     stop('vst_out must contain a data frame named gene_attr with a column named gmean (perhaps call vst with return_gene_attr = TRUE)')
   }
@@ -23,9 +24,19 @@ plot_model_pars <- function(vst_out) {
   mp <- vst_out$model_pars
   mp[, 1] <- log10(mp[, 1])
   colnames(mp)[1] <- 'log10(theta)'
+  ordered_par_names <- colnames(mp)[c(2:ncol(mp), 1)]
+  if (show_var) {
+    mp <- cbind(mp, log10(get_model_var(vst_out, use_nonreg = TRUE)))
+    colnames(mp)[ncol(mp)] <- 'log10(model var)'
+    ordered_par_names <- c(ordered_par_names, 'log10(model var)')
+  }
   mp_fit <- vst_out$model_pars_fit
   mp_fit[, 1] <- log10(mp_fit[, 1])
   colnames(mp_fit)[1] <- 'log10(theta)'
+  if (show_var) {
+    mp_fit <- cbind(mp_fit, log10(get_model_var(vst_out, use_nonreg = FALSE)))
+    colnames(mp_fit)[ncol(mp_fit)] <- 'log10(model var)'
+  }
   mpnr <- vst_out$model_pars_nonreg
   if (!is.null(dim(mpnr))) {
     colnames(mpnr) <- paste0('nonreg:', colnames(mpnr))
@@ -33,18 +44,22 @@ plot_model_pars <- function(vst_out) {
   }
   # show estimated and regularized parameters
   df <- melt(mp, varnames = c('gene', 'parameter'), as.is = TRUE)
+  df$parameter <- factor(df$parameter, levels = ordered_par_names)
   df_fit <- melt(mp_fit, varnames = c('gene', 'parameter'), as.is = TRUE)
+  df_fit$parameter <- factor(df_fit$parameter, levels = ordered_par_names)
   df$gene_gmean <- vst_out$gene_attr[df$gene, 'gmean']
   df$is_outl <- vst_out$model_pars_outliers
   df_fit$gene_gmean <- vst_out$gene_attr[df_fit$gene, 'gmean']
   df$type <- 'single gene estimate'
   df_fit$type <- 'regularized'
   df_fit$is_outl <- FALSE
-  g <- ggplot(rbind(df, df_fit), aes_(x=~log10(gene_gmean), y=~value, color=~type)) +
+  df_plot <- rbind(df, df_fit)
+  df_plot$parameter <- factor(df_plot$parameter, levels = ordered_par_names)
+  g <- ggplot(df_plot, aes_(x=~log10(gene_gmean), y=~value, color=~type)) +
     geom_point(data=df, aes_(shape=~is_outl), size=0.5, alpha=0.5) +
     scale_shape_manual(values=c(16, 4), guide = FALSE) +
     geom_point(data=df_fit, size=0.66, alpha=0.5, shape=16) +
-    facet_wrap(~ parameter, scales = 'free_y') +
+    facet_wrap(~ parameter, scales = 'free_y', ncol = ncol(mp)) +
     theme(legend.position='bottom')
   return(g)
 }
