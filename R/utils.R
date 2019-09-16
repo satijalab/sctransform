@@ -24,7 +24,10 @@ row_gmean <- function(x, eps = 1) {
 #' @return variances
 row_var <- function(x) {
   if (class(x) == 'matrix') {
-    ret <- row_var_dense(x)
+    ret <- switch(storage.mode(x),
+                  'double' = row_var_dense_d(x),
+                  'integer' = row_var_dense_i(x),
+                  stop('Unknown matrix storage mode'))
     names(ret) <- rownames(x)
     return(ret)
   }
@@ -249,7 +252,7 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param show_progress Whether to print progress bar
 #'
-#' @return A vector of variances
+#' @return A named vector of variances (the average across all cells), one entry per gene.
 #'
 #' @export
 #'

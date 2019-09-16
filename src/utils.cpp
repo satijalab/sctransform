@@ -53,10 +53,21 @@ NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int 
 }
 
 // [[Rcpp::export]]
-NumericVector row_var_dense(Eigen::Map<Eigen::MatrixXd> x) {
+NumericVector row_var_dense_d(Eigen::Map<Eigen::MatrixXd> x) {
   NumericVector out(x.rows());
   for(int i=0; i < x.rows(); ++i){
     Eigen::ArrayXd r = x.row(i).array();
+    double rowMean = r.mean();
+    out[i] = (r - rowMean).square().sum() / (x.cols() - 1);
+  }
+  return out;
+}
+
+// [[Rcpp::export]]
+NumericVector row_var_dense_i(Eigen::Map<Eigen::MatrixXi> x) {
+  NumericVector out(x.rows());
+  for(int i=0; i < x.rows(); ++i){
+    Eigen::ArrayXd r = (x.row(i).array()).cast<double>();
     double rowMean = r.mean();
     out[i] = (r - rowMean).square().sum() / (x.cols() - 1);
   }

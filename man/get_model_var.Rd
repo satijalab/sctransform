@@ -19,7 +19,7 @@ get_model_var(vst_out, cell_attr = vst_out$cell_attr,
 \item{show_progress}{Whether to print progress bar}
 }
 \value{
-A vector of variances
+A named vector of variances (the average across all cells), one entry per gene.
 }
 \description{
 This is based on the formula var = mu + mu^2 / theta
