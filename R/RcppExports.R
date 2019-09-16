@@ -13,7 +13,11 @@ row_var_dgcmatrix <- function(x, i, rows, cols) {
     .Call('_sctransform_row_var_dgcmatrix', PACKAGE = 'sctransform', x, i, rows, cols)
 }
 
-row_var_dense <- function(x) {
-    .Call('_sctransform_row_var_dense', PACKAGE = 'sctransform', x)
+row_var_dense_d <- function(x) {
+    .Call('_sctransform_row_var_dense_d', PACKAGE = 'sctransform', x)
+}
+
+row_var_dense_i <- function(x) {
+    .Call('_sctransform_row_var_dense_i', PACKAGE = 'sctransform', x)
 }
 
