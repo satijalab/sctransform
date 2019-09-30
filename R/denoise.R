@@ -152,7 +152,7 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, show_progress = TRUE
   corrected_data <- list()
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
-    coefs <- x$model_pars_fit[genes_bin, -1]
+    coefs <- x$model_pars_fit[genes_bin, -1, drop=FALSE]
     theta <- x$model_pars_fit[genes_bin, 1]
     # get pearson residuals
     mu <- exp(tcrossprod(coefs, regressor_data_orig))
