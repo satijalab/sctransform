@@ -2,6 +2,7 @@
 
 export(correct)
 export(correct_counts)
+export(generate)
 export(get_model_var)
 export(get_residual_var)
 export(get_residuals)
