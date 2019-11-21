@@ -5,8 +5,8 @@
 \title{Generate data from regularized models.}
 \usage{
 generate(vst_out, data = "y", genes = rownames(vst_out$model_pars_fit),
-  cell_attr = x$cell_attr, background_only = FALSE, do_round = TRUE,
-  do_pos = TRUE, make_sparse = FALSE)
+  cell_attr = vst_out$cell_attr, background_only = FALSE,
+  do_round = FALSE, do_pos = FALSE, make_sparse = FALSE)
 }
 \arguments{
 \item{vst_out}{A list that provides model parameters and optionally meta data; use output of vst function}

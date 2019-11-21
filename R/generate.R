@@ -20,8 +20,8 @@
 #' generated_data <- generate(vst_out)
 #'
 generate <- function(vst_out, data = 'y', genes = rownames(vst_out$model_pars_fit),
-                     cell_attr = x$cell_attr, background_only = FALSE,
-                     do_round = TRUE, do_pos = TRUE,
+                     cell_attr = vst_out$cell_attr, background_only = FALSE,
+                     do_round = FALSE, do_pos = FALSE,
                      make_sparse = FALSE) {
   genes <- genes[genes %in% rownames(vst_out$model_pars_fit)]
   # when we generate data, use the cell attributes from the original data
@@ -33,7 +33,7 @@ generate <- function(vst_out, data = 'y', genes = rownames(vst_out$model_pars_fi
   mp <- vst_out$model_pars_fit[genes, , drop = FALSE]
   coefs <- mp[, -1, drop=FALSE]
   theta <- mp[, 1]
-  ca <- vst_out$cell_attr
+  ca <- cell_attr
   regressor_data <- cbind(rep(1, nrow(ca)), ca[, colnames(coefs)[-1]])
   # calculate expected values
   mu <- exp(tcrossprod(coefs, regressor_data))
