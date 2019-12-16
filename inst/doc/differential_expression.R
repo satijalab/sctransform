@@ -22,7 +22,7 @@ pbmc_data <- pbmc_data[, names(pbmc_clusters)]
 class(pbmc_data)
 dim(pbmc_data)
 
-## ---- fig.width=4, fig.height=2.5----------------------------------------
+## ---- fig.width=4, fig.height=2.5, warning=FALSE-------------------------
 # some of the vst steps can use multiple cores
 # We use the Future API for parallel processing; set parameters here
 future::plan(strategy = 'multicore', workers = 4)
@@ -32,7 +32,7 @@ set.seed(43)
 vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi_per_gene'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
 
 ## ------------------------------------------------------------------------
-res1 <- sctransform::compare_expression(x = vst_out, umi = pbmc_data, group = pbmc_clusters, 
+res1 <- sctransform:::compare_expression(x = vst_out, umi = pbmc_data, group = pbmc_clusters, 
                                         val1 = 'CD14+ Monocytes', 
                                         val2 = 'FCGR3A+ Monocytes', 
                                         show_progress = FALSE)
@@ -45,7 +45,7 @@ head(subset(res1, log_fc > 0), 10)
 ggplot(res1, aes(log_fc, -log10(p_value))) + geom_point(alpha=0.4, shape=16)
 
 ## ------------------------------------------------------------------------
-res2 <- sctransform::compare_expression(x = vst_out, umi = pbmc_data, group = pbmc_clusters, val1 = setdiff(pbmc_clusters, 'CD8 T cells'), val2 = 'CD8 T cells', show_progress = FALSE)
+res2 <- sctransform:::compare_expression(x = vst_out, umi = pbmc_data, group = pbmc_clusters, val1 = setdiff(pbmc_clusters, 'CD8 T cells'), val2 = 'CD8 T cells', show_progress = FALSE)
 head(subset(res2, log_fc > 0), 10)
 
 ## ---- fig.width=4, fig.height=4, out.width='49%', fig.show='hold'--------

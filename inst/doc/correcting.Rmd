@@ -32,7 +32,7 @@ In this vignette we show how the regression model in the variance stabilizing tr
 We use data from a recent publication: [Mayer, Hafemeister, Bandler et al., Nature 2018](https://dx.doi.org/10.1038/nature25999) [(free read-only version)](http://rdcu.be/JA5l). We load a subset of the cells, namely one of the CGE E12.5 dropseq samples with contaminating cell populations removed. These cells come from a developing continuum and provide a nice example for de-noising and count correction.
 
 First load the data and run variance stabilizing transformation.
-```{r}
+```{r, warning=FALSE}
 # some of the vst steps can use multiple cores
 # We use the Future API for parallel processing; set parameters here
 future::plan(strategy = 'multicore', workers = 4)

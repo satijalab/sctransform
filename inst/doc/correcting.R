@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
 )
 old_theme <- theme_set(theme_classic(base_size=8))
 
-## ------------------------------------------------------------------------
+## ---- warning=FALSE------------------------------------------------------
 # some of the vst steps can use multiple cores
 # We use the Future API for parallel processing; set parameters here
 future::plan(strategy = 'multicore', workers = 4)

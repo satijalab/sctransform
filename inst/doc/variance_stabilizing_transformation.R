@@ -50,7 +50,7 @@ ggplot(cell_attr, aes(n_umi, n_gene)) +
   geom_point(alpha=0.3, shape=16) + 
   geom_density_2d(size = 0.3)
 
-## ---- fig.width=4, fig.height=2.5----------------------------------------
+## ---- fig.width=4, fig.height=2.5, warning=FALSE-------------------------
 # We use the Future API for parallel processing; set parameters here
 future::plan(strategy = 'multicore', workers = 4)
 options(future.globals.maxSize = 10 * 1024 ^ 3)
@@ -73,7 +73,7 @@ ggplot(vst_out$gene_attr, aes(residual_mean)) + geom_histogram(binwidth=0.01)
 ggplot(vst_out$gene_attr, aes(residual_variance)) + geom_histogram(binwidth=0.1) + geom_vline(xintercept=1, color='red') + xlim(0, 10)
 
 ## ------------------------------------------------------------------------
-ggplot(vst_out$gene_attr, aes(log10(mean), residual_variance)) + geom_point(alpha=0.3, shape=16) +
+ggplot(vst_out$gene_attr, aes(log10(gmean), residual_variance)) + geom_point(alpha=0.3, shape=16) +
   geom_density_2d(size = 0.3)
 
 ## ------------------------------------------------------------------------
