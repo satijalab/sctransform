@@ -1,7 +1,7 @@
 Package: sctransform
 Type: Package
 Title: Variance Stabilizing Transformations for Single Cell UMI Data
-Version: 0.2.0.9000
+Version: 0.2.1
 Authors@R: person(given = 'Christoph', family = 'Hafemeister', email = 'chafemeister@nygenome.org', role = c('aut', 'cre'), comment = c(ORCID = '0000-0001-6365-8254'))
 Description: A normalization method for single-cell UMI count data using a 
   variance stabilizing transformation. The transformation is based on a 
@@ -26,6 +26,7 @@ Imports:
 LinkingTo: Rcpp (>= 0.11.0), RcppEigen
 Suggests:
   irlba,
-  testthat
+  testthat,
+  knitr
 RoxygenNote: 6.1.1
 VignetteBuilder: knitr
