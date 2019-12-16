@@ -3,6 +3,7 @@ context("correcting")
 test_that('correcting runs and returns expected output', {
   skip_on_cran()
   options(mc.cores = 2)
+  RNGkind(sample.kind = "Rounding")
   set.seed(42)
   vst_out <- vst(pbmc, return_cell_attr = TRUE, res_clip_range = c(-Inf, Inf))
   y_smooth <- smooth_via_pca(vst_out$y, do_plot = FALSE)
