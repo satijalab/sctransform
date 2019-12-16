@@ -77,7 +77,7 @@ robust_scale_binned <- function(y, x, breaks) {
   tmp <- aggregate(x = y, by = list(bin=bins), FUN = robust_scale)
   score <- rep(0, length(x))
   o <- order(bins)
-  if (inherits(x = x, what = 'list')) {
+  if (inherits(x = tmp$x, what = 'list')) {
     score[o] <- unlist(tmp$x)
   } else {
     score[o] <- as.numeric(t(tmp$x))
