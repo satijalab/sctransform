@@ -4,34 +4,28 @@
 \alias{generate}
 \title{Generate data from regularized models.}
 \usage{
-generate(vst_out, data = "y", genes = rownames(vst_out$model_pars_fit),
-  cell_attr = vst_out$cell_attr, background_only = FALSE,
-  do_round = FALSE, do_pos = FALSE, make_sparse = FALSE)
+generate(vst_out, genes = rownames(vst_out$model_pars_fit),
+  cell_attr = vst_out$cell_attr, n_cells = nrow(cell_attr))
 }
 \arguments{
 \item{vst_out}{A list that provides model parameters and optionally meta data; use output of vst function}
 
-\item{data}{The name of the entry in x that holds the data (Pearson residuals)}
+\item{genes}{The gene names for which to generate data; default is rownames(vst_out$model_pars_fit)}
 
-\item{cell_attr}{Provide cell meta data holding latent data info}
+\item{cell_attr}{Provide cell meta data holding latent data info; default is vst_out$cell_attr}
 
-\item{background_only}{Set to TRUE to only generate the background signal (do not add back residuals)}
-
-\item{do_round}{Round the result to integers}
-
-\item{do_pos}{Set negative values in the result to zero}
-
-\item{make_sparse}{Make the output a dgCMatrix (if do_pos and do_round are also TRUE)}
+\item{n_cells}{Number of cells to generate; default is nrow(cell_attr)}
 }
 \value{
-Generated data
+Generated data as dgCMatrix
 }
 \description{
-Generate data from regularized models. If background_only is set to TRUE no residuals are
-added to the simulated data.
+Generate data from regularized models. This generates data from the background,
+i.e. no residuals are added to the simulated data. The cell attributes for the
+generated cells are sampled from the input with replacment.
 }
 \examples{
-vst_out <- vst(pbmc, return_cell_attr = TRUE, res_clip_range = c(-Inf, Inf))
+vst_out <- vst(pbmc, return_cell_attr = TRUE)
 generated_data <- generate(vst_out)
 
 }
