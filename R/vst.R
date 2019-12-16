@@ -334,7 +334,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
                                      theta <- theta_given[j]
                                      fit2 <- 0
                                      try(fit2 <- glm(as.formula(model_str), data = data_step1, family = negative.binomial(theta=theta)), silent=TRUE)
-                                     if (class(fit2)[1] == 'numeric') {
+                                     if (inherits(x = fit2, what = 'numeric')) {
                                        return(c(theta, glm(as.formula(model_str), data = data_step1, family = poisson)$coefficients))
                                      } else {
                                        return(c(theta, fit2$coefficients))
@@ -345,7 +345,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
                                      theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
                                      fit2 <- 0
                                      try(fit2 <- glm(as.formula(model_str), data = data_step1, family = negative.binomial(theta=theta)), silent=TRUE)
-                                     if (class(fit2)[1] == 'numeric') {
+                                     if (inherits(x = fit2, what = 'numeric')) {
                                        return(c(theta, fit$coefficients))
                                      } else {
                                        return(c(theta, fit2$coefficients))
@@ -354,7 +354,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
                                    if (method == 'nb') {
                                      fit <- 0
                                      try(fit <- glm.nb(as.formula(model_str), data = data_step1), silent=TRUE)
-                                     if (class(fit)[1] == 'numeric') {
+                                     if (inherits(x = fit, what = 'numeric')) {
                                        fit <- glm(as.formula(model_str), data = data_step1, family = poisson)
                                        fit$theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
                                      }

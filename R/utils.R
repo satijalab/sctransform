@@ -6,10 +6,10 @@
 #'
 #' @return geometric means
 row_gmean <- function(x, eps = 1) {
-  if (class(x) == 'matrix') {
+  if (inherits(x = x, what = 'matrix')) {
     return(exp(rowMeans(log(x + eps))) - eps)
   }
-  if (class(x) == 'dgCMatrix') {
+  if (inherits(x = x, what = 'dgCMatrix')) {
     ret <- row_gmean_dgcmatrix(x = x@x, i = x@i, rows = nrow(x), cols = ncol(x), eps = eps)
     names(ret) <- rownames(x)
     return(ret)
@@ -23,7 +23,7 @@ row_gmean <- function(x, eps = 1) {
 #'
 #' @return variances
 row_var <- function(x) {
-  if (class(x) == 'matrix') {
+  if (inherits(x = x, what = 'matrix')) {
     ret <- switch(storage.mode(x),
                   'double' = row_var_dense_d(x),
                   'integer' = row_var_dense_i(x),
@@ -31,7 +31,7 @@ row_var <- function(x) {
     names(ret) <- rownames(x)
     return(ret)
   }
-  if (class(x) == 'dgCMatrix') {
+  if (inherits(x = x, what = 'dgCMatrix')) {
     ret <- row_var_dgcmatrix(x = x@x, i = x@i, rows = nrow(x), cols = ncol(x))
     names(ret) <- rownames(x)
     return(ret)
@@ -77,7 +77,7 @@ robust_scale_binned <- function(y, x, breaks) {
   tmp <- aggregate(x = y, by = list(bin=bins), FUN = robust_scale)
   score <- rep(0, length(x))
   o <- order(bins)
-  if (class(tmp$x) == 'list') {
+  if (inherits(x = x, what = 'list')) {
     score[o] <- unlist(tmp$x)
   } else {
     score[o] <- as.numeric(t(tmp$x))
