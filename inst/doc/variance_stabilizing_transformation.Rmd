@@ -92,7 +92,7 @@ Here the other variables can be used to model the differences in sequencing dept
 ### Estimate model parameters and transform data
 The `vst` function estimates model parameters and performs the variance stabilizing transformation. Here we use the log10 of the total UMI counts of a cell as variable for sequencing depth for each cell. After data transformation we plot the model parameters as a function of gene mean (geometric mean).
 
-```{r, fig.width=4, fig.height=2.5}
+```{r, fig.width=4, fig.height=2.5, warning=FALSE}
 # We use the Future API for parallel processing; set parameters here
 future::plan(strategy = 'multicore', workers = 4)
 options(future.globals.maxSize = 10 * 1024 ^ 3)
@@ -135,7 +135,7 @@ ggplot(vst_out$gene_attr, aes(residual_variance)) + geom_histogram(binwidth=0.1)
 After transformation the mean of the genes is close to zero, and most genes have a variance around one. This suggests that overall the regularized negative binomial model is a suitable model that describes the effect of sequencing depth on UMI counts. Further, after transformation there is no relationship between gene mean and variance, as the next plot shows.
 
 ```{r}
-ggplot(vst_out$gene_attr, aes(log10(mean), residual_variance)) + geom_point(alpha=0.3, shape=16) +
+ggplot(vst_out$gene_attr, aes(log10(gmean), residual_variance)) + geom_point(alpha=0.3, shape=16) +
   geom_density_2d(size = 0.3)
 ```
 

@@ -3,3 +3,5 @@
 .Ruserdata
 *.o
 *.so
+doc
+Meta

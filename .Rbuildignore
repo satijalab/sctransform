@@ -3,3 +3,5 @@
 cran-comments.md
 ^inst/doc$
 ^vignettes$
+^doc$
+^Meta$

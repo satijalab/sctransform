@@ -11,7 +11,7 @@
 
 <meta name="author" content="Christoph Hafemeister" />
 
-<meta name="date" content="2019-04-12" />
+<meta name="date" content="2019-12-16" />
 
 <title>Batch correction</title>
 
@@ -309,7 +309,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Batch correction</h1>
 <h4 class="author"><em>Christoph Hafemeister</em></h4>
-<h4 class="date"><em>2019-04-12</em></h4>
+<h4 class="date"><em>2019-12-16</em></h4>
 
 </div>
 
@@ -351,8 +351,7 @@ cell_attr &lt;- cell_attr[keep, ]
 
 # apply vst
 set.seed(42)
-vst_out &lt;- vst(cm, cell_attr = cell_attr, latent_var = 'log_umi_per_gene', bin_size = 128, show_progress = FALSE)
-</code></pre>
+vst_out &lt;- vst(cm, cell_attr = cell_attr, latent_var = 'log_umi_per_gene', bin_size = 128, show_progress = FALSE)</code></pre>
 <p>In order to get an overview of the data, we perform dimensionality reduction (PCA) and keep the top 35 dimensions. For 2D plotting, we run t-SNE and display the batch label and the original clustering.</p>
 <pre class="r"><code>pca &lt;- irlba::prcomp_irlba(t(vst_out$y), n = 35)
 tsne &lt;- Rtsne::Rtsne(scale(pca$x), pca = FALSE)

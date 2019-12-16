@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
 )
 old_theme <- theme_set(theme_classic(base_size=8))
 
-## ------------------------------------------------------------------------
+## ---- warning=FALSE------------------------------------------------------
 # some of the vst steps can use multiple cores
 # We use the Future API for parallel processing; set parameters here
 future::plan(strategy = 'multicore', workers = 4)
@@ -62,7 +62,7 @@ ggplot(cell_attr, aes(tSNE1, tSNE2, color = batch)) + geom_point(alpha=0.5, shap
 ggplot(cell_attr, aes(tSNE1, tSNE2, color = factor(CLUSTER))) + geom_point(alpha=0.5, shape=16) +
   theme(legend.position="bottom")
 
-## ---- fig.width=4.5, fig.height=5.5, out.width='49%', fig.show='hold'----
+## ---- fig.width=4.5, fig.height=5.5, out.width='49%', fig.show='hold', warning=FALSE----
 set.seed(42)
 vst_out2 <- vst(cm, cell_attr = cell_attr, latent_var = 'log_umi_per_gene', batch_var = 'batch', bin_size = 128, show_progress = FALSE)
 
