@@ -2,7 +2,7 @@ context("generate function")
 
 test_that('generate runs and returns expected output', {
   skip_on_cran()
-  RNGkind(sample.kind = "Rounding")
+  suppressWarnings(RNGversion(vstr = "3.5.0"))
   set.seed(42)
   vst_out <- vst(pbmc, return_cell_attr = TRUE)
 
