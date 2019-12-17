@@ -70,7 +70,9 @@ NULL
 #' @export
 #'
 #' @examples
+#' \donttest{
 #' vst_out <- vst(pbmc)
+#' }
 #'
 vst <- function(umi,
                 cell_attr = NULL,

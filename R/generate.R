@@ -16,8 +16,10 @@
 #' @export
 #'
 #' @examples
+#' \donttest{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' generated_data <- generate(vst_out)
+#' }
 #'
 generate <- function(vst_out, genes = rownames(vst_out$model_pars_fit),
                      cell_attr = vst_out$cell_attr,
