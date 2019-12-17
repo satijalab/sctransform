@@ -25,7 +25,9 @@ i.e. no residuals are added to the simulated data. The cell attributes for the
 generated cells are sampled from the input with replacment.
 }
 \examples{
+\donttest{
 vst_out <- vst(pbmc, return_cell_attr = TRUE)
 generated_data <- generate(vst_out)
+}
 
 }

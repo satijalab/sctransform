@@ -24,7 +24,9 @@ calculates the residuals on the fly. The corrected UMI counts will be rounded to
 integer and negative values clipped to 0.
 }
 \examples{
+\donttest{
 vst_out <- vst(pbmc, return_cell_attr = TRUE)
 umi_corrected <- correct_counts(vst_out, pbmc)
+}
 
 }

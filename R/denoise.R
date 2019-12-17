@@ -17,8 +17,10 @@
 #' @export
 #'
 #' @examples
+#' \donttest{
 #' vst_out <- vst(pbmc)
 #' y_smooth <- smooth_via_pca(vst_out$y, do_plot = TRUE)
+#' }
 #'
 smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, do_plot = FALSE,
                            scale. = FALSE) {
@@ -67,8 +69,10 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @export
 #'
 #' @examples
+#' \donttest{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' umi_corrected <- correct(vst_out)
+#' }
 #'
 correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_pos = TRUE,
                     show_progress = TRUE) {
@@ -131,8 +135,10 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
 #' @export
 #'
 #' @examples
+#' \donttest{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' umi_corrected <- correct_counts(vst_out, pbmc)
+#' }
 #'
 correct_counts <- function(x, umi, cell_attr = x$cell_attr, show_progress = TRUE) {
   regressor_data_orig <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)

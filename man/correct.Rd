@@ -27,7 +27,9 @@ Corrected data as UMI counts
 Correct data by setting all latent factors to their median values and reversing the regression model
 }
 \examples{
+\donttest{
 vst_out <- vst(pbmc, return_cell_attr = TRUE)
 umi_corrected <- correct(vst_out)
+}
 
 }
