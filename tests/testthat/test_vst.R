@@ -3,7 +3,7 @@ context("vst function")
 test_that('vst runs and returns expected output', {
   skip_on_cran()
   options(mc.cores = 2)
-  RNGkind(sample.kind = "Rounding")
+  suppressWarnings(RNGversion(vstr = "3.5.0"))
   set.seed(42)
   vst_out <- vst(pbmc, return_gene_attr = TRUE, return_cell_attr = TRUE)
   expect_equal(c(910, 283), dim(vst_out$y))
