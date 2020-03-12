@@ -22,7 +22,7 @@ Generated data as dgCMatrix
 \description{
 Generate data from regularized models. This generates data from the background,
 i.e. no residuals are added to the simulated data. The cell attributes for the
-generated cells are sampled from the input with replacment.
+generated cells are sampled from the input with replacement.
 }
 \examples{
 \donttest{

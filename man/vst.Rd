@@ -11,7 +11,8 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
   bin_size = 256, min_cells = 5, residual_type = "pearson",
   return_cell_attr = FALSE, return_gene_attr = TRUE,
   return_corrected_umi = FALSE, min_variance = -Inf, bw_adjust = 3,
-  gmean_eps = 1, theta_given = NULL, show_progress = TRUE)
+  gmean_eps = 1, theta_given = NULL, verbose = TRUE,
+  show_progress = verbose)
 }
 \arguments{
 \item{umi}{A matrix of UMI counts with genes as rows and cells as columns}
@@ -54,7 +55,9 @@ vst(umi, cell_attr = NULL, latent_var = c("log_umi"),
 
 \item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
 
-\item{show_progress}{Whether to print messages and show progress bar}
+\item{verbose}{Whether to print messages; default is TRUE}
+
+\item{show_progress}{Whether to show progress bars; default is the same value as verbose}
 }
 \value{
 A list with components

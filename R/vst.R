@@ -30,7 +30,8 @@ NULL
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
-#' @param show_progress Whether to print messages and show progress bar
+#' @param verbose Whether to print messages; default is TRUE
+#' @param show_progress Whether to show progress bars; default is the same value as verbose
 #'
 #' @return A list with components
 #' \item{y}{Matrix of transformed data, i.e. Pearson residuals, or deviance residuals; empty if \code{residual_type = 'none'}}
@@ -94,7 +95,8 @@ vst <- function(umi,
                 bw_adjust = 3,
                 gmean_eps = 1,
                 theta_given = NULL,
-                show_progress = TRUE) {
+                verbose = TRUE,
+                show_progress = verbose) {
   arguments <- as.list(environment())[-c(1, 2)]
   start_time <- Sys.time()
   if (is.null(cell_attr)) {
@@ -102,7 +104,7 @@ vst <- function(umi,
   }
   known_attr <- c('umi', 'gene', 'log_umi', 'log_gene', 'umi_per_gene', 'log_umi_per_gene')
   if (all(setdiff(latent_var, colnames(cell_attr)) %in% known_attr)) {
-    if (show_progress) {
+    if (verbose) {
       message('Calculating cell attributes for input UMI matrix')
     }
     tmp_attr <- data.frame(umi = colSums(umi),
@@ -133,7 +135,7 @@ vst <- function(umi,
   genes_log_gmean <- log10(row_gmean(umi, eps = gmean_eps))
 
   if (!do_regularize) {
-    if (show_progress) {
+    if (verbose) {
       message('do_regularize is set to FALSE, will use all genes')
     }
     n_genes <- NULL
@@ -175,17 +177,17 @@ vst <- function(umi,
 
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
-  if (show_progress) {
+  if (verbose) {
     message('Variance stabilizing transformation of count matrix of size ', nrow(umi), ' by ', ncol(umi))
     message('Model formula is ', model_str)
   }
 
-  model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, show_progress)
+  model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, verbose, show_progress)
 
   if (do_regularize) {
     model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
     model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
-                                     batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps, show_progress)
+                                     batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps, verbose)
     model_pars[, 'theta'] <- 10^model_pars[, 'theta']
     model_pars_fit[, 'theta'] <- 10^model_pars_fit[, 'theta']
     model_pars_outliers <- attr(model_pars_fit, 'outliers')
@@ -198,7 +200,7 @@ vst <- function(umi,
   regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), cell_attr)
 
   if (!is.null(latent_var_nonreg)) {
-    if (show_progress) {
+    if (verbose) {
       message('Estimating parameters for following non-regularized variables: ', latent_var_nonreg)
     }
     if (!is.null(batch_var)) {
@@ -207,7 +209,7 @@ vst <- function(umi,
       model_str_nonreg <- paste0('y ~ ', paste(latent_var_nonreg, collapse = ' + '))
     }
 
-    model_pars_nonreg <- get_model_pars_nonreg(genes, bin_size, model_pars_fit, regressor_data, umi, model_str_nonreg, cell_attr, show_progress)
+    model_pars_nonreg <- get_model_pars_nonreg(genes, bin_size, model_pars_fit, regressor_data, umi, model_str_nonreg, cell_attr, verbose, show_progress)
 
     regressor_data_nonreg <- model.matrix(as.formula(gsub('^y', '', model_str_nonreg)), cell_attr)
     model_pars_final <- cbind(model_pars_fit, model_pars_nonreg)
@@ -223,7 +225,7 @@ vst <- function(umi,
   }
 
   if (!residual_type == 'none') {
-    if (show_progress) {
+    if (verbose) {
       message('Second step: Get residuals using fitted parameters for ', length(x = genes), ' genes')
     }
     bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
@@ -248,7 +250,7 @@ vst <- function(umi,
       close(pb)
     }
   } else {
-    if (show_progress) {
+    if (verbose) {
       message('Skip calculation of full residual matrix')
     }
     res <- matrix(data = NA, nrow = 0, ncol = 0)
@@ -273,6 +275,7 @@ vst <- function(umi,
       warning("Will not return corrected UMI because residual type is not set to 'pearson'")
     } else {
       rv$umi_corrected <- sctransform::correct(rv, do_round = TRUE, do_pos = TRUE,
+                                               verbose = verbose,
                                                show_progress = show_progress)
       rv$umi_corrected <- as(object = rv$umi_corrected, Class = 'dgCMatrix')
     }
@@ -286,7 +289,7 @@ vst <- function(umi,
   }
 
   if (return_gene_attr) {
-    if (show_progress) {
+    if (verbose) {
       message('Calculating gene attributes')
     }
     gene_attr <- data.frame(
@@ -300,17 +303,17 @@ vst <- function(umi,
     rv[['gene_attr']] <- gene_attr
   }
 
-  if (show_progress) {
+  if (verbose) {
     message('Wall clock passed: ', capture.output(print(Sys.time() - start_time)))
   }
   return(rv)
 }
 
 
-get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, show_progress) {
+get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, verbose, show_progress) {
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
-  if (show_progress) {
+  if (verbose) {
     message('Get Negative Binomial regression parameters per gene')
     message('Using ', length(x = genes_step1), ' genes, ', length(x = cells_step1), ' cells')
   }
@@ -378,7 +381,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
   return(model_pars)
 }
 
-get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_data, umi, model_str_nonreg, cell_attr, show_progress) {
+get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_data, umi, model_str_nonreg, cell_attr, verbose, show_progress) {
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
   if (show_progress) {

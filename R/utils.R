@@ -121,7 +121,8 @@ deviance_residual <- function(y, mu, theta, wt=1) {
 #' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is vst_out$arguments$min_variance
 #' @param cell_attr Data frame of cell meta data
 #' @param bin_size Number of genes to put in each bin (to show progress)
-#' @param show_progress Whether to print progress bar
+#' @param verbose Whether to show messages; default is TRUE
+#' @param show_progress Whether to print progress bar; default is verbose
 #'
 #' @return A matrix of residuals
 #'
@@ -137,7 +138,8 @@ deviance_residual <- function(y, mu, theta, wt=1) {
 get_residuals <- function(vst_out, umi, residual_type = 'pearson',
                           res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                           min_variance = vst_out$arguments$min_variance,
-                          cell_attr = vst_out$cell_attr, bin_size = 256, show_progress = TRUE) {
+                          cell_attr = vst_out$cell_attr, bin_size = 256,
+                          verbose = TRUE, show_progress = verbose) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
   if (!is.null(dim(vst_out$model_pars_nonreg))) {
@@ -147,7 +149,7 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
   }
 
   genes <- rownames(umi)[rownames(umi) %in% rownames(model_pars)]
-  if (show_progress) {
+  if (verbose) {
     message('Calculating residuals of type ', residual_type, ' for ', length(genes), ' genes')
   }
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
@@ -187,7 +189,8 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
 #' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is vst_out$arguments$min_variance
 #' @param cell_attr Data frame of cell meta data
 #' @param bin_size Number of genes to put in each bin (to show progress)
-#' @param show_progress Whether to print progress bar
+#' @param verbose Whether to show messages; default is TRUE
+#' @param show_progress Whether to print progress bar; default is same as verbose
 #'
 #' @return A vector of residual variances (after clipping)
 #'
@@ -202,7 +205,8 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
 get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
                              res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                              min_variance = vst_out$arguments$min_variance,
-                             cell_attr = vst_out$cell_attr, bin_size = 256, show_progress = TRUE) {
+                             cell_attr = vst_out$cell_attr, bin_size = 256,
+                             verbose = TRUE, show_progress = verbose) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
   if (!is.null(dim(vst_out$model_pars_nonreg))) {
@@ -212,7 +216,7 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
   }
 
   genes <- rownames(umi)[rownames(umi) %in% rownames(model_pars)]
-  if (show_progress) {
+  if (verbose) {
     message('Calculating variance for residuals of type ', residual_type, ' for ', length(genes), ' genes')
   }
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
@@ -250,7 +254,8 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
 #' @param cell_attr Data frame of cell meta data
 #' @param use_nonreg Use the non-regularized parameter estimates; boolean; default is FALSE
 #' @param bin_size Number of genes to put in each bin (to show progress)
-#' @param show_progress Whether to print progress bar
+#' @param verbose Whether to show messages; default is TRUE
+#' @param show_progress Whether to print progress bar; default is same as verbose
 #'
 #' @return A named vector of variances (the average across all cells), one entry per gene.
 #'
@@ -262,7 +267,8 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
 #' res_var <- get_model_var(vst_out)
 #' }
 #'
-get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = FALSE, bin_size = 256, show_progress = TRUE) {
+get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = FALSE,
+                          bin_size = 256, verbose = TRUE, show_progress = verbose) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   if (use_nonreg) {
     model_pars <- vst_out$model_pars
@@ -276,7 +282,7 @@ get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = F
   }
 
   genes <- rownames(model_pars)
-  if (show_progress) {
+  if (verbose) {
     message('Calculating model variance for ', length(genes), ' genes')
   }
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)

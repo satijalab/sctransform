@@ -6,7 +6,8 @@
 \usage{
 compare_expression(x, umi, group, val1, val2, method = "LRT",
   bin_size = 256, cell_attr = x$cell_attr, y = x$y, min_cells = 5,
-  weighted = TRUE, randomize = FALSE, show_progress = TRUE)
+  weighted = TRUE, randomize = FALSE, verbose = TRUE,
+  show_progress = verbose)
 }
 \arguments{
 \item{x}{A list that provides model parameters and optionally meta data; use output of vst function}
@@ -33,7 +34,9 @@ compare_expression(x, umi, group, val1, val2, method = "LRT",
 
 \item{randomize}{Boolean indicating whether to shuffle group labels - only set to TRUE when testing methods}
 
-\item{show_progress}{Show progress bar}
+\item{verbose}{Whether to show messages; default is TRUE}
+
+\item{show_progress}{Show progress bar; default is same as verbose}
 }
 \value{
 Data frame of results

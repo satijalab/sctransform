@@ -12,7 +12,8 @@
 #' @param min_cells A gene has to be detected in at least this many cells in at least one of the groups being compared to be tested
 #' @param weighted Balance the groups by using the appropriate weights
 #' @param randomize Boolean indicating whether to shuffle group labels - only set to TRUE when testing methods
-#' @param show_progress Show progress bar
+#' @param verbose Whether to show messages; default is TRUE
+#' @param show_progress Show progress bar; default is same as verbose
 #'
 #' @return Data frame of results
 #'
@@ -30,7 +31,8 @@
 #'
 compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_size = 256,
                                cell_attr = x$cell_attr, y = x$y, min_cells = 5,
-                               weighted = TRUE, randomize = FALSE, show_progress = TRUE) {
+                               weighted = TRUE, randomize = FALSE, verbose = TRUE,
+                               show_progress = verbose) {
   if (! method %in% c('LRT', 'LRT_free', 'LRT_reg', 't_test')) {
     stop('method needs to be either \'LRT\', \'LRT_free\', \'LRT_reg\' or \'t_test\'')
   }
@@ -61,7 +63,7 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   cells_group1 <- rowSums(umi[genes, sel1] > 0)
   cells_group2 <- rowSums(umi[genes, sel2] > 0)
   genes <- genes[cells_group1 >= min_cells | cells_group2 >= min_cells]
-  if (show_progress) {
+  if (verbose) {
     message('Testing for differential gene expression between two groups')
     message('Cells in group 1: ', length(sel1))
     message('Cells in group 2: ', length(sel2))
@@ -198,7 +200,8 @@ compare_expression_full <- function(umi, cell_attr, group, val1, val2,
                                     min_cells = 3,
                                     bw_adjust = 2,
                                     min_frac = 0,
-                                    show_progress = TRUE) {
+                                    verbose = TRUE,
+                                    show_progress = verbose) {
   sel1 <- which(group %in% val1)
   sel2 <- which(group %in% val2)
 
@@ -226,6 +229,7 @@ compare_expression_full <- function(umi, cell_attr, group, val1, val2,
                   return_gene_attr = FALSE,
                   residual_type = 'deviance',
                   bw_adjust = bw_adjust,
+                  verbose = verbose,
                   show_progress = show_progress)
 
   vst.out1 <- vst(umi = umi[, sel1],
@@ -245,6 +249,7 @@ compare_expression_full <- function(umi, cell_attr, group, val1, val2,
                   residual_type = 'deviance',
                   bw_adjust = bw_adjust,
                   theta_given = vst.out0$model_pars_fit[, 'theta'],
+                  verbose = verbose,
                   show_progress = show_progress)
 
   vst.out2 <- vst(umi = umi[, sel2],
@@ -264,6 +269,7 @@ compare_expression_full <- function(umi, cell_attr, group, val1, val2,
                   residual_type = 'deviance',
                   bw_adjust = bw_adjust,
                   theta_given = vst.out0$model_pars_fit[, 'theta'],
+                  verbose = verbose,
                   show_progress = show_progress)
 
   genes <- union(rownames(vst.out1$y), rownames(vst.out2$y))

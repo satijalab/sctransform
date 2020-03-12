@@ -2,6 +2,8 @@
 #'
 #' @param vst_out The output of a vst run
 #' @param show_var Whether to show the average model variance; boolean; default is FALSE
+#' @param verbose Whether to show messages; default is FALSE
+#' @param show_progress Whether to show progress bar; default is FALSE
 #'
 #' @return A ggplot object
 #'
@@ -16,7 +18,8 @@
 #' plot_model_pars(vst_out)
 #' }
 #'
-plot_model_pars <- function(vst_out, show_var = FALSE) {
+plot_model_pars <- function(vst_out, show_var = FALSE, verbose = FALSE,
+                            show_progress = FALSE) {
   if (! 'gmean' %in% names(vst_out$gene_attr)) {
     stop('vst_out must contain a data frame named gene_attr with a column named gmean (perhaps call vst with return_gene_attr = TRUE)')
   }
@@ -26,7 +29,7 @@ plot_model_pars <- function(vst_out, show_var = FALSE) {
   colnames(mp)[1] <- 'log10(theta)'
   ordered_par_names <- colnames(mp)[c(2:ncol(mp), 1)]
   if (show_var) {
-    mp <- cbind(mp, log10(get_model_var(vst_out, use_nonreg = TRUE)))
+    mp <- cbind(mp, log10(get_model_var(vst_out, use_nonreg = TRUE, verbose = verbose, show_progress = show_progress)))
     colnames(mp)[ncol(mp)] <- 'log10(model var)'
     ordered_par_names <- c(ordered_par_names, 'log10(model var)')
   }
@@ -34,7 +37,7 @@ plot_model_pars <- function(vst_out, show_var = FALSE) {
   mp_fit[, 1] <- log10(mp_fit[, 1])
   colnames(mp_fit)[1] <- 'log10(theta)'
   if (show_var) {
-    mp_fit <- cbind(mp_fit, log10(get_model_var(vst_out, use_nonreg = FALSE)))
+    mp_fit <- cbind(mp_fit, log10(get_model_var(vst_out, use_nonreg = FALSE, verbose = verbose, show_progress = show_progress)))
     colnames(mp_fit)[ncol(mp_fit)] <- 'log10(model var)'
   }
   mpnr <- vst_out$model_pars_nonreg

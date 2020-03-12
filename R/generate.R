@@ -2,7 +2,7 @@
 #'
 #' Generate data from regularized models. This generates data from the background,
 #' i.e. no residuals are added to the simulated data. The cell attributes for the
-#' generated cells are sampled from the input with replacment.
+#' generated cells are sampled from the input with replacement.
 #'
 #' @param vst_out A list that provides model parameters and optionally meta data; use output of vst function
 #' @param genes The gene names for which to generate data; default is rownames(vst_out$model_pars_fit)

@@ -62,7 +62,8 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @param cell_attr Provide cell meta data holding latent data info
 #' @param do_round Round the result to integers
 #' @param do_pos Set negative values in the result to zero
-#' @param show_progress Whether to print progress bar
+#' @param verbose Whether to show messages; default is TRUE
+#' @param show_progress Whether to print progress bar; default is same as verbose
 #'
 #' @return Corrected data as UMI counts
 #'
@@ -74,8 +75,8 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' umi_corrected <- correct(vst_out)
 #' }
 #'
-correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_pos = TRUE,
-                    show_progress = TRUE) {
+correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
+                    do_pos = TRUE, verbose = TRUE, show_progress = verbose) {
   if (is.character(data)) {
     data <- x[[data]]
   }
@@ -87,8 +88,10 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
   bin_size <- x$arguments$bin_size
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
-  if (show_progress) {
+  if (verbose) {
     message('Computing corrected count matrix for ', length(genes), ' genes')
+  }
+  if (show_progress) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   corrected_data <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
@@ -126,7 +129,8 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
 #' @param x A list that provides model parameters and optionally meta data; use output of vst function
 #' @param umi The count matrix
 #' @param cell_attr Provide cell meta data holding latent data info
-#' @param show_progress Whether to print progress bar
+#' @param verbose Whether to show messages; default is TRUE
+#' @param show_progress Whether to print progress bar; default is same as verbose
 #'
 #' @return Corrected data as UMI counts
 #'
@@ -140,7 +144,8 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE, do_
 #' umi_corrected <- correct_counts(vst_out, pbmc)
 #' }
 #'
-correct_counts <- function(x, umi, cell_attr = x$cell_attr, show_progress = TRUE) {
+correct_counts <- function(x, umi, cell_attr = x$cell_attr, verbose = TRUE,
+                           show_progress = verbose) {
   regressor_data_orig <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
   # when correcting, set all latent variables to median values
   cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
@@ -150,8 +155,10 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, show_progress = TRUE
   bin_size <- x$arguments$bin_size
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
-  if (show_progress) {
+  if (verbose) {
     message('Computing corrected UMI count matrix')
+  }
+  if (show_progress) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   #corrected_data <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
