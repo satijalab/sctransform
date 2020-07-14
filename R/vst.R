@@ -86,6 +86,7 @@ vst <- function(umi,
                 res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                 bin_size = 256,
                 min_cells = 5,
+                residual_genes = NULL, 
                 residual_type = 'pearson',
                 return_cell_attr = FALSE,
                 return_gene_attr = TRUE,
@@ -127,6 +128,7 @@ vst <- function(umi,
 
   # we will generate output for all genes detected in at least min_cells cells
   # but for the first step of parameter estimation we might use only a subset of genes
+  
   genes_cell_count <- rowSums(umi > 0)
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
@@ -166,6 +168,14 @@ vst <- function(umi,
     genes_step1 <- sample(x = genes_step1, size = n_genes, prob = sampling_prob)
     genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
   }
+
+  if( !is.null(residual_genes)){
+    genes <- intersect(residual_genes, genes)
+    genes <- unique(c(genes_step1, genes))
+    umi <- umi[genes, ]
+    genes_log_gmean <-  genes_log_gmean[genes]
+  }
+
 
   if (!is.null(batch_var)) {
     model_str <- paste0('y ~ (', paste(latent_var, collapse = ' + '), ') : ', batch_var, ' + ', batch_var, ' + 0')
@@ -223,6 +233,9 @@ vst <- function(umi,
   }
 
   if (!residual_type == 'none') {
+    if(!is.null(residual_genes)){
+      genes <- intersect(residual_genes, genes)
+    }
     if (show_progress) {
       message('Second step: Get residuals using fitted parameters for ', length(x = genes), ' genes')
     }
@@ -253,7 +266,6 @@ vst <- function(umi,
     }
     res <- matrix(data = NA, nrow = 0, ncol = 0)
   }
-
   rv <- list(y = res,
              model_str = model_str,
              model_pars = model_pars,
