@@ -265,7 +265,7 @@ vst <- function(umi,
     }
     res <- matrix(data = NA, nrow = 0, ncol = 0)
   }
-  
+
   rv <- list(y = res,
              model_str = model_str,
              model_pars = model_pars,
