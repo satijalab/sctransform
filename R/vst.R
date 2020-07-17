@@ -102,8 +102,13 @@ vst <- function(umi,
   if (is.null(cell_attr)) {
     cell_attr <- data.frame(row.names = colnames(umi))
   }
+
+  # these are the cell attributes that we know how to calculate given the count matrix
   known_attr <- c('umi', 'gene', 'log_umi', 'log_gene', 'umi_per_gene', 'log_umi_per_gene')
-  if (all(setdiff(latent_var, colnames(cell_attr)) %in% known_attr)) {
+  # these are the missing cell attributes specified in latent_var
+  missing_attr <- setdiff(latent_var, colnames(cell_attr))
+  # if there are missing attributes and we know how to calculate them, do it here
+  if (length(missing_attr) > 0 & all(missing_attr %in% known_attr)) {
     if (verbose) {
       message('Calculating cell attributes for input UMI matrix')
     }
