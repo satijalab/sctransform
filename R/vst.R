@@ -128,7 +128,6 @@ vst <- function(umi,
 
   # we will generate output for all genes detected in at least min_cells cells
   # but for the first step of parameter estimation we might use only a subset of genes
-  
   genes_cell_count <- rowSums(umi > 0)
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
@@ -266,6 +265,7 @@ vst <- function(umi,
     }
     res <- matrix(data = NA, nrow = 0, ncol = 0)
   }
+  
   rv <- list(y = res,
              model_str = model_str,
              model_pars = model_pars,
