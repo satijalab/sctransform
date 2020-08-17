@@ -4,8 +4,14 @@
 \alias{smooth_via_pca}
 \title{Smooth data by PCA}
 \usage{
-smooth_via_pca(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100,
-  do_plot = FALSE, scale. = FALSE)
+smooth_via_pca(
+  x,
+  elbow_th = 0.025,
+  dims_use = NULL,
+  max_pc = 100,
+  do_plot = FALSE,
+  scale. = FALSE
+)
 }
 \arguments{
 \item{x}{A data matrix with genes as rows and cells as columns}

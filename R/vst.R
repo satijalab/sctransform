@@ -66,6 +66,7 @@ NULL
 #' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var bw.SJ
 #' @importFrom utils txtProgressBar setTxtProgressBar capture.output
 #' @importFrom methods as
+#' @importFrom glmGamPoi glm_gp
 #'
 #' @export
 #'
@@ -181,7 +182,12 @@ vst <- function(umi,
   }
 
   model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, show_progress)
-
+  
+  # DEAL WITH 0 VALUES
+  model_pars <- model_pars[model_pars[,1]!=Inf,]
+  genes_step1 <- rownames(model_pars)
+  genes_log_gmean_step1 <- genes_log_gmean_step1[genes_step1]
+  
   if (do_regularize) {
     model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
     model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
@@ -319,6 +325,16 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   model_pars <- list()
+  
+  if (method == 'glmGamPoi') {
+    model_matrix <- cbind(1,data_step1$log_umi)
+    fit <- glm_gp(data = as.matrix(umi[genes_step1,cells_step1,drop=FALSE]),design = model_matrix,size_factors = FALSE)
+    model_pars <- as.matrix(data.frame(cbind(1 / fit$overdispersions),fit$Beta))
+    rownames(model_pars) <- genes_step1
+    colnames(model_pars) <- c('theta', '(Intercept)',"log_umi")
+    return(model_pars)
+  }
+  
   for (i in 1:max_bin) {
     genes_bin_regress <- genes_step1[bin_ind == i]
     umi_bin <- as.matrix(umi[genes_bin_regress, cells_step1, drop=FALSE])
