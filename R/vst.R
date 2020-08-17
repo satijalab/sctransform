@@ -325,10 +325,11 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   model_pars <- list()
-  
   if (method == 'glmGamPoi') {
-    model_matrix <- cbind(1,data_step1$log_umi)
-    fit <- glm_gp(data = as.matrix(umi[genes_step1,cells_step1,drop=FALSE]),design = model_matrix,size_factors = FALSE)
+    model_matrix <- cbind(1, data_step1$log_umi)
+    fit <- glm_gp(data = as.matrix(umi[genes_step1,cells_step1,drop=FALSE]), 
+                  design = model_matrix, 
+                  size_factors = FALSE)
     model_pars <- as.matrix(data.frame(cbind(1 / fit$overdispersions),fit$Beta))
     rownames(model_pars) <- genes_step1
     colnames(model_pars) <- c('theta', '(Intercept)',"log_umi")
@@ -377,6 +378,10 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
                                        fit$theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
                                      }
                                      return(c(fit$theta, fit$coefficients))
+                                   }
+                                   if (method == "glmGamPoi") {
+                                     
+                                     
                                    }
                                  }
                                )

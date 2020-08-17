@@ -14,6 +14,8 @@ BugReports: https://github.com/ChristophH/sctransform/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
+Remotes:
+  const-ae/glmGamPoi
 Depends: R (>= 3.0.2)
 Imports:
   MASS,
@@ -22,7 +24,8 @@ Imports:
   future.apply,
   ggplot2,
   reshape2,
-  gridExtra
+  gridExtra, 
+  glmGamPoi
 LinkingTo: Rcpp (>= 0.11.0), RcppEigen
 Suggests:
   irlba,
