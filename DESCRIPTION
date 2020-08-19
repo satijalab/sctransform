@@ -24,11 +24,11 @@ Imports:
   future.apply,
   ggplot2,
   reshape2,
-  gridExtra, 
-  glmGamPoi
+  gridExtra
 LinkingTo: Rcpp (>= 0.11.0), RcppEigen
 Suggests:
   irlba,
   testthat,
-  knitr
+  knitr, 
+  glmGamPoi
 RoxygenNote: 7.1.1
