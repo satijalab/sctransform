@@ -43,7 +43,8 @@ plot_model_pars <- function(vst_out, show_var = FALSE, verbose = FALSE,
   mpnr <- vst_out$model_pars_nonreg
   if (!is.null(dim(mpnr))) {
     colnames(mpnr) <- paste0('nonreg:', colnames(mpnr))
-    mp_fit <- cbind(mp_fit, mpnr)
+    mp <- cbind(mp, mpnr)
+    ordered_par_names <- c(ordered_par_names, colnames(mpnr))
   }
   # show estimated and regularized parameters
   df <- melt(mp, varnames = c('gene', 'parameter'), as.is = TRUE)
