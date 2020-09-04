@@ -17,6 +17,48 @@ row_gmean <- function(x, eps = 1) {
   stop('matrix x needs to be of class matrix or dgCMatrix')
 }
 
+#' Geometric mean per row grouped by a factor
+#'
+#' @param x matrix of class \code{dgCMatrix}
+#' @param group factor to group the columns by (will be converted using \code{as.factor} and \code{droplevels})
+#' @param eps small value to add to x to avoid log(0); default is 1
+#'
+#' @return matrix of geometric means
+row_gmean_grouped <- function(x, group, eps = 1) {
+  group <- droplevels(as.factor(group))
+  if (inherits(x = x, what = 'dgCMatrix')) {
+    ret <- row_gmean_grouped_dgcmatrix(x = x@x, i = x@i, p = x@p,
+                                       group = as.integer(group) - 1,
+                                       groups = length(levels(group)),
+                                       rows = nrow(x),
+                                       eps = eps)
+    rownames(ret) <- rownames(x)
+    colnames(ret) <- levels(group)
+    return(ret)
+  }
+  stop('matrix x needs to be of class dgCMatrix')
+}
+
+#' Arithmetic mean per row grouped by a factor
+#'
+#' @param x matrix of class \code{dgCMatrix}
+#' @param group factor to group the columns by (will be converted using \code{as.factor} and \code{droplevels})
+#'
+#' @return matrix of arithmetic means
+row_mean_grouped <- function(x, group) {
+  group <- droplevels(as.factor(group))
+  if (inherits(x = x, what = 'dgCMatrix')) {
+    ret <- row_mean_grouped_dgcmatrix(x = x@x, i = x@i, p = x@p,
+                                      group = as.integer(group) - 1,
+                                      groups = length(levels(group)),
+                                      rows = nrow(x))
+    rownames(ret) <- rownames(x)
+    colnames(ret) <- levels(group)
+    return(ret)
+  }
+  stop('matrix x needs to be of class dgCMatrix')
+}
+
 #' Variance per row
 #'
 #' @param x matrix of class \code{matrix} or \code{dgCMatrix}

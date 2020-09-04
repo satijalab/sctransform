@@ -17,6 +17,32 @@ NumericVector row_mean_dgcmatrix(NumericVector x, IntegerVector i, int rows, int
 }
 
 // [[Rcpp::export]]
+NumericMatrix row_mean_grouped_dgcmatrix(NumericVector x, IntegerVector i, IntegerVector p,
+                                         IntegerVector group, int groups, int rows) {
+  NumericMatrix ret(rows, groups);
+  IntegerVector groupsize(groups, 0);
+
+  int col = 0;
+  for (int k=0; k<x.length(); ++k) {
+    while (k>=p[col]) {
+      ++col;
+    }
+    ret(i[k], group[col-1]) += x[k];
+  }
+
+  for (int k=0; k<group.length(); ++k) {
+    ++groupsize[group[k]];
+  }
+
+  for (int j=0; j<groups; ++j) {
+    for (int k=0; k<rows; ++k) {
+      ret(k, j) /= groupsize[j];
+    }
+  }
+  return ret;
+}
+
+// [[Rcpp::export]]
 NumericVector row_gmean_dgcmatrix(NumericVector x, IntegerVector i, int rows, int cols, double eps) {
   NumericVector ret(rows, 0.0);
   IntegerVector nzero(rows, cols);
@@ -30,6 +56,38 @@ NumericVector row_gmean_dgcmatrix(NumericVector x, IntegerVector i, int rows, in
   return ret;
 }
 
+// [[Rcpp::export]]
+NumericMatrix row_gmean_grouped_dgcmatrix(NumericVector x, IntegerVector i, IntegerVector p,
+                                         IntegerVector group, int groups, int rows, double eps) {
+  NumericMatrix ret(rows, groups);
+  IntegerMatrix nzero(rows, groups);
+  IntegerVector groupsize(groups, 0);
+
+  for (int k=0; k<group.length(); ++k) {
+    ++groupsize[group[k]];
+  }
+
+  for (int k=0; k<groups; ++k) {
+    IntegerMatrix::Column col = nzero(_, k);
+    col = col + groupsize[k];
+  }
+
+  int col = 0;
+  for (int k=0; k<x.length(); ++k) {
+    while (k>=p[col]) {
+      ++col;
+    }
+    ret(i[k], group[col-1]) += log(x[k] + eps);
+    nzero(i[k], group[col-1]) -= 1;
+  }
+
+  for (int j=0; j<groups; ++j) {
+    for (int k=0; k<rows; ++k) {
+      ret(k, j) = exp((ret(k, j) + log(eps) * nzero(k, j)) / groupsize[j]) - eps;
+    }
+  }
+  return ret;
+}
 
 // [[Rcpp::export]]
 NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int cols) {

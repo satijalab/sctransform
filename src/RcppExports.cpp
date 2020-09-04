@@ -20,6 +20,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// row_mean_grouped_dgcmatrix
+NumericMatrix row_mean_grouped_dgcmatrix(NumericVector x, IntegerVector i, IntegerVector p, IntegerVector group, int groups, int rows);
+RcppExport SEXP _sctransform_row_mean_grouped_dgcmatrix(SEXP xSEXP, SEXP iSEXP, SEXP pSEXP, SEXP groupSEXP, SEXP groupsSEXP, SEXP rowsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type i(iSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type p(pSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< int >::type groups(groupsSEXP);
+    Rcpp::traits::input_parameter< int >::type rows(rowsSEXP);
+    rcpp_result_gen = Rcpp::wrap(row_mean_grouped_dgcmatrix(x, i, p, group, groups, rows));
+    return rcpp_result_gen;
+END_RCPP
+}
 // row_gmean_dgcmatrix
 NumericVector row_gmean_dgcmatrix(NumericVector x, IntegerVector i, int rows, int cols, double eps);
 RcppExport SEXP _sctransform_row_gmean_dgcmatrix(SEXP xSEXP, SEXP iSEXP, SEXP rowsSEXP, SEXP colsSEXP, SEXP epsSEXP) {
@@ -32,6 +48,23 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type cols(colsSEXP);
     Rcpp::traits::input_parameter< double >::type eps(epsSEXP);
     rcpp_result_gen = Rcpp::wrap(row_gmean_dgcmatrix(x, i, rows, cols, eps));
+    return rcpp_result_gen;
+END_RCPP
+}
+// row_gmean_grouped_dgcmatrix
+NumericMatrix row_gmean_grouped_dgcmatrix(NumericVector x, IntegerVector i, IntegerVector p, IntegerVector group, int groups, int rows, double eps);
+RcppExport SEXP _sctransform_row_gmean_grouped_dgcmatrix(SEXP xSEXP, SEXP iSEXP, SEXP pSEXP, SEXP groupSEXP, SEXP groupsSEXP, SEXP rowsSEXP, SEXP epsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type i(iSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type p(pSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< int >::type groups(groupsSEXP);
+    Rcpp::traits::input_parameter< int >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< double >::type eps(epsSEXP);
+    rcpp_result_gen = Rcpp::wrap(row_gmean_grouped_dgcmatrix(x, i, p, group, groups, rows, eps));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -74,7 +107,9 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_sctransform_row_mean_dgcmatrix", (DL_FUNC) &_sctransform_row_mean_dgcmatrix, 4},
+    {"_sctransform_row_mean_grouped_dgcmatrix", (DL_FUNC) &_sctransform_row_mean_grouped_dgcmatrix, 6},
     {"_sctransform_row_gmean_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_dgcmatrix, 5},
+    {"_sctransform_row_gmean_grouped_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_grouped_dgcmatrix, 7},
     {"_sctransform_row_var_dgcmatrix", (DL_FUNC) &_sctransform_row_var_dgcmatrix, 4},
     {"_sctransform_row_var_dense_d", (DL_FUNC) &_sctransform_row_var_dense_d, 1},
     {"_sctransform_row_var_dense_i", (DL_FUNC) &_sctransform_row_var_dense_i, 1},

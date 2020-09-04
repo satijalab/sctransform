@@ -5,8 +5,16 @@ row_mean_dgcmatrix <- function(x, i, rows, cols) {
     .Call('_sctransform_row_mean_dgcmatrix', PACKAGE = 'sctransform', x, i, rows, cols)
 }
 
+row_mean_grouped_dgcmatrix <- function(x, i, p, group, groups, rows) {
+    .Call('_sctransform_row_mean_grouped_dgcmatrix', PACKAGE = 'sctransform', x, i, p, group, groups, rows)
+}
+
 row_gmean_dgcmatrix <- function(x, i, rows, cols, eps) {
     .Call('_sctransform_row_gmean_dgcmatrix', PACKAGE = 'sctransform', x, i, rows, cols, eps)
+}
+
+row_gmean_grouped_dgcmatrix <- function(x, i, p, group, groups, rows, eps) {
+    .Call('_sctransform_row_gmean_grouped_dgcmatrix', PACKAGE = 'sctransform', x, i, p, group, groups, rows, eps)
 }
 
 row_var_dgcmatrix <- function(x, i, rows, cols) {
