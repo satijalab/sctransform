@@ -341,6 +341,22 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
   for (i in 1:max_bin) {
     genes_bin_regress <- genes_step1[bin_ind == i]
     umi_bin <- as.matrix(umi[genes_bin_regress, cells_step1, drop=FALSE])
+
+    # special block for the non-parallelized version of glmGamPoi
+    if (method == "glmGamPoi" & (future::nbrOfWorkers() < 2 | !future::supportsMulticore())) {
+      fit <- glmGamPoi::glm_gp(data = umi_bin,
+                               design = as.formula(gsub("y", "", model_str)),
+                               col_data = data_step1,
+                               size_factors = FALSE)
+      fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-5)
+      colnames(fit$Beta)[1] <- "(Intercept)"
+      model_pars[[i]] <- cbind(fit$theta, fit$Beta)
+      if (show_progress) {
+        setTxtProgressBar(pb, i)
+      }
+      next
+    }
+
     model_pars[[i]] <- do.call(rbind,
                                future_lapply(
                                  X = genes_bin_regress,
