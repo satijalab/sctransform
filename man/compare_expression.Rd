@@ -4,10 +4,22 @@
 \alias{compare_expression}
 \title{Compare gene expression between two groups}
 \usage{
-compare_expression(x, umi, group, val1, val2, method = "LRT",
-  bin_size = 256, cell_attr = x$cell_attr, y = x$y, min_cells = 5,
-  weighted = TRUE, randomize = FALSE, verbose = TRUE,
-  show_progress = verbose)
+compare_expression(
+  x,
+  umi,
+  group,
+  val1,
+  val2,
+  method = "LRT",
+  bin_size = 256,
+  cell_attr = x$cell_attr,
+  y = x$y,
+  min_cells = 5,
+  weighted = TRUE,
+  randomize = FALSE,
+  verbose = TRUE,
+  show_progress = verbose
+)
 }
 \arguments{
 \item{x}{A list that provides model parameters and optionally meta data; use output of vst function}

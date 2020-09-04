@@ -4,8 +4,12 @@
 \alias{plot_model_pars}
 \title{Plot estimated and fitted model parameters}
 \usage{
-plot_model_pars(vst_out, show_var = FALSE, verbose = FALSE,
-  show_progress = FALSE)
+plot_model_pars(
+  vst_out,
+  show_var = FALSE,
+  verbose = FALSE,
+  show_progress = FALSE
+)
 }
 \arguments{
 \item{vst_out}{The output of a vst run}

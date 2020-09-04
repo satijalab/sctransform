@@ -4,9 +4,14 @@
 \alias{get_model_var}
 \title{Return average variance under negative binomial model}
 \usage{
-get_model_var(vst_out, cell_attr = vst_out$cell_attr,
-  use_nonreg = FALSE, bin_size = 256, verbose = TRUE,
-  show_progress = verbose)
+get_model_var(
+  vst_out,
+  cell_attr = vst_out$cell_attr,
+  use_nonreg = FALSE,
+  bin_size = 256,
+  verbose = TRUE,
+  show_progress = verbose
+)
 }
 \arguments{
 \item{vst_out}{The output of a vst run}

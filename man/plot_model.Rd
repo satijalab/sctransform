@@ -4,11 +4,22 @@
 \alias{plot_model}
 \title{Plot observed UMI counts and model}
 \usage{
-plot_model(x, umi, goi, x_var = x$arguments$latent_var[1],
-  cell_attr = x$cell_attr, do_log = TRUE, show_fit = TRUE,
-  show_nr = FALSE, plot_residual = FALSE, batches = NULL,
-  as_poisson = FALSE, arrange_vertical = TRUE, show_density = TRUE,
-  gg_cmds = NULL)
+plot_model(
+  x,
+  umi,
+  goi,
+  x_var = x$arguments$latent_var[1],
+  cell_attr = x$cell_attr,
+  do_log = TRUE,
+  show_fit = TRUE,
+  show_nr = FALSE,
+  plot_residual = FALSE,
+  batches = NULL,
+  as_poisson = FALSE,
+  arrange_vertical = TRUE,
+  show_density = TRUE,
+  gg_cmds = NULL
+)
 }
 \arguments{
 \item{x}{The output of a vst run}

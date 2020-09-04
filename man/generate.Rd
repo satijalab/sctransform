@@ -4,8 +4,12 @@
 \alias{generate}
 \title{Generate data from regularized models.}
 \usage{
-generate(vst_out, genes = rownames(vst_out$model_pars_fit),
-  cell_attr = vst_out$cell_attr, n_cells = nrow(cell_attr))
+generate(
+  vst_out,
+  genes = rownames(vst_out$model_pars_fit),
+  cell_attr = vst_out$cell_attr,
+  n_cells = nrow(cell_attr)
+)
 }
 \arguments{
 \item{vst_out}{A list that provides model parameters and optionally meta data; use output of vst function}

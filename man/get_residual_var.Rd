@@ -4,11 +4,17 @@
 \alias{get_residual_var}
 \title{Return variance of residuals of regularized models}
 \usage{
-get_residual_var(vst_out, umi, residual_type = "pearson",
+get_residual_var(
+  vst_out,
+  umi,
+  residual_type = "pearson",
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
   min_variance = vst_out$arguments$min_variance,
-  cell_attr = vst_out$cell_attr, bin_size = 256, verbose = TRUE,
-  show_progress = verbose)
+  cell_attr = vst_out$cell_attr,
+  bin_size = 256,
+  verbose = TRUE,
+  show_progress = verbose
+)
 }
 \arguments{
 \item{vst_out}{The output of a vst run}

@@ -4,8 +4,13 @@
 \alias{correct_counts}
 \title{Correct data by setting all latent factors to their median values and reversing the regression model}
 \usage{
-correct_counts(x, umi, cell_attr = x$cell_attr, verbose = TRUE,
-  show_progress = verbose)
+correct_counts(
+  x,
+  umi,
+  cell_attr = x$cell_attr,
+  verbose = TRUE,
+  show_progress = verbose
+)
 }
 \arguments{
 \item{x}{A list that provides model parameters and optionally meta data; use output of vst function}
