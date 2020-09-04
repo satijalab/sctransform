@@ -44,7 +44,7 @@ vst(
 
 \item{n_cells}{Number of cells to use when estimating parameters (default uses all cells)}
 
-\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given'}
+\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'}
 
 \item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).}
 
@@ -110,6 +110,8 @@ model in a second call to glm with
 \code{family = MASS::negative.binomial(theta = theta)}.
 If \code{method} is set to 'nb', coefficients and theta are estimated by a single call to
 \code{MASS::glm.nb}.
+If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
+\code{glmGamPoi::glm_gp}.
 }
 
 \examples{

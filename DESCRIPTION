@@ -27,6 +27,7 @@ LinkingTo: Rcpp (>= 0.11.0), RcppEigen
 Suggests:
   irlba,
   testthat,
-  knitr
-RoxygenNote: 7.1.0
+  knitr,
+  glmGamPoi
+RoxygenNote: 7.1.1
 VignetteBuilder: knitr

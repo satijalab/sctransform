@@ -17,7 +17,7 @@ NULL
 #' @param latent_var_nonreg The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
-#' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given'
+#' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
 #' @param bin_size Number of genes to put in each bin (to show progress)
@@ -60,6 +60,8 @@ NULL
 #' \code{family = MASS::negative.binomial(theta = theta)}.
 #' If \code{method} is set to 'nb', coefficients and theta are estimated by a single call to
 #' \code{MASS::glm.nb}.
+#' If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
+#' \code{glmGamPoi::glm_gp}.
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
@@ -97,6 +99,15 @@ vst <- function(umi,
                 theta_given = NULL,
                 verbose = TRUE,
                 show_progress = verbose) {
+
+  # Check for suggested package
+  if (method == "glmGamPoi") {
+    glmGamPoi_check <- requireNamespace("glmGamPoi", quietly = TRUE)
+    if (!glmGamPoi_check){
+      stop('Please install the glmGamPoi package. See https://github.com/const-ae/glmGamPoi for details.')
+    }
+  }
+
   arguments <- as.list(environment())[-c(1, 2)]
   start_time <- Sys.time()
   if (is.null(cell_attr)) {
@@ -369,6 +380,18 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
                                        fit$theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
                                      }
                                      return(c(fit$theta, fit$coefficients))
+                                   }
+                                   if (method == "glmGamPoi") {
+                                     fit <- glmGamPoi::glm_gp(data = y,
+                                                              design = as.formula(model_str),
+                                                              col_data = data_step1,
+                                                              size_factors = FALSE)
+                                     fit$theta <- 1 / fit$overdispersions
+                                     if (is.infinite(fit$theta)) {
+                                       fit$theta <- mean(fit$Mu) / 1e-5
+                                     }
+                                     colnames(fit$Beta)[1] <- "(Intercept)"
+                                     return(cbind(fit$theta, fit$Beta))
                                    }
                                  }
                                )
