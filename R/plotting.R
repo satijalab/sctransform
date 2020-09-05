@@ -23,10 +23,11 @@ plot_model_pars <- function(vst_out, show_var = FALSE, verbose = FALSE,
   if (! 'gmean' %in% names(vst_out$gene_attr)) {
     stop('vst_out must contain a data frame named gene_attr with a column named gmean (perhaps call vst with return_gene_attr = TRUE)')
   }
-  #tmp model pars
+  # first handle the per-gene estimates
+  # transform theta to overdispersion factor
   mp <- vst_out$model_pars
-  mp[, 1] <- log10(mp[, 1])
-  colnames(mp)[1] <- 'log10(theta)'
+  mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'gmean'] / mp[, 'theta'])
+  colnames(mp)[1] <- 'log10(od_factor)'
   ordered_par_names <- colnames(mp)[c(2:ncol(mp), 1)]
   if (show_var) {
     mp <- cbind(mp, log10(get_model_var(vst_out, use_nonreg = TRUE, verbose = verbose, show_progress = show_progress)))
@@ -34,8 +35,8 @@ plot_model_pars <- function(vst_out, show_var = FALSE, verbose = FALSE,
     ordered_par_names <- c(ordered_par_names, 'log10(model var)')
   }
   mp_fit <- vst_out$model_pars_fit
-  mp_fit[, 1] <- log10(mp_fit[, 1])
-  colnames(mp_fit)[1] <- 'log10(theta)'
+  mp_fit[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp_fit), 'gmean'] / mp_fit[, 'theta'])
+  colnames(mp_fit)[1] <- 'log10(od_factor)'
   if (show_var) {
     mp_fit <- cbind(mp_fit, log10(get_model_var(vst_out, use_nonreg = FALSE, verbose = verbose, show_progress = show_progress)))
     colnames(mp_fit)[ncol(mp_fit)] <- 'log10(model var)'

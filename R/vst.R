@@ -201,11 +201,11 @@ vst <- function(umi,
   model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, verbose, show_progress)
 
   if (do_regularize) {
-    model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
+    #model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
     model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                                      batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps, verbose)
-    model_pars[, 'theta'] <- 10^model_pars[, 'theta']
-    model_pars_fit[, 'theta'] <- 10^model_pars_fit[, 'theta']
+    #model_pars[, 'theta'] <- 10^model_pars[, 'theta']
+    #model_pars_fit[, 'theta'] <- 10^model_pars_fit[, 'theta']
     model_pars_outliers <- attr(model_pars_fit, 'outliers')
   } else {
     model_pars_fit <- model_pars
@@ -460,6 +460,14 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
                            batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
                            verbose) {
   genes <- names(genes_log_gmean)
+
+  # we don't regularize theta directly, but instead transform to overdispersion factor
+  # variance of NB is mu * (1 + mu / theta)
+  # (1 + mu / theta) is what we call overdispersion factor here
+  od_factor <- log10(1 + 10^genes_log_gmean_step1 / model_pars[, 'theta'])
+  model_pars <- model_pars[, colnames(model_pars) != 'theta']
+  model_pars <- cbind(od_factor, model_pars)
+
   # look for outliers in the parameters
   # outliers are those that do not fit the overall relationship with the mean at all
   outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_gmean_step1))
@@ -485,9 +493,9 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
   model_pars_fit <- matrix(NA_real_, length(genes), ncol(model_pars),
                            dimnames = list(genes, colnames(model_pars)))
 
-  # fit / regularize theta
-  model_pars_fit[o, 'theta'] <- ksmooth(x = genes_log_gmean_step1, y = model_pars[, 'theta'],
-                                             x.points = x_points, bandwidth = bw, kernel='normal')$y
+  # fit / regularize overdispersion factor
+  model_pars_fit[o, 'od_factor'] <- ksmooth(x = genes_log_gmean_step1, y = model_pars[, 'od_factor'],
+                                            x.points = x_points, bandwidth = bw, kernel='normal')$y
 
   if (is.null(batch_var)){
     # global fit / regularization for all coefficients
@@ -520,6 +528,12 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
       }
     }
   }
+
+  # back-transform overdispersion factor to theta
+  theta <- 10^genes_log_gmean / (10^model_pars_fit[, 'od_factor'] - 1)
+  model_pars_fit <- model_pars_fit[, colnames(model_pars_fit) != 'od_factor']
+  model_pars_fit <- cbind(theta, model_pars_fit)
+
   attr(model_pars_fit, 'outliers') <- outliers
   return(model_pars_fit)
 }
