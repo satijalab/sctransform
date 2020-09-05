@@ -348,7 +348,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
                                design = as.formula(gsub("y", "", model_str)),
                                col_data = data_step1,
                                size_factors = FALSE)
-      fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-5)
+      fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-4)
       colnames(fit$Beta)[1] <- "(Intercept)"
       model_pars[[i]] <- cbind(fit$theta, fit$Beta)
       if (show_progress) {
@@ -404,7 +404,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
                                                               size_factors = FALSE)
                                      fit$theta <- 1 / fit$overdispersions
                                      if (is.infinite(fit$theta)) {
-                                       fit$theta <- mean(fit$Mu) / 1e-5
+                                       fit$theta <- mean(fit$Mu) / 1e-4
                                      }
                                      colnames(fit$Beta)[1] <- "(Intercept)"
                                      return(cbind(fit$theta, fit$Beta))
