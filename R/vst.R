@@ -399,7 +399,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
                                    }
                                    if (method == "glmGamPoi") {
                                      fit <- glmGamPoi::glm_gp(data = y,
-                                                              design = as.formula(model_str),
+                                                              design = as.formula(gsub("y", "", model_str)),
                                                               col_data = data_step1,
                                                               size_factors = FALSE)
                                      fit$theta <- 1 / fit$overdispersions
