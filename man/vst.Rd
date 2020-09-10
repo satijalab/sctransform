@@ -15,7 +15,7 @@ vst(
   method = "poisson",
   do_regularize = TRUE,
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
-  bin_size = 256,
+  bin_size = 500,
   min_cells = 5,
   residual_type = "pearson",
   return_cell_attr = FALSE,
@@ -51,7 +51,7 @@ vst(
 
 \item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))}
 
-\item{bin_size}{Number of genes to put in each bin (to show progress)}
+\item{bin_size}{Number of genes to process simultaneously; this will determine how often the progress bars are updated and how much memory is being used; default is 500}
 
 \item{min_cells}{Only use genes that have been detected in at least this many cells; default is 5}
 

@@ -20,7 +20,7 @@ NULL
 #' @param method Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
-#' @param bin_size Number of genes to put in each bin (to show progress)
+#' @param bin_size Number of genes to process simultaneously; this will determine how often the progress bars are updated and how much memory is being used; default is 500
 #' @param min_cells Only use genes that have been detected in at least this many cells; default is 5
 #' @param residual_type What type of residuals to return; can be 'pearson', 'deviance', or 'none'; default is 'pearson'
 #' @param return_cell_attr Make cell attributes part of the output; default is FALSE
@@ -91,7 +91,7 @@ vst <- function(umi,
                 method = 'poisson',
                 do_regularize = TRUE,
                 res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
-                bin_size = 256,
+                bin_size = 500,
                 min_cells = 5,
                 residual_type = 'pearson',
                 return_cell_attr = FALSE,
