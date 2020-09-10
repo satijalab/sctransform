@@ -1,8 +1,8 @@
 Package: sctransform
 Type: Package
 Title: Variance Stabilizing Transformations for Single Cell UMI Data
-Version: 0.2.1
-Authors@R: person(given = 'Christoph', family = 'Hafemeister', email = 'chafemeister@nygenome.org', role = c('aut', 'cre'), comment = c(ORCID = '0000-0001-6365-8254'))
+Version: 0.3
+Authors@R: person(given = 'Christoph', family = 'Hafemeister', email = 'christoph.hafemeister@nyu.edu', role = c('aut', 'cre'), comment = c(ORCID = '0000-0001-6365-8254'))
 Description: A normalization method for single-cell UMI count data using a 
   variance stabilizing transformation. The transformation is based on a 
   negative binomial regression model with regularized parameters. As part of the
@@ -20,6 +20,7 @@ Imports:
   Matrix,
   methods,
   future.apply,
+  future,
   ggplot2,
   reshape2,
   gridExtra
