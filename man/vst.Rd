@@ -24,6 +24,7 @@ vst(
   min_variance = -Inf,
   bw_adjust = 3,
   gmean_eps = 1,
+  theta_estimation_fun = "theta.ml",
   theta_given = NULL,
   verbose = TRUE,
   show_progress = verbose
@@ -44,7 +45,7 @@ vst(
 
 \item{n_cells}{Number of cells to use when estimating parameters (default uses all cells)}
 
-\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'}
+\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'}
 
 \item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).}
 
@@ -67,6 +68,8 @@ vst(
 \item{bw_adjust}{Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3}
 
 \item{gmean_eps}{Small value added when calculating geometric mean of a gene to avoid log(0); default is 1}
+
+\item{theta_estimation_fun}{Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' will be fast but might be biased}
 
 \item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
 
@@ -103,7 +106,10 @@ In the first step of the algorithm, per-gene glm model parameters are learned. T
 on a subset of genes and/or cells to speed things up.
 If \code{method} is set to 'poisson', glm will be called with \code{family = poisson} and
 the negative binomial theta parameter will be estimated using the response residuals in
-\code{MASS::theta.ml}.
+\code{theta_estimation_fun}.
+If \code{method} is set to 'poisson_fast', speedglm::speedglm will be called with \code{family = poisson} and
+the negative binomial theta parameter will be estimated using the response residuals in
+\code{MASS::theta.mm}.
 If \code{method} is set to 'nb_fast', glm coefficients and theta are estimated as in the
 'poisson' method, but coefficients are then re-estimated using a proper negative binomial
 model in a second call to glm with

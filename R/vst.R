@@ -17,7 +17,7 @@ NULL
 #' @param latent_var_nonreg The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
-#' @param method Method to use for initial parameter estimation; one of 'poisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'
+#' @param method Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
 #' @param bin_size Number of genes to put in each bin (to show progress)
@@ -29,6 +29,7 @@ NULL
 #' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is -Inf
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
+#' @param theta_estimation_fun Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' will be fast but might be biased
 #' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
 #' @param verbose Whether to print messages; default is TRUE
 #' @param show_progress Whether to show progress bars; default is the same value as verbose
@@ -53,7 +54,10 @@ NULL
 #' on a subset of genes and/or cells to speed things up.
 #' If \code{method} is set to 'poisson', glm will be called with \code{family = poisson} and
 #' the negative binomial theta parameter will be estimated using the response residuals in
-#' \code{MASS::theta.ml}.
+#' \code{theta_estimation_fun}.
+#' If \code{method} is set to 'poisson_fast', speedglm::speedglm will be called with \code{family = poisson} and
+#' the negative binomial theta parameter will be estimated using the response residuals in
+#' \code{MASS::theta.mm}.
 #' If \code{method} is set to 'nb_fast', glm coefficients and theta are estimated as in the
 #' 'poisson' method, but coefficients are then re-estimated using a proper negative binomial
 #' model in a second call to glm with
@@ -65,7 +69,7 @@ NULL
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
-#' @importFrom MASS theta.ml glm.nb negative.binomial
+#' @importFrom MASS theta.ml theta.md theta.mm glm.nb negative.binomial
 #' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var bw.SJ
 #' @importFrom utils txtProgressBar setTxtProgressBar capture.output
 #' @importFrom methods as
@@ -96,6 +100,7 @@ vst <- function(umi,
                 min_variance = -Inf,
                 bw_adjust = 3,
                 gmean_eps = 1,
+                theta_estimation_fun = 'theta.ml',
                 theta_given = NULL,
                 verbose = TRUE,
                 show_progress = verbose) {
@@ -105,6 +110,12 @@ vst <- function(umi,
     glmGamPoi_check <- requireNamespace("glmGamPoi", quietly = TRUE)
     if (!glmGamPoi_check){
       stop('Please install the glmGamPoi package. See https://github.com/const-ae/glmGamPoi for details.')
+    }
+  }
+  if (method == "poisson_fast") {
+    speedglm_check <- requireNamespace("speedglm", quietly = TRUE)
+    if (!speedglm_check){
+      stop('Please install the speedglm package to use the poisson_fast method.')
     }
   }
 
@@ -198,14 +209,13 @@ vst <- function(umi,
     message('Model formula is ', model_str)
   }
 
-  model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, verbose, show_progress)
+  model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1,
+                               method, data_step1, theta_given, theta_estimation_fun,
+                               verbose, show_progress)
 
   if (do_regularize) {
-    #model_pars[, 'theta'] <- log10(model_pars[, 'theta'])
     model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                                      batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps, verbose)
-    #model_pars[, 'theta'] <- 10^model_pars[, 'theta']
-    #model_pars_fit[, 'theta'] <- 10^model_pars_fit[, 'theta']
     model_pars_outliers <- attr(model_pars_fit, 'outliers')
   } else {
     model_pars_fit <- model_pars
@@ -326,7 +336,9 @@ vst <- function(umi,
 }
 
 
-get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, method, data_step1, theta_given, verbose, show_progress) {
+get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
+                           method, data_step1, theta_given, theta_estimation_fun,
+                           verbose, show_progress) {
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
   if (verbose) {
@@ -362,7 +374,10 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
       FUN = function(indices) {
         umi_bin_worker <- umi_bin[indices, , drop = FALSE]
         if (method == 'poisson') {
-          return(fit_poisson(umi = umi_bin_worker, model_str = model_str, data = data_step1))
+          return(fit_poisson(umi = umi_bin_worker, model_str = model_str, data = data_step1, theta_estimation_fun))
+        }
+        if (method == 'poisson_fast') {
+          return(fit_poisson_fast(umi = umi_bin_worker, model_str = model_str, data = data_step1))
         }
         if (method == 'nb_theta_given') {
           theta_given_bin_worker <- theta_given_bin[indices]
