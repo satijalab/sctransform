@@ -70,7 +70,7 @@ NULL
 #' @import Matrix
 #' @importFrom future.apply future_lapply
 #' @importFrom MASS theta.ml theta.md theta.mm glm.nb negative.binomial
-#' @importFrom stats glm ksmooth model.matrix as.formula approx density poisson var bw.SJ
+#' @importFrom stats glm glm.fit df.residual ksmooth model.matrix as.formula approx density poisson var bw.SJ
 #' @importFrom utils txtProgressBar setTxtProgressBar capture.output
 #' @importFrom methods as
 #'

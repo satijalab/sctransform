@@ -29,6 +29,7 @@ Suggests:
   irlba,
   testthat,
   knitr,
-  glmGamPoi
+  glmGamPoi,
+  speedglm
 RoxygenNote: 7.1.1
 VignetteBuilder: knitr
