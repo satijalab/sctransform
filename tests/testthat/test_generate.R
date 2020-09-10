@@ -7,7 +7,7 @@ test_that('generate runs and returns expected output', {
   vst_out <- vst(pbmc, return_cell_attr = TRUE)
 
   generated_data <- generate(vst_out)
-  expect_equal(c(1, 0, 0, 2, 0), generated_data['GPI', 1:5])
+  expect_equal(c(2, 0, 0, 0, 0), generated_data['GPI', 1:5])
 
   genes <- sample(x = rownames(vst_out$model_pars_fit), size = 100)
   generated_data <- generate(vst_out = vst_out, genes = genes)
