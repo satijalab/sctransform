@@ -341,77 +341,46 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1, m
   for (i in 1:max_bin) {
     genes_bin_regress <- genes_step1[bin_ind == i]
     umi_bin <- as.matrix(umi[genes_bin_regress, cells_step1, drop=FALSE])
-
-    # special block for the non-parallelized version of glmGamPoi
-    if (method == "glmGamPoi" & (future::nbrOfWorkers() < 2 | !future::supportsMulticore())) {
-      fit <- glmGamPoi::glm_gp(data = umi_bin,
-                               design = as.formula(gsub("y", "", model_str)),
-                               col_data = data_step1,
-                               size_factors = FALSE)
-      fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-4)
-      colnames(fit$Beta)[1] <- "(Intercept)"
-      model_pars[[i]] <- cbind(fit$theta, fit$Beta)
-      if (show_progress) {
-        setTxtProgressBar(pb, i)
-      }
-      next
+    if (!is.null(theta_given)) {
+      theta_given_bin <- theta_given[genes_bin_regress]
     }
 
-    model_pars[[i]] <- do.call(rbind,
-                               future_lapply(
-                                 X = genes_bin_regress,
-                                 FUN = function(j) {
-                                   y <- umi_bin[j, ]
-                                   if (method == 'poisson') {
-                                     fit <- glm(as.formula(model_str), data = data_step1, family = poisson)
-                                     theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
-                                     return(c(theta, fit$coefficients))
-                                   }
-                                   if (method == 'nb_theta_given') {
-                                     theta <- theta_given[j]
-                                     fit2 <- 0
-                                     try(fit2 <- glm(as.formula(model_str), data = data_step1, family = negative.binomial(theta=theta)), silent=TRUE)
-                                     if (inherits(x = fit2, what = 'numeric')) {
-                                       return(c(theta, glm(as.formula(model_str), data = data_step1, family = poisson)$coefficients))
-                                     } else {
-                                       return(c(theta, fit2$coefficients))
-                                     }
-                                   }
-                                   if (method == 'nb_fast') {
-                                     fit <- glm(as.formula(model_str), data = data_step1, family = poisson)
-                                     theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
-                                     fit2 <- 0
-                                     try(fit2 <- glm(as.formula(model_str), data = data_step1, family = negative.binomial(theta=theta)), silent=TRUE)
-                                     if (inherits(x = fit2, what = 'numeric')) {
-                                       return(c(theta, fit$coefficients))
-                                     } else {
-                                       return(c(theta, fit2$coefficients))
-                                     }
-                                   }
-                                   if (method == 'nb') {
-                                     fit <- 0
-                                     try(fit <- glm.nb(as.formula(model_str), data = data_step1), silent=TRUE)
-                                     if (inherits(x = fit, what = 'numeric')) {
-                                       fit <- glm(as.formula(model_str), data = data_step1, family = poisson)
-                                       fit$theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
-                                     }
-                                     return(c(fit$theta, fit$coefficients))
-                                   }
-                                   if (method == "glmGamPoi") {
-                                     fit <- glmGamPoi::glm_gp(data = y,
-                                                              design = as.formula(gsub("y", "", model_str)),
-                                                              col_data = data_step1,
-                                                              size_factors = FALSE)
-                                     fit$theta <- 1 / fit$overdispersions
-                                     if (is.infinite(fit$theta)) {
-                                       fit$theta <- mean(fit$Mu) / 1e-4
-                                     }
-                                     colnames(fit$Beta)[1] <- "(Intercept)"
-                                     return(cbind(fit$theta, fit$Beta))
-                                   }
-                                 }
-                               )
+    # umi_bin is a matrix of counts - we want a model per row
+    # if there are multiple workers, split up the matrix in chunks of n rows
+    # where n is the number of workers
+    n_workers <- 1
+    if (future::supportsMulticore()) {
+      n_workers <- future::nbrOfWorkers()
+    }
+    genes_per_worker <- nrow(umi_bin) / n_workers + .Machine$double.eps
+    index_vec <- 1:nrow(umi_bin)
+    index_lst <- split(index_vec, ceiling(index_vec/genes_per_worker))
+
+    # the index list will have at most n_workers entries, each one defining which genes to work on
+    par_lst <- future_lapply(
+      X = index_lst,
+      FUN = function(indices) {
+        umi_bin_worker <- umi_bin[indices, , drop = FALSE]
+        if (method == 'poisson') {
+          return(fit_poisson(umi = umi_bin_worker, model_str = model_str, data = data_step1))
+        }
+        if (method == 'nb_theta_given') {
+          theta_given_bin_worker <- theta_given_bin[indices]
+          return(fit_nb_theta_given(umi = umi_bin_worker, model_str = model_str, data = data_step1, theta_given = theta_given_bin_worker))
+        }
+        if (method == 'nb_fast') {
+          return(fit_nb_fast(umi = umi_bin_worker, model_str = model_str, data = data_step1))
+        }
+        if (method == 'nb') {
+          return(fit_nb(umi = umi_bin_worker, model_str = model_str, data = data_step1))
+        }
+        if (method == "glmGamPoi") {
+          return(fit_glmGamPoi(umi = umi_bin_worker, model_str = model_str, data = data_step1))
+        }
+      }
     )
+    model_pars[[i]] <- do.call(rbind, par_lst)
+
     if (show_progress) {
       setTxtProgressBar(pb, i)
     }
