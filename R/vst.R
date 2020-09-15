@@ -122,7 +122,7 @@ vst <- function(umi,
   }
 
   arguments <- as.list(environment())[-c(1, 2)]
-  start_time <- Sys.time()
+  times <- list(start_time = Sys.time())
   if (is.null(cell_attr)) {
     cell_attr <- data.frame(row.names = colnames(umi))
   }
@@ -211,10 +211,12 @@ vst <- function(umi,
     message('Model formula is ', model_str)
   }
 
+  times$get_model_pars = Sys.time()
   model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1,
                                method, data_step1, theta_given, theta_estimation_fun,
                                verbose, show_progress)
 
+  times$reg_model_pars = Sys.time()
   if (do_regularize) {
     model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                                      batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
@@ -238,6 +240,7 @@ vst <- function(umi,
       model_str_nonreg <- paste0('y ~ ', paste(latent_var_nonreg, collapse = ' + '))
     }
 
+    times$get_model_pars_nonreg = Sys.time()
     model_pars_nonreg <- get_model_pars_nonreg(genes, bin_size, model_pars_fit, regressor_data, umi, model_str_nonreg, cell_attr, verbose, show_progress)
 
     regressor_data_nonreg <- model.matrix(as.formula(gsub('^y', '', model_str_nonreg)), cell_attr)
@@ -253,6 +256,7 @@ vst <- function(umi,
     regressor_data_final <- regressor_data
   }
 
+  times$get_residuals = Sys.time()
   if (!residual_type == 'none') {
     if (verbose) {
       message('Second step: Get residuals using fitted parameters for ', length(x = genes), ' genes')
@@ -299,6 +303,7 @@ vst <- function(umi,
   rm(res)
   gc(verbose = FALSE)
 
+  times$correct_umi = Sys.time()
   if (return_corrected_umi) {
     if (residual_type != 'pearson') {
       warning("Will not return corrected UMI because residual type is not set to 'pearson'")
@@ -317,6 +322,7 @@ vst <- function(umi,
     rv[['cell_attr']] <- NULL
   }
 
+  times$get_gene_attr = Sys.time()
   if (return_gene_attr) {
     if (verbose) {
       message('Calculating gene attributes')
@@ -333,8 +339,10 @@ vst <- function(umi,
   }
 
   if (verbose) {
-    message('Wall clock passed: ', capture.output(print(Sys.time() - start_time)))
+    message('Wall clock passed: ', capture.output(print(Sys.time() - times$start_time)))
   }
+  times$done = Sys.time()
+  rv$times <- times
   return(rv)
 }
 
