@@ -18,29 +18,23 @@
 #' plot_model_pars(vst_out)
 #' }
 #'
-plot_model_pars <- function(vst_out, show_var = FALSE, verbose = FALSE,
-                            show_progress = FALSE) {
+plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
+                            verbose = FALSE, show_progress = FALSE) {
   if (! 'gmean' %in% names(vst_out$gene_attr)) {
     stop('vst_out must contain a data frame named gene_attr with a column named gmean (perhaps call vst with return_gene_attr = TRUE)')
   }
+
   # first handle the per-gene estimates
-  # transform theta to overdispersion factor
-  mp <- vst_out$model_pars
-  mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'gmean'] / mp[, 'theta'])
-  colnames(mp)[1] <- 'log10(od_factor)'
-  ordered_par_names <- colnames(mp)[c(2:ncol(mp), 1)]
-  if (show_var) {
-    mp <- cbind(mp, log10(get_model_var(vst_out, use_nonreg = TRUE, verbose = verbose, show_progress = show_progress)))
-    colnames(mp)[ncol(mp)] <- 'log10(model var)'
-    ordered_par_names <- c(ordered_par_names, 'log10(model var)')
-  }
-  mp_fit <- vst_out$model_pars_fit
-  mp_fit[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp_fit), 'gmean'] / mp_fit[, 'theta'])
-  colnames(mp_fit)[1] <- 'log10(od_factor)'
-  if (show_var) {
-    mp_fit <- cbind(mp_fit, log10(get_model_var(vst_out, use_nonreg = FALSE, verbose = verbose, show_progress = show_progress)))
-    colnames(mp_fit)[ncol(mp_fit)] <- 'log10(model var)'
-  }
+  mp <- get_model_par_mat(vst_out, model_pars = vst_out$model_pars, use_nonreg = TRUE,
+                          show_theta = show_theta, show_var = show_var,
+                          verbose = verbose, show_progress = show_progress)
+  ordered_par_names <- colnames(mp)
+
+  # second the regularized estimates
+  mp_fit <- get_model_par_mat(vst_out, model_pars = vst_out$model_pars_fit, use_nonreg = FALSE,
+                              show_theta = show_theta, show_var = show_var,
+                              verbose = verbose, show_progress = show_progress)
+
   mpnr <- vst_out$model_pars_nonreg
   if (!is.null(dim(mpnr))) {
     colnames(mpnr) <- paste0('nonreg:', colnames(mpnr))
@@ -67,6 +61,27 @@ plot_model_pars <- function(vst_out, show_var = FALSE, verbose = FALSE,
     facet_wrap(~ parameter, scales = 'free_y', ncol = ncol(mp)) +
     theme(legend.position='bottom')
   return(g)
+}
+
+# helper function to plot model parameters
+get_model_par_mat <- function(vst_out, model_pars, use_nonreg, show_theta = FALSE, show_var = FALSE,
+                              verbose = FALSE, show_progress = FALSE) {
+  mp <- model_pars
+  # transform theta to overdispersion factor
+  mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'gmean'] / mp[, 'theta'])
+  colnames(mp)[1] <- 'log10(od_factor)'
+  ordered_par_names <- colnames(mp)[c(2:ncol(mp), 1)]
+  if (show_theta) {
+    mp <- cbind(mp, log10(model_pars[, 'theta']))
+    colnames(mp)[ncol(mp)] <- 'log10(theta)'
+    ordered_par_names <- c(ordered_par_names, 'log10(theta)')
+  }
+  if (show_var) {
+    mp <- cbind(mp, log10(get_model_var(vst_out, use_nonreg = use_nonreg, verbose = verbose, show_progress = show_progress)))
+    colnames(mp)[ncol(mp)] <- 'log10(model var)'
+    ordered_par_names <- c(ordered_par_names, 'log10(model var)')
+  }
+  return(mp[, ordered_par_names])
 }
 
 
