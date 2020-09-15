@@ -14,6 +14,7 @@ vst(
   n_cells = NULL,
   method = "poisson",
   do_regularize = TRUE,
+  theta_regularization = "od_factor",
   res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
   bin_size = 500,
   min_cells = 5,
@@ -47,7 +48,9 @@ vst(
 
 \item{method}{Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'}
 
-\item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).}
+\item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes); default is FALSE}
+
+\item{theta_regularization}{Method to use to regularize theta; use 'log_theta' for the behavior prior to version 0.3; default is 'od_factor'}
 
 \item{res_clip_range}{Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))}
 

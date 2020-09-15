@@ -18,7 +18,8 @@ NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
 #' @param method Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'
-#' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes).
+#' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes); default is FALSE
+#' @param theta_regularization Method to use to regularize theta; use 'log_theta' for the behavior prior to version 0.3; default is 'od_factor'
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
 #' @param bin_size Number of genes to process simultaneously; this will determine how often the progress bars are updated and how much memory is being used; default is 500
 #' @param min_cells Only use genes that have been detected in at least this many cells; default is 5
@@ -90,6 +91,7 @@ vst <- function(umi,
                 n_cells = NULL,
                 method = 'poisson',
                 do_regularize = TRUE,
+                theta_regularization = 'od_factor',
                 res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                 bin_size = 500,
                 min_cells = 5,
@@ -215,7 +217,8 @@ vst <- function(umi,
 
   if (do_regularize) {
     model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
-                                     batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps, verbose)
+                                     batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
+                                     theta_regularization, verbose)
     model_pars_outliers <- attr(model_pars_fit, 'outliers')
   } else {
     model_pars_fit <- model_pars
@@ -442,15 +445,21 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
 
 reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                            batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
-                           verbose) {
+                           theta_regularization, verbose) {
   genes <- names(genes_log_gmean)
 
-  # we don't regularize theta directly, but instead transform to overdispersion factor
+  # we don't regularize theta directly
+  # prior to v0.3 we regularized log10(theta)
+  # now we transform to overdispersion factor
   # variance of NB is mu * (1 + mu / theta)
   # (1 + mu / theta) is what we call overdispersion factor here
-  od_factor <- log10(1 + 10^genes_log_gmean_step1 / model_pars[, 'theta'])
+  dispersion_par <- switch(theta_regularization,
+    'log_theta' = log10(model_pars[, 'theta']),
+    'od_factor' = log10(1 + 10^genes_log_gmean_step1 / model_pars[, 'theta'])
+  )
+
   model_pars <- model_pars[, colnames(model_pars) != 'theta']
-  model_pars <- cbind(od_factor, model_pars)
+  model_pars <- cbind(dispersion_par, model_pars)
 
   # look for outliers in the parameters
   # outliers are those that do not fit the overall relationship with the mean at all
@@ -477,9 +486,9 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
   model_pars_fit <- matrix(NA_real_, length(genes), ncol(model_pars),
                            dimnames = list(genes, colnames(model_pars)))
 
-  # fit / regularize overdispersion factor
-  model_pars_fit[o, 'od_factor'] <- ksmooth(x = genes_log_gmean_step1, y = model_pars[, 'od_factor'],
-                                            x.points = x_points, bandwidth = bw, kernel='normal')$y
+  # fit / regularize dispersion parameter
+  model_pars_fit[o, 'dispersion_par'] <- ksmooth(x = genes_log_gmean_step1, y = model_pars[, 'dispersion_par'],
+                                                 x.points = x_points, bandwidth = bw, kernel='normal')$y
 
   if (is.null(batch_var)){
     # global fit / regularization for all coefficients
@@ -513,9 +522,12 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
     }
   }
 
-  # back-transform overdispersion factor to theta
-  theta <- 10^genes_log_gmean / (10^model_pars_fit[, 'od_factor'] - 1)
-  model_pars_fit <- model_pars_fit[, colnames(model_pars_fit) != 'od_factor']
+  # back-transform dispersion parameter to theta
+  theta <- switch(theta_regularization,
+    'log_theta' = 10^model_pars_fit[, 'dispersion_par'],
+    'od_factor' = 10^genes_log_gmean / (10^model_pars_fit[, 'dispersion_par'] - 1)
+  )
+  model_pars_fit <- model_pars_fit[, colnames(model_pars_fit) != 'dispersion_par']
   model_pars_fit <- cbind(theta, model_pars_fit)
 
   attr(model_pars_fit, 'outliers') <- outliers
