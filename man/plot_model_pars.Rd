@@ -6,6 +6,7 @@
 \usage{
 plot_model_pars(
   vst_out,
+  show_theta = FALSE,
   show_var = FALSE,
   verbose = FALSE,
   show_progress = FALSE
@@ -14,7 +15,9 @@ plot_model_pars(
 \arguments{
 \item{vst_out}{The output of a vst run}
 
-\item{show_var}{Whether to show the average model variance; boolean; default is FALSE}
+\item{show_theta}{Whether to show the theta parameter; default is FALSE (only the overdispersion factor is shown)}
+
+\item{show_var}{Whether to show the average model variance; default is FALSE}
 
 \item{verbose}{Whether to show messages; default is FALSE}
 

@@ -1,7 +1,8 @@
 #' Plot estimated and fitted model parameters
 #'
 #' @param vst_out The output of a vst run
-#' @param show_var Whether to show the average model variance; boolean; default is FALSE
+#' @param show_theta Whether to show the theta parameter; default is FALSE (only the overdispersion factor is shown)
+#' @param show_var Whether to show the average model variance; default is FALSE
 #' @param verbose Whether to show messages; default is FALSE
 #' @param show_progress Whether to show progress bar; default is FALSE
 #'
