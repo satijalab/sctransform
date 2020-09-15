@@ -164,6 +164,8 @@ deviance_residual <- function(y, mu, theta, wt=1) {
 #' @param cell_attr Data frame of cell meta data
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
+#' @param verbose Deprecated; use verbosity instead
+#' @param show_progress Deprecated; use verbosity instead
 #'
 #' @return A matrix of residuals
 #'
@@ -180,7 +182,20 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
                           res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                           min_variance = vst_out$arguments$min_variance,
                           cell_attr = vst_out$cell_attr, bin_size = 256,
-                          verbosity = 2) {
+                          verbosity = 2, verbose = TRUE, show_progress = TRUE) {
+  # Take care of deprecated arguments
+  args_passed <- names(sapply(match.call(), deparse))[-1]
+  if ('verbose' %in% args_passed) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    verbosity <- as.numeric(verbose)
+  }
+  if ('show_progress' %in% args_passed) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    if (show_progress) {
+      verbosity <- 2
+    }
+  }
+
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
   if (!is.null(dim(vst_out$model_pars_nonreg))) {
@@ -231,6 +246,8 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
 #' @param cell_attr Data frame of cell meta data
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
+#' @param verbose Deprecated; use verbosity instead
+#' @param show_progress Deprecated; use verbosity instead
 #'
 #' @return A vector of residual variances (after clipping)
 #'
@@ -246,7 +263,20 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
                              res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                              min_variance = vst_out$arguments$min_variance,
                              cell_attr = vst_out$cell_attr, bin_size = 256,
-                             verbosity = 2) {
+                             verbosity = 2, verbose = TRUE, show_progress = TRUE) {
+  # Take care of deprecated arguments
+  args_passed <- names(sapply(match.call(), deparse))[-1]
+  if ('verbose' %in% args_passed) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    verbosity <- as.numeric(verbose)
+  }
+  if ('show_progress' %in% args_passed) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    if (show_progress) {
+      verbosity <- 2
+    }
+  }
+
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
   if (!is.null(dim(vst_out$model_pars_nonreg))) {
@@ -295,6 +325,8 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
 #' @param use_nonreg Use the non-regularized parameter estimates; boolean; default is FALSE
 #' @param bin_size Number of genes to put in each bin (to show progress)
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
+#' @param verbose Deprecated; use verbosity instead
+#' @param show_progress Deprecated; use verbosity instead
 #'
 #' @return A named vector of variances (the average across all cells), one entry per gene.
 #'
@@ -307,7 +339,21 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
 #' }
 #'
 get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = FALSE,
-                          bin_size = 256, verbosity = 2) {
+                          bin_size = 256, verbosity = 2,
+                          verbose = TRUE, show_progress = TRUE) {
+  # Take care of deprecated arguments
+  args_passed <- names(sapply(match.call(), deparse))[-1]
+  if ('verbose' %in% args_passed) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    verbosity <- as.numeric(verbose)
+  }
+  if ('show_progress' %in% args_passed) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    if (show_progress) {
+      verbosity <- 2
+    }
+  }
+
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   if (use_nonreg) {
     model_pars <- vst_out$model_pars

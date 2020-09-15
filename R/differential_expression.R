@@ -13,6 +13,8 @@
 #' @param weighted Balance the groups by using the appropriate weights
 #' @param randomize Boolean indicating whether to shuffle group labels - only set to TRUE when testing methods
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
+#' @param verbose Deprecated; use verbosity instead
+#' @param show_progress Deprecated; use verbosity instead
 #'
 #' @return Data frame of results
 #'
@@ -30,7 +32,21 @@
 #'
 compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_size = 256,
                                cell_attr = x$cell_attr, y = x$y, min_cells = 5,
-                               weighted = TRUE, randomize = FALSE, verbosity = 2) {
+                               weighted = TRUE, randomize = FALSE, verbosity = 2,
+                               verbose = TRUE, show_progress = TRUE) {
+  # Take care of deprecated arguments
+  args_passed <- names(sapply(match.call(), deparse))[-1]
+  if ('verbose' %in% args_passed) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    verbosity <- as.numeric(verbose)
+  }
+  if ('show_progress' %in% args_passed) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    if (show_progress) {
+      verbosity <- 2
+    }
+  }
+
   if (! method %in% c('LRT', 'LRT_free', 'LRT_reg', 't_test')) {
     stop('method needs to be either \'LRT\', \'LRT_free\', \'LRT_reg\' or \'t_test\'')
   }

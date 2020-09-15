@@ -4,7 +4,14 @@
 \alias{correct_counts}
 \title{Correct data by setting all latent factors to their median values and reversing the regression model}
 \usage{
-correct_counts(x, umi, cell_attr = x$cell_attr, verbosity = 2)
+correct_counts(
+  x,
+  umi,
+  cell_attr = x$cell_attr,
+  verbosity = 2,
+  verbose = TRUE,
+  show_progress = TRUE
+)
 }
 \arguments{
 \item{x}{A list that provides model parameters and optionally meta data; use output of vst function}
@@ -14,6 +21,10 @@ correct_counts(x, umi, cell_attr = x$cell_attr, verbosity = 2)
 \item{cell_attr}{Provide cell meta data holding latent data info}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
+
+\item{verbose}{Deprecated; use verbosity instead}
+
+\item{show_progress}{Deprecated; use verbosity instead}
 }
 \value{
 Corrected data as UMI counts

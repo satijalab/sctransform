@@ -4,6 +4,8 @@
 #' @param show_theta Whether to show the theta parameter; default is FALSE (only the overdispersion factor is shown)
 #' @param show_var Whether to show the average model variance; default is FALSE
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
+#' @param verbose Deprecated; use verbosity instead
+#' @param show_progress Deprecated; use verbosity instead
 #'
 #' @return A ggplot object
 #'
@@ -19,7 +21,20 @@
 #' }
 #'
 plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
-                            verbosity = 2) {
+                            verbosity = 2, verbose = TRUE, show_progress = TRUE) {
+  # Take care of deprecated arguments
+  args_passed <- names(sapply(match.call(), deparse))[-1]
+  if ('verbose' %in% args_passed) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    verbosity <- as.numeric(verbose)
+  }
+  if ('show_progress' %in% args_passed) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    if (show_progress) {
+      verbosity <- 2
+    }
+  }
+
   if (! 'gmean' %in% names(vst_out$gene_attr)) {
     stop('vst_out must contain a data frame named gene_attr with a column named gmean (perhaps call vst with return_gene_attr = TRUE)')
   }

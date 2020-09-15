@@ -4,7 +4,14 @@
 \alias{plot_model_pars}
 \title{Plot estimated and fitted model parameters}
 \usage{
-plot_model_pars(vst_out, show_theta = FALSE, show_var = FALSE, verbosity = 2)
+plot_model_pars(
+  vst_out,
+  show_theta = FALSE,
+  show_var = FALSE,
+  verbosity = 2,
+  verbose = TRUE,
+  show_progress = TRUE
+)
 }
 \arguments{
 \item{vst_out}{The output of a vst run}
@@ -14,6 +21,10 @@ plot_model_pars(vst_out, show_theta = FALSE, show_var = FALSE, verbosity = 2)
 \item{show_var}{Whether to show the average model variance; default is FALSE}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
+
+\item{verbose}{Deprecated; use verbosity instead}
+
+\item{show_progress}{Deprecated; use verbosity instead}
 }
 \value{
 A ggplot object

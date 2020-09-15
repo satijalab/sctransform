@@ -63,6 +63,8 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @param do_round Round the result to integers
 #' @param do_pos Set negative values in the result to zero
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
+#' @param verbose Deprecated; use verbosity instead
+#' @param show_progress Deprecated; use verbosity instead
 #'
 #' @return Corrected data as UMI counts
 #'
@@ -75,7 +77,20 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' }
 #'
 correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
-                    do_pos = TRUE, verbosity = 2) {
+                    do_pos = TRUE, verbosity = 2, verbose = TRUE, show_progress = TRUE) {
+  # Take care of deprecated arguments
+  args_passed <- names(sapply(match.call(), deparse))[-1]
+  if ('verbose' %in% args_passed) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    verbosity <- as.numeric(verbose)
+  }
+  if ('show_progress' %in% args_passed) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    if (show_progress) {
+      verbosity <- 2
+    }
+  }
+
   if (is.character(data)) {
     data <- x[[data]]
   }
@@ -129,6 +144,8 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
 #' @param umi The count matrix
 #' @param cell_attr Provide cell meta data holding latent data info
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
+#' @param verbose Deprecated; use verbosity instead
+#' @param show_progress Deprecated; use verbosity instead
 #'
 #' @return Corrected data as UMI counts
 #'
@@ -142,7 +159,21 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
 #' umi_corrected <- correct_counts(vst_out, pbmc)
 #' }
 #'
-correct_counts <- function(x, umi, cell_attr = x$cell_attr, verbosity = 2) {
+correct_counts <- function(x, umi, cell_attr = x$cell_attr, verbosity = 2,
+                           verbose = TRUE, show_progress = TRUE) {
+  # Take care of deprecated arguments
+  args_passed <- names(sapply(match.call(), deparse))[-1]
+  if ('verbose' %in% args_passed) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    verbosity <- as.numeric(verbose)
+  }
+  if ('show_progress' %in% args_passed) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+    if (show_progress) {
+      verbosity <- 2
+    }
+  }
+
   regressor_data_orig <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
   # when correcting, set all latent variables to median values
   cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))

@@ -27,7 +27,9 @@ vst(
   gmean_eps = 1,
   theta_estimation_fun = "theta.ml",
   theta_given = NULL,
-  verbosity = 2
+  verbosity = 2,
+  verbose = TRUE,
+  show_progress = TRUE
 )
 }
 \arguments{
@@ -76,6 +78,10 @@ vst(
 \item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
+
+\item{verbose}{Deprecated; use verbosity instead}
+
+\item{show_progress}{Deprecated; use verbosity instead}
 }
 \value{
 A list with components

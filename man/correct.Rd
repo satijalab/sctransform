@@ -10,7 +10,9 @@ correct(
   cell_attr = x$cell_attr,
   do_round = TRUE,
   do_pos = TRUE,
-  verbosity = 2
+  verbosity = 2,
+  verbose = TRUE,
+  show_progress = TRUE
 )
 }
 \arguments{
@@ -25,6 +27,10 @@ correct(
 \item{do_pos}{Set negative values in the result to zero}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
+
+\item{verbose}{Deprecated; use verbosity instead}
+
+\item{show_progress}{Deprecated; use verbosity instead}
 }
 \value{
 Corrected data as UMI counts
