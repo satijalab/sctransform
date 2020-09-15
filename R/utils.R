@@ -163,8 +163,7 @@ deviance_residual <- function(y, mu, theta, wt=1) {
 #' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is vst_out$arguments$min_variance
 #' @param cell_attr Data frame of cell meta data
 #' @param bin_size Number of genes to put in each bin (to show progress)
-#' @param verbose Whether to show messages; default is TRUE
-#' @param show_progress Whether to print progress bar; default is verbose
+#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #'
 #' @return A matrix of residuals
 #'
@@ -181,7 +180,7 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
                           res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                           min_variance = vst_out$arguments$min_variance,
                           cell_attr = vst_out$cell_attr, bin_size = 256,
-                          verbose = TRUE, show_progress = verbose) {
+                          verbosity = 2) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
   if (!is.null(dim(vst_out$model_pars_nonreg))) {
@@ -191,12 +190,12 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
   }
 
   genes <- rownames(umi)[rownames(umi) %in% rownames(model_pars)]
-  if (verbose) {
+  if (verbosity > 0) {
     message('Calculating residuals of type ', residual_type, ' for ', length(genes), ' genes')
   }
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
-  if (show_progress) {
+  if (verbosity > 1) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   res <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
@@ -208,11 +207,11 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
       'pearson' = pearson_residual(y, mu, model_pars[genes_bin, 'theta'], min_var = min_variance),
       'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta'])
     )
-    if (show_progress) {
+    if (verbosity > 1) {
       setTxtProgressBar(pb, i)
     }
   }
-  if (show_progress) {
+  if (verbosity > 1) {
     close(pb)
   }
   res[res < res_clip_range[1]] <- res_clip_range[1]
@@ -231,8 +230,7 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
 #' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is vst_out$arguments$min_variance
 #' @param cell_attr Data frame of cell meta data
 #' @param bin_size Number of genes to put in each bin (to show progress)
-#' @param verbose Whether to show messages; default is TRUE
-#' @param show_progress Whether to print progress bar; default is same as verbose
+#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #'
 #' @return A vector of residual variances (after clipping)
 #'
@@ -248,7 +246,7 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
                              res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                              min_variance = vst_out$arguments$min_variance,
                              cell_attr = vst_out$cell_attr, bin_size = 256,
-                             verbose = TRUE, show_progress = verbose) {
+                             verbosity = 2) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
   if (!is.null(dim(vst_out$model_pars_nonreg))) {
@@ -258,12 +256,12 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
   }
 
   genes <- rownames(umi)[rownames(umi) %in% rownames(model_pars)]
-  if (verbose) {
+  if (verbosity > 0) {
     message('Calculating variance for residuals of type ', residual_type, ' for ', length(genes), ' genes')
   }
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
-  if (show_progress) {
+  if (verbosity > 1) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   res <- matrix(NA_real_, length(genes))
@@ -278,11 +276,11 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
     res_mat[res_mat < res_clip_range[1]] <- res_clip_range[1]
     res_mat[res_mat > res_clip_range[2]] <- res_clip_range[2]
     res[genes_bin] <- row_var(res_mat)
-    if (show_progress) {
+    if (verbosity > 1) {
       setTxtProgressBar(pb, i)
     }
   }
-  if (show_progress) {
+  if (verbosity > 1) {
     close(pb)
   }
   return(res)
@@ -296,8 +294,7 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
 #' @param cell_attr Data frame of cell meta data
 #' @param use_nonreg Use the non-regularized parameter estimates; boolean; default is FALSE
 #' @param bin_size Number of genes to put in each bin (to show progress)
-#' @param verbose Whether to show messages; default is TRUE
-#' @param show_progress Whether to print progress bar; default is same as verbose
+#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #'
 #' @return A named vector of variances (the average across all cells), one entry per gene.
 #'
@@ -310,7 +307,7 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
 #' }
 #'
 get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = FALSE,
-                          bin_size = 256, verbose = TRUE, show_progress = verbose) {
+                          bin_size = 256, verbosity = 2) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   if (use_nonreg) {
     model_pars <- vst_out$model_pars
@@ -324,12 +321,12 @@ get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = F
   }
 
   genes <- rownames(model_pars)
-  if (verbose) {
+  if (verbosity > 0) {
     message('Calculating model variance for ', length(genes), ' genes')
   }
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
-  if (show_progress) {
+  if (verbosity > 1) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   res <- matrix(NA_real_, length(genes))
@@ -339,11 +336,11 @@ get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = F
     mu <- exp(tcrossprod(model_pars[genes_bin, -1, drop=FALSE], regressor_data))
     model_var = mu + mu^2 / model_pars[genes_bin, 'theta']
     res[genes_bin] <- rowMeans(model_var)
-    if (show_progress) {
+    if (verbosity > 1) {
       setTxtProgressBar(pb, i)
     }
   }
-  if (show_progress) {
+  if (verbosity > 1) {
     close(pb)
   }
   return(res)

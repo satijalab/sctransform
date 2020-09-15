@@ -62,8 +62,7 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @param cell_attr Provide cell meta data holding latent data info
 #' @param do_round Round the result to integers
 #' @param do_pos Set negative values in the result to zero
-#' @param verbose Whether to show messages; default is TRUE
-#' @param show_progress Whether to print progress bar; default is same as verbose
+#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #'
 #' @return Corrected data as UMI counts
 #'
@@ -76,7 +75,7 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' }
 #'
 correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
-                    do_pos = TRUE, verbose = TRUE, show_progress = verbose) {
+                    do_pos = TRUE, verbosity = 2) {
   if (is.character(data)) {
     data <- x[[data]]
   }
@@ -88,10 +87,10 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
   bin_size <- x$arguments$bin_size
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
-  if (verbose) {
+  if (verbosity > 0) {
     message('Computing corrected count matrix for ', length(genes), ' genes')
   }
-  if (show_progress) {
+  if (verbosity > 1) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   corrected_data <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
@@ -103,11 +102,11 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
     mu <- exp(tcrossprod(coefs, regressor_data))
     variance <- mu + mu^2 / theta
     corrected_data[genes_bin, ] <- mu + pearson_residual * sqrt(variance)
-    if (show_progress) {
+    if (verbosity > 1) {
       setTxtProgressBar(pb, i)
     }
   }
-  if (show_progress) {
+  if (verbosity > 1) {
     close(pb)
   }
 
@@ -129,8 +128,7 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
 #' @param x A list that provides model parameters and optionally meta data; use output of vst function
 #' @param umi The count matrix
 #' @param cell_attr Provide cell meta data holding latent data info
-#' @param verbose Whether to show messages; default is TRUE
-#' @param show_progress Whether to print progress bar; default is same as verbose
+#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #'
 #' @return Corrected data as UMI counts
 #'
@@ -144,8 +142,7 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
 #' umi_corrected <- correct_counts(vst_out, pbmc)
 #' }
 #'
-correct_counts <- function(x, umi, cell_attr = x$cell_attr, verbose = TRUE,
-                           show_progress = verbose) {
+correct_counts <- function(x, umi, cell_attr = x$cell_attr, verbosity = 2) {
   regressor_data_orig <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
   # when correcting, set all latent variables to median values
   cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
@@ -155,10 +152,10 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, verbose = TRUE,
   bin_size <- x$arguments$bin_size
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
-  if (verbose) {
+  if (verbosity > 0) {
     message('Computing corrected UMI count matrix')
   }
-  if (show_progress) {
+  if (verbosity > 1) {
     pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
   }
   #corrected_data <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
@@ -179,11 +176,11 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, verbose = TRUE,
     y.res <- round(y.res, 0)
     y.res[y.res < 0] <- 0
     corrected_data[[length(corrected_data) + 1]] <- as(y.res, Class = 'dgCMatrix')
-    if (show_progress) {
+    if (verbosity > 1) {
       setTxtProgressBar(pb, i)
     }
   }
-  if (show_progress) {
+  if (verbosity > 1) {
     close(pb)
   }
   corrected_data <- do.call(what = rbind, args = corrected_data)

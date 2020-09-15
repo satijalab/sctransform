@@ -3,8 +3,7 @@
 #' @param vst_out The output of a vst run
 #' @param show_theta Whether to show the theta parameter; default is FALSE (only the overdispersion factor is shown)
 #' @param show_var Whether to show the average model variance; default is FALSE
-#' @param verbose Whether to show messages; default is FALSE
-#' @param show_progress Whether to show progress bar; default is FALSE
+#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #'
 #' @return A ggplot object
 #'
@@ -20,7 +19,7 @@
 #' }
 #'
 plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
-                            verbose = FALSE, show_progress = FALSE) {
+                            verbosity = 2) {
   if (! 'gmean' %in% names(vst_out$gene_attr)) {
     stop('vst_out must contain a data frame named gene_attr with a column named gmean (perhaps call vst with return_gene_attr = TRUE)')
   }
@@ -28,13 +27,13 @@ plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
   # first handle the per-gene estimates
   mp <- get_model_par_mat(vst_out, model_pars = vst_out$model_pars, use_nonreg = TRUE,
                           show_theta = show_theta, show_var = show_var,
-                          verbose = verbose, show_progress = show_progress)
+                          verbosity = verbosity)
   ordered_par_names <- colnames(mp)
 
   # second the regularized estimates
   mp_fit <- get_model_par_mat(vst_out, model_pars = vst_out$model_pars_fit, use_nonreg = FALSE,
                               show_theta = show_theta, show_var = show_var,
-                              verbose = verbose, show_progress = show_progress)
+                              verbosity = verbosity)
 
   mpnr <- vst_out$model_pars_nonreg
   if (!is.null(dim(mpnr))) {
@@ -66,7 +65,7 @@ plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
 
 # helper function to plot model parameters
 get_model_par_mat <- function(vst_out, model_pars, use_nonreg, show_theta = FALSE, show_var = FALSE,
-                              verbose = FALSE, show_progress = FALSE) {
+                              verbosity = 2) {
   mp <- model_pars
   # transform theta to overdispersion factor
   mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'gmean'] / mp[, 'theta'])
@@ -78,7 +77,7 @@ get_model_par_mat <- function(vst_out, model_pars, use_nonreg, show_theta = FALS
     ordered_par_names <- c(ordered_par_names, 'log10(theta)')
   }
   if (show_var) {
-    mp <- cbind(mp, log10(get_model_var(vst_out, use_nonreg = use_nonreg, verbose = verbose, show_progress = show_progress)))
+    mp <- cbind(mp, log10(get_model_var(vst_out, use_nonreg = use_nonreg, verbosity = verbosity)))
     colnames(mp)[ncol(mp)] <- 'log10(model var)'
     ordered_par_names <- c(ordered_par_names, 'log10(model var)')
   }
