@@ -1,4 +1,41 @@
 
+# Check cell attributes; add missing ones
+make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_nonreg, verbosity) {
+  if (is.null(cell_attr)) {
+    cell_attr <- data.frame(row.names = colnames(umi))
+  }
+
+  # these are the cell attributes that we know how to calculate given the count matrix
+  known_attr <- c('umi', 'gene', 'log_umi', 'log_gene', 'umi_per_gene', 'log_umi_per_gene')
+  # these are the missing cell attributes specified in latent_var
+  missing_attr <- setdiff(c(latent_var, batch_var, latent_var_nonreg), colnames(cell_attr))
+  if (length(missing_attr) > 0) {
+    if (verbosity > 0) {
+      message('Calculating cell attributes from input UMI matrix: ', paste(missing_attr, collapse = ', '))
+    }
+    unknown_attr <- setdiff(missing_attr, known_attr)
+    if (length(unknown_attr) > 0) {
+      stop(sprintf('Unknown cell attributes: %s. Check latent_var, batch_var and latent_var_nonreg and make sure the variables are in cell_attr', paste(unknown_attr, collapse = ', ')))
+    }
+    new_attr <- list()
+    if (any(c('umi', 'log_umi', 'umi_per_gene', 'log_umi_per_gene') %in% missing_attr)) {
+      new_attr$umi <- colSums(umi)
+      new_attr$log_umi <- log10(new_attr$umi)
+    }
+    if (any(c('gene', 'log_gene', 'umi_per_gene', 'log_umi_per_gene') %in% missing_attr)) {
+      new_attr$gene <- colSums(umi > 0)
+      new_attr$log_gene <- log10(new_attr$gene)
+    }
+    if (any(c('umi_per_gene', 'log_umi_per_gene') %in% missing_attr)) {
+      new_attr$umi_per_gene <- new_attr$umi / new_attr$gene
+      new_attr$log_umi_per_gene <- log10(new_attr$umi_per_gene)
+    }
+    new_attr <- do.call(cbind, new_attr)
+    cell_attr <- cbind(cell_attr, new_attr[, setdiff(colnames(new_attr), colnames(cell_attr)), drop = TRUE])
+  }
+  return(cell_attr)
+}
+
 #' Geometric mean per row
 #'
 #' @param x matrix of class \code{matrix} or \code{dgCMatrix}

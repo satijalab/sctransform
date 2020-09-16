@@ -139,35 +139,9 @@ vst <- function(umi,
 
   arguments <- as.list(environment())[-c(1, 2)]
   times <- list(start_time = Sys.time())
-  if (is.null(cell_attr)) {
-    cell_attr <- data.frame(row.names = colnames(umi))
-  }
 
-  # these are the cell attributes that we know how to calculate given the count matrix
-  known_attr <- c('umi', 'gene', 'log_umi', 'log_gene', 'umi_per_gene', 'log_umi_per_gene')
-  # these are the missing cell attributes specified in latent_var
-  missing_attr <- setdiff(latent_var, colnames(cell_attr))
-  # if there are missing attributes and we know how to calculate them, do it here
-  if (length(missing_attr) > 0 & all(missing_attr %in% known_attr)) {
-    if (verbosity > 0) {
-      message('Calculating cell attributes for input UMI matrix')
-    }
-    tmp_attr <- data.frame(umi = colSums(umi),
-                           gene = colSums(umi > 0))
-    tmp_attr$log_umi <- log10(tmp_attr$umi)
-    tmp_attr$log_gene <- log10(tmp_attr$gene)
-    tmp_attr$umi_per_gene <- tmp_attr$umi / tmp_attr$gene
-    tmp_attr$log_umi_per_gene <- log10(tmp_attr$umi_per_gene)
-    cell_attr <- cbind(cell_attr, tmp_attr[, setdiff(colnames(tmp_attr), colnames(cell_attr)), drop = TRUE])
-  }
-
-  if (!all(latent_var %in% colnames(cell_attr))) {
-    stop('Not all latent variables present in cell attributes')
-  }
+  cell_attr <- make_cell_attr(umi, cell_attr, latent_var, batch_var, latent_var_nonreg, verbosity)
   if (!is.null(batch_var)) {
-    if (!batch_var %in% colnames(cell_attr)) {
-      stop('Batch variable not present in cell attributes; batch_var should be a column name of cell attributes')
-    }
     cell_attr[, batch_var] <- as.factor(cell_attr[, batch_var])
     batch_levels <- levels(cell_attr[, batch_var])
   }
