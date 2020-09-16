@@ -230,6 +230,8 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
     warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
     if (show_progress) {
       verbosity <- 2
+    } else {
+      verbosity <- min(verbosity, 1)
     }
   }
 
@@ -311,6 +313,8 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
     warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
     if (show_progress) {
       verbosity <- 2
+    } else {
+      verbosity <- min(verbosity, 1)
     }
   }
 
@@ -388,6 +392,8 @@ get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = F
     warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
     if (show_progress) {
       verbosity <- 2
+    } else {
+      verbosity <- min(verbosity, 1)
     }
   }
 

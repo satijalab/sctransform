@@ -32,6 +32,8 @@ plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
     warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
     if (show_progress) {
       verbosity <- 2
+    } else {
+      verbosity <- min(verbosity, 1)
     }
   }
 

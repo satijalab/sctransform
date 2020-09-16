@@ -88,6 +88,8 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
     warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
     if (show_progress) {
       verbosity <- 2
+    } else {
+      verbosity <- min(verbosity, 1)
     }
   }
 
@@ -171,6 +173,8 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, verbosity = 2,
     warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
     if (show_progress) {
       verbosity <- 2
+    } else {
+      verbosity <- min(verbosity, 1)
     }
   }
 

@@ -44,6 +44,8 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
     warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
     if (show_progress) {
       verbosity <- 2
+    } else {
+      verbosity <- min(verbosity, 1)
     }
   }
 
