@@ -1,0 +1,14 @@
+citHeader("To cite sctransform in publications, please use:")
+
+citEntry(entry = "article",
+  author = personList(as.person("Christoph Hafemeister"),
+                      as.person("Rahul Satija")),
+  title = "Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression",
+  journal = "Genome Biology",
+  year = "2019",
+  volume = "20",
+  pages = "296",
+  doi = "10.1186/s13059-019-1874-1",
+  url = "https://doi.org/10.1186/s13059-019-1874-1",
+  textVersion = "Hafemeister, C. & Satija, R. Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression. Genome Biol 20, 296 (2019)."
+)
