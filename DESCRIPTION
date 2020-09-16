@@ -8,7 +8,7 @@ Description: A normalization method for single-cell UMI count data using a
   negative binomial regression model with regularized parameters. As part of the
   same regression framework, this package also provides functions for
   batch correction, and data correction. See Hafemeister and Satija 2019 
-  <doi:10.1101/576827> for more details.
+  <doi:10.1186/s13059-019-1874-1> for more details.
 URL: https://github.com/ChristophH/sctransform
 BugReports: https://github.com/ChristophH/sctransform/issues
 License: GPL-3 | file LICENSE
@@ -28,8 +28,8 @@ LinkingTo: Rcpp (>= 0.11.0), RcppEigen
 Suggests:
   irlba,
   testthat,
-  knitr,
-  glmGamPoi,
-  speedglm
+  knitr
+Enhances:
+  speedglm,
+  glmGamPoi
 RoxygenNote: 7.1.1
-VignetteBuilder: knitr
