@@ -1,7 +1,7 @@
+*.Rproj
 .Rproj.user
 .Rhistory
 .Ruserdata
 *.o
 *.so
-doc
 Meta
