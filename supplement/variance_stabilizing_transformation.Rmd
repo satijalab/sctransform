@@ -3,10 +3,6 @@ title: "Variance Stabilizing Transformation"
 author: "Christoph Hafemeister"
 date: "`r Sys.Date()`"
 output: html_document
-vignette: >
-  %\VignetteIndexEntry{Variance Stabilizing Transformation}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include = FALSE}
