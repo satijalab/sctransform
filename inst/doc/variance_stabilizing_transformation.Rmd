@@ -1,0 +1,147 @@
+---
+title: "Variance Stabilizing Transformation"
+author: "Christoph Hafemeister"
+date: "`r Sys.Date()`"
+output: html_document
+vignette: >
+  %\VignetteIndexEntry{Variance Stabilizing Transformation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library('Matrix')
+library('ggplot2')
+library('reshape2')
+library('sctransform')
+library('knitr')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  digits = 2,
+  optipng = '-o7',
+  fig.width=4, fig.height=2.5, dpi=100, out.width = '70%'
+)
+old_theme <- theme_set(theme_classic(base_size=8))
+```
+
+With this vignette we introduce the concept of using regularized regression for normalization and show some examples.
+
+### Load some data
+First we will follow the [Seurat clustering tutorial](https://satijalab.org/seurat/pbmc3k_tutorial.html) and load a dataset of Peripheral Blood Mononuclear Cells (PBMC) freely available from 10X Genomics. There are 2,700 single cells that were sequenced on the Illumina NextSeq 500. The raw data can be found [here](https://s3-us-west-2.amazonaws.com/10x.files/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz).
+
+```{r load_data}
+pbmc_data <- readRDS(file = "~/Projects/data/pbmc3k_umi_counts.Rds")
+class(pbmc_data)
+dim(pbmc_data)
+```
+
+`pbmc_data` is a sparse matrix of UMI counts (32,738 genes as rows and 2,700 cells as columns). 
+
+### Inspect data
+We will now calculate some properties and visually inspect the data. Our main interest is in the general trends not in individual outliers. Neither genes nor cells that stand out are important at this step, but we focus on the global trends.
+
+Derive gene and cell attributes from the UMI matrix.
+```{r calc_attributes}
+gene_attr <- data.frame(mean = rowMeans(pbmc_data), 
+                        detection_rate = rowMeans(pbmc_data > 0),
+                        var = apply(pbmc_data, 1, var))
+gene_attr$log_mean <- log10(gene_attr$mean)
+gene_attr$log_var <- log10(gene_attr$var)
+rownames(gene_attr) <- rownames(pbmc_data)
+cell_attr <- data.frame(n_umi = colSums(pbmc_data),
+                        n_gene = colSums(pbmc_data > 0))
+rownames(cell_attr) <- colnames(pbmc_data)
+```
+
+```{r mean_var_rel, warning=FALSE, fig.cap='Mean-variance relationship'}
+ggplot(gene_attr, aes(log_mean, log_var)) + 
+  geom_point(alpha=0.3, shape=16) + 
+  geom_density_2d(size = 0.3) +
+  geom_abline(intercept = 0, slope = 1, color='red')
+```
+
+For the genes, we can see that up to a mean UMI count of ca. 0.1 the variance follows the line through the origin with slop one, i.e. variance and mean are roughly equal as expected under a Poisson model. However, genes with a higher average UMI count show overdispersion compared to Poisson.
+
+```{r mean_dr_rel, warning=FALSE, fig.cap='Mean-detection-rate relationship'}
+# add the expected detection rate under Poisson model
+x = seq(from = -3, to = 2, length.out = 1000)
+poisson_model <- data.frame(log_mean = x, detection_rate = 1 - dpois(0, lambda = 10^x))
+ggplot(gene_attr, aes(log_mean, detection_rate)) + 
+  geom_point(alpha=0.3, shape=16) + 
+  geom_line(data=poisson_model, color='red') +
+  theme_gray(base_size = 8)
+```
+
+In line with the previous plot, we see a lower than expected detection rate in the medium expression range. However, for the highly expressed genes, the rate is at or very close to 1.0 suggesting that there is no zero-inflation in the counts for those genes and that zero-inflation is a result of overdispersion, rather than an independent systematic bias.
+
+```{r umi_gene_rel, warning=FALSE, fig.cap='UMI detected genes relationship'}
+ggplot(cell_attr, aes(n_umi, n_gene)) + 
+  geom_point(alpha=0.3, shape=16) + 
+  geom_density_2d(size = 0.3)
+```
+
+The more UMI counts a cell has, the more genes are detected. In this data set this seems to be an almost linear relationship (at least within the UMI range of most of the cells).
+
+### General idea of transformation
+Based on the observations above, which are not unique to this particular data set, we propose to model
+the expression of each gene as a negative binomial random variable with a mean that depends on other variables.
+Here the other variables can be used to model the differences in sequencing depth between cells and are used as independent variables in a regression model. In order to avoid overfitting, we will first fit model parameters per gene, and then use the relationship between gene mean and parameter values to fit parameters, thereby combining information across genes. Given the fitted model parameters, we transform each observed UMI count into a Pearson residual which can be interpreted as the number of standard deviations an observed count was away from the expected mean. If the model accurately describes the mean-variance relationship and the dependency of mean and latent factors, then the result should have mean zero and a stable variance across the range of expression.
+
+### Estimate model parameters and transform data
+The `vst` function estimates model parameters and performs the variance stabilizing transformation. Here we use the log10 of the total UMI counts of a cell as variable for sequencing depth for each cell. After data transformation we plot the model parameters as a function of gene mean (geometric mean).
+
+```{r, fig.width=4, fig.height=2.5, warning=FALSE}
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 4)
+options(future.globals.maxSize = 10 * 1024 ^ 3)
+
+set.seed(44)
+vst_out <- sctransform::vst(pbmc_data, latent_var = c('log_umi'), return_gene_attr = TRUE, return_cell_attr = TRUE, show_progress = FALSE)
+sctransform::plot_model_pars(vst_out)
+```
+
+Internally `vst` performs Poisson regression per gene with $log(\mu) = \beta_0 + \beta_1 x$, where $x$ is `log_umi`, the base 10 logarithm of the total number of UMI counts in each cell, and $\mu$ are the expected number of UMI counts of the given gene. The previous plot shows $\beta_0$ `(Intercept)`, the $\beta_1$ coefficient `log_umi`, and the maximum likelihood estimate of the overdispersion parameter theta under the negative binomial model. Under the negative binomial model the variance of a gene depends on the expected UMI counts and theta: $\mu + \frac{\mu^2}{\theta}$. In a second step the regularized model parameters are used to turn observed UMI counts into Pearson residuals.
+
+### Inspect model
+We will look at several genes in more detail.
+
+```{r, fig.width=5, fig.height=3.5, warning=FALSE}
+sctransform::plot_model(vst_out, pbmc_data, c('MALAT1', 'RPL10', 'FTL'), plot_residual = TRUE)
+```
+
+For three highly expressed genes we see the regression factor on the x-axis and UMI counts and Pearson residuals on the y-axis. The pink line shows the expected UMI counts given the model, and the shaded region spans one standard deviation from the expected value. We can see that the FTL gene is present in two states (low and high). In case of FTL regularization was particular important since otherwise we would have overestimated the variance and as a result seen lower residuals, as we can see in the following plot.
+
+```{r, fig.width=5, fig.height=2, warning=FALSE}
+sctransform::plot_model(vst_out, pbmc_data, c('FTL'), plot_residual = TRUE, show_nr = TRUE, arrange_vertical = FALSE)
+```
+
+The blue line and shaded region show the non-regularized model fit, and the right panel the corresponding residuals.
+
+Here are some other highly variable genes that benefit from regularization.
+```{r, fig.width=5, fig.height=4, warning=FALSE}
+sctransform::plot_model(vst_out, pbmc_data, c('GNLY', 'S100A9'), plot_residual = TRUE, show_nr = TRUE)
+```
+
+GNLY is detected in cells with few UMI and genes and the unconstrained model has a high variance, large intercept and a negative regression coefficient. S100A9 is another example of overestimated variance in the non-regularized model.
+
+Examine the overall properties of the transformed data.
+```{r, fig.keep=TRUE}
+ggplot(vst_out$gene_attr, aes(residual_mean)) + geom_histogram(binwidth=0.01)
+ggplot(vst_out$gene_attr, aes(residual_variance)) + geom_histogram(binwidth=0.1) + geom_vline(xintercept=1, color='red') + xlim(0, 10)
+```
+
+After transformation the mean of the genes is close to zero, and most genes have a variance around one. This suggests that overall the regularized negative binomial model is a suitable model that describes the effect of sequencing depth on UMI counts. Further, after transformation there is no relationship between gene mean and variance, as the next plot shows.
+
+```{r}
+ggplot(vst_out$gene_attr, aes(log10(gmean), residual_variance)) + geom_point(alpha=0.3, shape=16) +
+  geom_density_2d(size = 0.3)
+```
+
+We can look at the most variable genes by simply sorting the genes by residual variance.
+```{r}
+head(round(vst_out$gene_attr[order(-vst_out$gene_attr$residual_variance), ], 2), 22)
+```
+
+These genes are markers of cell populations that we expect to see. Note how they represent a great range of mean UMI and detection rate values.
