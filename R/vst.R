@@ -50,6 +50,7 @@ NULL
 #' \item{arguments}{List of function call arguments}
 #' \item{cell_attr}{Data frame of cell meta data (optional)}
 #' \item{gene_attr}{Data frame with gene attributes such as mean, detection rate, etc. (optional)}
+#' \item{times}{Time stamps at various points in the function}
 #'
 #' @section Details:
 #' In the first step of the algorithm, per-gene glm model parameters are learned. This step can be done
