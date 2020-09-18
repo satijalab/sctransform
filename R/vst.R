@@ -109,6 +109,7 @@ vst <- function(umi,
                 verbosity = 2,
                 verbose = TRUE,
                 show_progress = TRUE) {
+  arguments <- as.list(environment())[-c(1, 2)]
 
   # Take care of deprecated arguments
   args_passed <- names(sapply(match.call(), deparse))[-1]
@@ -140,7 +141,6 @@ vst <- function(umi,
     }
   }
 
-  arguments <- as.list(environment())[-c(1, 2)]
   times <- list(start_time = Sys.time())
 
   cell_attr <- make_cell_attr(umi, cell_attr, latent_var, batch_var, latent_var_nonreg, verbosity)
