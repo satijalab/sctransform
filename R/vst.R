@@ -387,7 +387,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
           return(fit_nb_theta_given(umi = umi_bin_worker, model_str = model_str, data = data_step1, theta_given = theta_given_bin_worker))
         }
         if (method == 'nb_fast') {
-          return(fit_nb_fast(umi = umi_bin_worker, model_str = model_str, data = data_step1))
+          return(fit_nb_fast(umi = umi_bin_worker, model_str = model_str, data = data_step1, theta_estimation_fun = theta_estimation_fun))
         }
         if (method == 'nb') {
           return(fit_nb(umi = umi_bin_worker, model_str = model_str, data = data_step1))
