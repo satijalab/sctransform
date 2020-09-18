@@ -30,7 +30,7 @@ NULL
 #' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is -Inf
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
-#' @param theta_estimation_fun Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' will be fast but might be biased
+#' @param theta_estimation_fun Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative
 #' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #' @param verbose Deprecated; use verbosity instead
@@ -72,7 +72,7 @@ NULL
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
-#' @importFrom MASS theta.ml theta.md theta.mm glm.nb negative.binomial
+#' @importFrom MASS theta.ml theta.mm glm.nb negative.binomial
 #' @importFrom stats glm glm.fit df.residual ksmooth model.matrix as.formula approx density poisson var bw.SJ
 #' @importFrom utils txtProgressBar setTxtProgressBar capture.output
 #' @importFrom methods as
@@ -208,6 +208,16 @@ vst <- function(umi,
   model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1,
                                method, data_step1, theta_given, theta_estimation_fun,
                                verbosity)
+  # make sure theta is not too small
+  min_theta <- 1e-7
+  if (any(model_pars[, 'theta'] < min_theta)) {
+    if (verbosity > 0) {
+      msg <- sprintf('There are %d estimated thetas smaller than %g - will be set to %g', sum(model_pars[, 'theta'] < min_theta), min_theta, min_theta)
+      message(msg)
+    }
+    model_pars[, 'theta'] <- pmax(model_pars[, 'theta'], min_theta)
+  }
+
 
   times$reg_model_pars = Sys.time()
   if (do_regularize) {

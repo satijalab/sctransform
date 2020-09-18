@@ -73,7 +73,7 @@ vst(
 
 \item{gmean_eps}{Small value added when calculating geometric mean of a gene to avoid log(0); default is 1}
 
-\item{theta_estimation_fun}{Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' will be fast but might be biased}
+\item{theta_estimation_fun}{Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative}
 
 \item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
 
@@ -111,11 +111,11 @@ initial model parameters.
 
 In the first step of the algorithm, per-gene glm model parameters are learned. This step can be done
 on a subset of genes and/or cells to speed things up.
-If \code{method} is set to 'poisson', glm will be called with \code{family = poisson} and
-the negative binomial theta parameter will be estimated using the response residuals in
+If \code{method} is set to 'poisson', glm is called with \code{family = poisson} and
+the negative binomial theta parameter is estimated using the response residuals in
 \code{theta_estimation_fun}.
-If \code{method} is set to 'poisson_fast', speedglm::speedglm will be called with \code{family = poisson} and
-the negative binomial theta parameter will be estimated using the response residuals in
+If \code{method} is set to 'poisson_fast', speedglm::speedglm is called with \code{family = poisson} and
+the negative binomial theta parameter is estimated using the response residuals in
 \code{MASS::theta.mm}.
 If \code{method} is set to 'nb_fast', glm coefficients and theta are estimated as in the
 'poisson' method, but coefficients are then re-estimated using a proper negative binomial

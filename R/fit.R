@@ -7,7 +7,6 @@ fit_poisson <- function(umi, model_str, data, theta_estimation_fun) {
     fit <- glm.fit(x = regressor_data, y = y, family = fam)
     theta <- switch(theta_estimation_fun,
       'theta.ml' = as.numeric(x = theta.ml(y = y, mu = fit$fitted)),
-      'theta.md' = as.numeric(x = theta.md(y = y, mu = fit$fitted, dfr = df.residual(fit))),
       'theta.mm' = as.numeric(x = theta.mm(y = y, mu = fit$fitted, dfr = df.residual(fit)))
     )
     return(c(theta, fit$coefficients))
@@ -44,10 +43,15 @@ fit_nb_theta_given <- function(umi, model_str, data, theta_given) {
   return(do.call(rbind, par_lst))
 }
 
-fit_nb_fast <- function(umi, model_str, data) {
+fit_nb_fast <- function(umi, model_str, data, theta_estimation_fun) {
+  regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data)
+  fam <- poisson()
   par_mat <- apply(umi, 1, function(y) {
-    fit <- glm(as.formula(model_str), data = data, family = poisson)
-    theta <- as.numeric(x = theta.ml(y = y, mu = fit$fitted))
+    fit <- glm.fit(x = regressor_data, y = y, family = fam)
+    theta <- switch(theta_estimation_fun,
+                    'theta.ml' = as.numeric(x = theta.ml(y = y, mu = fit$fitted)),
+                    'theta.mm' = as.numeric(x = theta.mm(y = y, mu = fit$fitted, dfr = df.residual(fit)))
+    )
     fit2 <- 0
     try(fit2 <- glm(as.formula(model_str), data = data, family = negative.binomial(theta=theta)), silent=TRUE)
     if (inherits(x = fit2, what = 'numeric')) {
