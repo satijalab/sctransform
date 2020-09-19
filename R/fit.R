@@ -7,7 +7,8 @@ fit_poisson <- function(umi, model_str, data, theta_estimation_fun) {
     fit <- glm.fit(x = regressor_data, y = y, family = fam)
     theta <- switch(theta_estimation_fun,
       'theta.ml' = as.numeric(x = theta.ml(y = y, mu = fit$fitted)),
-      'theta.mm' = as.numeric(x = theta.mm(y = y, mu = fit$fitted, dfr = df.residual(fit)))
+      'theta.mm' = as.numeric(x = theta.mm(y = y, mu = fit$fitted, dfr = df.residual(fit))),
+      stop('theta_estimation_fun ', theta_estimation_fun, ' unknown - only theta.ml and theta.mm supported at the moment')
     )
     return(c(theta, fit$coefficients))
   })
@@ -50,7 +51,8 @@ fit_nb_fast <- function(umi, model_str, data, theta_estimation_fun) {
     fit <- glm.fit(x = regressor_data, y = y, family = fam)
     theta <- switch(theta_estimation_fun,
                     'theta.ml' = as.numeric(x = theta.ml(y = y, mu = fit$fitted)),
-                    'theta.mm' = as.numeric(x = theta.mm(y = y, mu = fit$fitted, dfr = df.residual(fit)))
+                    'theta.mm' = as.numeric(x = theta.mm(y = y, mu = fit$fitted, dfr = df.residual(fit))),
+                    stop('theta_estimation_fun ', theta_estimation_fun, ' unknown - only theta.ml and theta.mm supported at the moment')
     )
     fit2 <- 0
     try(fit2 <- glm(as.formula(model_str), data = data, family = negative.binomial(theta=theta)), silent=TRUE)

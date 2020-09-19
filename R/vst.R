@@ -276,7 +276,8 @@ vst <- function(umi,
       y <- as.matrix(umi[genes_bin, , drop=FALSE])
       res[genes_bin, ] <- switch(residual_type,
         'pearson' = pearson_residual(y, mu, model_pars_final[genes_bin, 'theta'], min_var = min_variance),
-        'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta'])
+        'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta']),
+        stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment')
       )
       if (verbosity > 1) {
         setTxtProgressBar(pb, i)
@@ -465,7 +466,8 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
   # (1 + mu / theta) is what we call overdispersion factor here
   dispersion_par <- switch(theta_regularization,
     'log_theta' = log10(model_pars[, 'theta']),
-    'od_factor' = log10(1 + 10^genes_log_gmean_step1 / model_pars[, 'theta'])
+    'od_factor' = log10(1 + 10^genes_log_gmean_step1 / model_pars[, 'theta']),
+    stop('theta_regularization ', theta_regularization, ' unknown - only log_theta and od_factor supported at the moment')
   )
 
   model_pars <- model_pars[, colnames(model_pars) != 'theta']

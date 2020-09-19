@@ -259,7 +259,8 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
     y <- as.matrix(umi[genes_bin, , drop=FALSE])
     res[genes_bin, ] <- switch(residual_type,
       'pearson' = pearson_residual(y, mu, model_pars[genes_bin, 'theta'], min_var = min_variance),
-      'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta'])
+      'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
+      stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment')
     )
     if (verbosity > 1) {
       setTxtProgressBar(pb, i)
@@ -343,7 +344,8 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
     y <- as.matrix(umi[genes_bin, , drop=FALSE])
     res_mat <- switch(residual_type,
                       'pearson' = pearson_residual(y, mu, model_pars[genes_bin, 'theta'], min_var = min_variance),
-                      'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']))
+                      'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
+                      stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
     res_mat[res_mat < res_clip_range[1]] <- res_clip_range[1]
     res_mat[res_mat > res_clip_range[2]] <- res_clip_range[2]
     res[genes_bin] <- row_var(res_mat)
