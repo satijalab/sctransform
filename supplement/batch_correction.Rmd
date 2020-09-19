@@ -2,11 +2,9 @@
 title: "Batch correction"
 author: "Christoph Hafemeister"
 date: "`r Sys.Date()`"
-output: html_document
-vignette: >
-  %\VignetteIndexEntry{Batch correction}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output: 
+  html_document:
+    highlight: pygments
 ---
 
 ```{r setup, include = FALSE}
@@ -20,10 +18,17 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   digits = 2,
-  optipng = '-o7',
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff=80),
+  optipng = '-o 5 -strip all -quiet',
   fig.width=5, fig.height=3, dpi=100, out.width = '70%'
 )
 old_theme <- theme_set(theme_classic(base_size=8))
+# some of the vst steps can use multiple cores
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 3)
+options(future.globals.maxSize = 8 * 1024 ^ 3)
+options(future.fork.enable = TRUE)
 ```
 
 In this vignette we show how the regression model in the variance stabilizing transformation can also be used to mitigate batch effects. We use data from [Shekhar et al., Cell 2016](https://www.ncbi.nlm.nih.gov/pubmed/27565351) to demonstrate the functionality. The original analysis and data are available [here](https://github.com/broadinstitute/BipolarCell2016). 
@@ -31,11 +36,6 @@ In this vignette we show how the regression model in the variance stabilizing tr
 We first load the data and transform without using the batch information.
 
 ```{r, warning=FALSE}
-# some of the vst steps can use multiple cores
-# We use the Future API for parallel processing; set parameters here
-future::plan(strategy = 'multicore', workers = 4)
-options(future.globals.maxSize = 10 * 1024 ^ 3)
-
 # load data and cluster identities, and calculate some cell attributes
 cm <- readRDS(file = '~/Projects/data/BipolarCell2016_GSE81904_sparse_matrix.Rds')
 cell_attr <- read.table(file = '~/Projects/data/BipolarCell2016_GSE81904_ClustAssignFile.txt', header = TRUE, stringsAsFactors = FALSE, row.names = 1)
@@ -66,7 +66,7 @@ cell_attr <- cell_attr[keep, ]
 
 # apply vst
 set.seed(42)
-vst_out <- vst(cm, cell_attr = cell_attr, latent_var = 'log_umi_per_gene', bin_size = 128, show_progress = FALSE)
+vst_out <- vst(cm, cell_attr = cell_attr, latent_var = 'log_umi_per_gene', verbosity = 1)
 ```
 
 In order to get an overview of the data, we perform dimensionality reduction (PCA) and keep the top 35 dimensions. For 2D plotting, we run t-SNE and display the batch label and the original clustering.
@@ -88,7 +88,7 @@ We will now repeat the analysis but this time specify a batch variable when call
 
 ```{r, fig.width=4.5, fig.height=5.5, out.width='49%', fig.show='hold', warning=FALSE}
 set.seed(42)
-vst_out2 <- vst(cm, cell_attr = cell_attr, latent_var = 'log_umi_per_gene', batch_var = 'batch', bin_size = 128, show_progress = FALSE)
+vst_out2 <- vst(cm, cell_attr = cell_attr, latent_var = 'log_umi_per_gene', batch_var = 'batch', verbosity = 1)
 
 # dimensionality reduction via PCA
 pca2 <- irlba::prcomp_irlba(t(vst_out2$y), n = 35)

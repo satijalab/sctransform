@@ -1,0 +1,132 @@
+---
+title: "Theta regularization"
+author: "Christoph Hafemeister"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    highlight: pygments
+---
+
+```{r setup, include = FALSE}
+library('Matrix')
+library('ggplot2')
+library('reshape2')
+library('sctransform')
+library('knitr')
+library('dplyr')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  digits = 2,
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff=80),
+  optipng = '-o 5 -strip all -quiet',
+  fig.width=6, fig.height=4, dpi=100, out.width = '70%'
+)
+old_theme <- theme_set(theme_classic(base_size=11))
+# some of the vst steps can use multiple cores
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 3)
+options(future.globals.maxSize = 8 * 1024 ^ 3)
+options(future.fork.enable = TRUE)
+```
+
+### Introduction
+
+Here we show the differences between the two ways the theta parameter can be regularized in `sctransform::vst`. 
+
+There are two methods:
+
+* `'log_theta'` - the default prior to version 0.3. This fits a smooth line through the log10-transformed theta estimates.
+* `'od_factor'` - the new default. Here theta is used with the gene mean to calculate the overdispersion factor per gene. The smooth line is then fitted through the log10-transformed overdispersion factors. The regularized overdispersion factors are then back-transformed to obtain the regularized theta estimates. Remember, under the negative binomial model the variance of a gene depends on the expected UMI counts and theta: $\mu + \frac{\mu^2}{\theta}$. We define the overdispersion factor (`od_factor`) as $1 + \frac{m}{\theta}$ where $m$ is the gene mean.
+
+The `od_factor` approach with its underlying transformation is better suited to dealing with overdispersed genes, as well as Poisson or near-Poisson distributed genes at the same time.
+However, the differences in the resulting residuals are usually small and have little impact on any downstream analysis.
+
+### Results
+
+We are going to use a PBMC dataset to show the differences (or lack thereof) between the two approaches. The dataset is available [from 10x Genomics](https://support.10xgenomics.com/single-cell-gene-expression/datasets/3.0.0/pbmc_10k_v3).
+
+```{r}
+cm <- Seurat::Read10X_h5(file = '~/Projects/data_warehouse/raw_public_10x/pbmc_10k_v3_filtered_feature_bc_matrix.h5')
+# downsample to speed up compilation of this vignette
+set.seed(42)
+cm <- cm[, sample(x = ncol(cm), size = 3333)]
+```
+
+Run the `vst` function
+
+```{r, warning=FALSE}
+set.seed(33)
+vst_out_log_theta <- vst(umi = cm, theta_regularization = 'log_theta', verbosity = 0)
+set.seed(33)
+vst_out_od_factor <- vst(umi = cm, theta_regularization = 'od_factor', verbosity = 0)
+```
+
+We now plot the model parameters. The per-gene estimates are identical, but the regularized theta values (fitted curve) are different. The top row of plots shows the parameters for the `log_theta` method, where the regularization curve was fitted through `log10(theta)`. The bottom row shows the `od_factor` method, where the curve was fitted through `log10(od_factor)`.
+
+```{r, fig.width=9, fig.height=6, out.width='95%'}
+p1 <- plot_model_pars(vst_out_log_theta, show_theta = TRUE) + ggtitle('log_theta regularization')
+p2 <- plot_model_pars(vst_out_od_factor, show_theta = TRUE) + ggtitle('od_factor regularization')
+
+plot(cowplot::plot_grid(p1, p2, ncol = 1))
+
+```
+
+The resulting residuals are very similar
+
+```{r}
+df <- left_join(tibble::rownames_to_column(vst_out_log_theta$gene_attr, var = 'gene'), 
+                tibble::rownames_to_column(vst_out_od_factor$gene_attr, var = 'gene'), 
+                by = 'gene')
+ggplot(df, aes(log10(residual_variance.x), log10(residual_variance.y))) +
+  geom_point() +
+  scale_x_continuous(name = "Using 'log_theta' method", labels = scales::math_format(10^.x)) +
+  scale_y_continuous(name = "Using 'od_factor' method", labels = scales::math_format(10^.x)) +
+  annotation_logticks() + 
+  theme(panel.grid.minor = element_blank()) +
+  ggtitle(sprintf('Residual variances (showing %d genes)', nrow(df)))
+```
+
+### Motivation
+
+The `log_theta` approach has worked well in the past, but when we added support for `glmGamPoi` as a way to estimate the model parameters, we realized that it could not handle genes with no overdispersion (with respect to Poisson). To illustrate this point, we will repeat the analysis above using `glmGamPoi` as method.
+
+Run the `vst` function
+
+```{r, warning=FALSE}
+set.seed(33)
+vst_out_log_theta <- vst(umi = cm, theta_regularization = 'log_theta', method = 'glmGamPoi', verbosity = 0)
+set.seed(33)
+vst_out_od_factor <- vst(umi = cm, theta_regularization = 'od_factor', method = 'glmGamPoi', verbosity = 0)
+```
+
+Plot the model parameters
+
+```{r, fig.width=9, fig.height=6, out.width='95%'}
+p1 <- plot_model_pars(vst_out_log_theta, show_theta = TRUE) + ggtitle('log_theta regularization')
+p2 <- plot_model_pars(vst_out_od_factor, show_theta = TRUE) + ggtitle('od_factor regularization')
+
+plot(cowplot::plot_grid(p1, p2, ncol = 1))
+
+```
+
+`glmGamPoi` determines some genes as Poisson distributed and does not return a theta estimate. In those cases, we choose a theta such that it results in a pre-defined minimum overdispersion. These 'artificial' thetas show up as a band of points in the `log10(theta)` plots above. No such band can be seen in the `log10(od_factor)` plots, since genes with no overdispersion have a value of 0 and there is a continuum to genes that have some overdispersion.
+
+Overall, the `od_factor` approach with its underlying transformation is better suited to dealing with overdispersed genes, as well as Poisson or near-Poisson distributed genes at the same time.
+
+However, even in this case it turns out that the resulting residuals are very similar
+
+```{r}
+df <- left_join(tibble::rownames_to_column(vst_out_log_theta$gene_attr, var = 'gene'), 
+                tibble::rownames_to_column(vst_out_od_factor$gene_attr, var = 'gene'), 
+                by = 'gene')
+ggplot(df, aes(log10(residual_variance.x), log10(residual_variance.y))) +
+  geom_point() +
+  scale_x_continuous(name = "Using 'log_theta' method", labels = scales::math_format(10^.x)) +
+  scale_y_continuous(name = "Using 'od_factor' method", labels = scales::math_format(10^.x)) +
+  annotation_logticks() + 
+  theme(panel.grid.minor = element_blank()) +
+  ggtitle(sprintf('Residual variances (showing %d genes)', nrow(df)))
+```

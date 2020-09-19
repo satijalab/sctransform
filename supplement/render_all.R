@@ -1,0 +1,7 @@
+rmarkdown::render('batch_correction.Rmd')
+rmarkdown::render('correcting.Rmd')
+rmarkdown::render('differential_expression.Rmd')
+rmarkdown::render('seurat.Rmd')
+rmarkdown::render('variance_stabilizing_transformation.Rmd')
+rmarkdown::render('theta_regularization.Rmd')
+rmarkdown::render('method_comparison.Rmd')

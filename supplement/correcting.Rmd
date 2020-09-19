@@ -2,11 +2,9 @@
 title: "Correcting UMI counts"
 author: "Christoph Hafemeister"
 date: "`r Sys.Date()`"
-output: html_document
-vignette: >
-  %\VignetteIndexEntry{Correcting UMI counts}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output: 
+  html_document:
+    highlight: pygments
 ---
 
 ```{r setup, include = FALSE}
@@ -20,10 +18,17 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   digits = 2,
-  optipng = '-o7',
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff=80),
+  optipng = '-o 5 -strip all -quiet',
   fig.width=6, fig.height=4, dpi=100, out.width = '70%'
 )
 old_theme <- theme_set(theme_classic(base_size=8))
+# some of the vst steps can use multiple cores
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 3)
+options(future.globals.maxSize = 8 * 1024 ^ 3)
+options(future.fork.enable = TRUE)
 ```
 
 In this vignette we show how the regression model in the variance stabilizing transformation can be used to output corrected data. Implicitly there are two levels of smoothing/de-noising when we apply the standard workflow using `vst`. First we specify latent variables that are used in the regression model - their contribution to the overall variance in the data will be removed. Second, we usually perform dimensionality reduction, which acts like a smoothing operation. Here we show how to reverse these two operations to obtain corrected UMI counts.
@@ -33,15 +38,10 @@ We use data from a recent publication: [Mayer, Hafemeister, Bandler et al., Natu
 
 First load the data and run variance stabilizing transformation.
 ```{r, warning=FALSE}
-# some of the vst steps can use multiple cores
-# We use the Future API for parallel processing; set parameters here
-future::plan(strategy = 'multicore', workers = 4)
-options(future.globals.maxSize = 10 * 1024 ^ 3)
-
 cm <- readRDS('~/Projects/data/in-lineage_dropseq_CGE3_digitial_expression.Rds')
 
 set.seed(42)
-vst_out <- sctransform::vst(cm, latent_var = 'log_umi_per_gene', bin_size = 128, return_cell_attr = TRUE, show_progress = FALSE)
+vst_out <- sctransform::vst(cm, latent_var = 'log_umi_per_gene', return_cell_attr = TRUE, verbosity = 1)
 ```
 
 To place the cells on a maturation trajectory, we perform PCA and fit a principal curve to the first two dimensions, similar to the approach used in the original publication.
@@ -50,7 +50,7 @@ To place the cells on a maturation trajectory, we perform PCA and fit a principa
 pca <- irlba::prcomp_irlba(t(vst_out$y), n = 2)
 
 # fit principal curve through first two PCs
-pricu <- princurve::principal.curve(pca$x, smoother='lowess', f=0.5, stretch=333)
+pricu <- princurve::principal_curve(pca$x, smoother='lowess', f=0.5, stretch=333)
 # cell projection onto curve is maturation score
 maturation_score <- pricu$lambda/max(pricu$lambda)
 ```
@@ -64,7 +64,7 @@ y_smooth <- sctransform::smooth_via_pca(vst_out$y, do_plot = TRUE)
 The data matrix `y_smooth` is in Pearson residual space. Based on these values we can reverse the negative binomial regression model to derive UMI counts per gene. To remove the variability from the latent factor (here `log_umi_per_gene` as a proxy of sequencing depth), we can use a fixed value for all cells. The next step uses the smoothed Pearson residual and the median of all latent factors to obtain corrected UMI counts.
 
 ```{r}
-cm_corrected <- sctransform::correct(vst_out, data = y_smooth, show_progress = FALSE)
+cm_corrected <- sctransform::correct(vst_out, data = y_smooth, verbosity = 1)
 ```
 
 To give a better idea of what the data really looks like we will plot UMI, Pearson residual, corrected Pearson residual, and corrected UMI counts for some key genes related to neuronal development.
@@ -87,6 +87,8 @@ df[[4]]$maturation_rank <- rank(maturation_score)
 df <- do.call(rbind, df)
 df$gene <- factor(df$gene, ordered=TRUE, levels=unique(df$gene))
 df$type <- factor(df$type, ordered=TRUE, levels=unique(df$type))
-ggplot(df, aes(maturation_rank, value)) + geom_point(alpha=0.5, shape=16) + 
-  geom_density_2d(size=0.5) + facet_grid(type ~ gene, scales = 'free')
+ggplot(df, aes(maturation_rank, value)) + 
+  geom_point(alpha=0.5, shape=16) + 
+  geom_density_2d(contour_var = 'ndensity', size=0.5, bins = 5) + 
+  facet_grid(type ~ gene, scales = 'free')
 ```
