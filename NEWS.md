@@ -4,7 +4,7 @@ All notable changes will be documented in this file.
 ## [0.3] - 2020-09-19
 ### Added
 - Add support for `glmGamPoi` as method to estimate the model parameters; thanks @yuhanH for his pull request
-- Add option to use `theta.md`, `theta.mm` or`theta.ml` to estimate theta when `method = 'poisson'`
+- Add option to use `theta.mm` or`theta.ml` to estimate theta when `method = 'poisson'` or `method = 'nb_fast'`
 - Add a `poisson_fast` method for parameter estimation that uses the `speedglm` package and `theta.mm` by default
 - Add ability to plot overdispersion factor in `plot_model_pars`
 - Add and return time stamps at various steps in the `vst` function
