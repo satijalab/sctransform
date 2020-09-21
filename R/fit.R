@@ -29,6 +29,21 @@ fit_poisson_fast <- function(umi, model_str, data) {
   return(cbind(theta, par_mat))
 }
 
+fit_Rfast_qpois <- function(umi, model_str, data) {
+  regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data)
+  # remove the intercept term, it will be added
+  regressor_data <- regressor_data[, -match('(Intercept)', colnames(regressor_data)), drop = FALSE]
+  par_mat <- t(apply(umi, 1, function(y) {
+    fit <- Rfast::qpois.reg(x = regressor_data, y = y)
+    return(c(fit$phi, fit$be[, 1]))
+  }))
+  # turn phi, which is identical to od_factor into theta
+  mu_mat <- exp(tcrossprod(par_mat[, 2:ncol(par_mat)], cbind(1, regressor_data)))
+  # enforce a minimum overdispersion
+  theta <- rowMeans(mu_mat) / pmax(par_mat[, 1] - 1, 1e-4)
+  return(cbind(theta, par_mat[, 2:ncol(par_mat)]))
+}
+
 fit_nb_theta_given <- function(umi, model_str, data, theta_given) {
   par_lst <- lapply(1:nrow(umi), function(j) {
     y <- umi[j, ]
