@@ -117,6 +117,8 @@ the negative binomial theta parameter is estimated using the response residuals 
 If \code{method} is set to 'poisson_fast', speedglm::speedglm is called with \code{family = poisson} and
 the negative binomial theta parameter is estimated using the response residuals in
 \code{MASS::theta.mm}.
+If \code{method} is set to 'qpoisson', a quasi poisson regression is called and
+the negative binomial theta parameter is estimated based on phi and the mean fitted value per gene.
 If \code{method} is set to 'nb_fast', glm coefficients and theta are estimated as in the
 'poisson' method, but coefficients are then re-estimated using a proper negative binomial
 model in a second call to glm with

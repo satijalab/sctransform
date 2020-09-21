@@ -1,7 +1,9 @@
-#include <Rcpp.h>
-#include <RcppEigen.h>
+#include "RcppArmadillo.h"
+#include "RcppEigen.h"
 
 using namespace Rcpp;
+
+// [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::depends(RcppEigen)]]
 
 // [[Rcpp::export]]
@@ -131,3 +133,39 @@ NumericVector row_var_dense_i(Eigen::Map<Eigen::MatrixXi> x) {
   }
   return out;
 }
+
+// The following function was taken from the Rfast package
+// with kind permission from the authors.
+// It has been slightly adopted for our use case here.
+// [[Rcpp::export]]
+List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int maxiters){
+  const unsigned int n=X.nrow(), pcols=X.ncol(), d=pcols;
+  
+  arma::colvec b_old(d, arma::fill::zeros), b_new(d), L1(d), yhat(n), y(Y.begin(), n, false), m(n), phi(n);
+  arma::mat L2, x(X.begin(), n, pcols, false), x_tr(n, pcols);
+  double dif;
+  b_old(0)=log(mean(y));
+  x_tr=x.t();
+  int ij=2;
+  
+  for(dif=1.0;dif>tol;){
+    yhat=x*b_old;
+    m=(exp(yhat));
+    phi=y-m;
+    L1=x_tr*phi;
+    L2=x.each_col()%m;
+    L2=x_tr*L2;
+    b_new=b_old+solve(L2,L1);
+    dif=sum(abs(b_new-b_old));
+    b_old=b_new;
+    if(++ij==maxiters)
+      break;
+  }
+  
+  List l;
+  l["coefficients"]=b_new;
+  l["phi"]=sum(arma::square(phi)/m)/(n-pcols);
+  
+  return l;
+}
+

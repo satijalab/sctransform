@@ -24,7 +24,7 @@ Imports:
   ggplot2,
   reshape2,
   gridExtra
-LinkingTo: Rcpp (>= 0.11.0), RcppEigen
+LinkingTo: RcppArmadillo, Rcpp (>= 0.11.0), RcppEigen
 Suggests:
   irlba,
   testthat,
