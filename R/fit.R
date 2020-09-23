@@ -33,13 +33,11 @@ fit_qpoisson <- function(umi, model_str, data) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data)
   
   par_mat <- t(apply(umi, 1, function(y) {
-    fit <- qpois_reg(regressor_data, y, 1e-9, 100)
-    return(c(fit$phi, fit$coefficients))
+    fit <- qpois_reg(regressor_data, y, 1e-9, 100, 1.0001)
+    return(c(fit$theta.guesstimate, fit$coefficients))
   }))
-  colnames(par_mat) <- c('phi', colnames(regressor_data))
-  mu_mat <- exp(tcrossprod(par_mat[, 2:ncol(par_mat)], regressor_data))
-  theta <- rowMeans(mu_mat) / pmax(par_mat[, 1] - 1, 1e-4)
-  return(cbind(theta, par_mat[, 2:ncol(par_mat)]))
+  colnames(par_mat) <- c('theta', colnames(regressor_data))
+  return(par_mat)
 }
 
 fit_nb_theta_given <- function(umi, model_str, data, theta_given) {

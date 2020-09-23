@@ -29,7 +29,7 @@ row_var_dense_i <- function(x) {
     .Call('_sctransform_row_var_dense_i', PACKAGE = 'sctransform', x)
 }
 
-qpois_reg <- function(X, Y, tol, maxiters) {
-    .Call('_sctransform_qpois_reg', PACKAGE = 'sctransform', X, Y, tol, maxiters)
+qpois_reg <- function(X, Y, tol, maxiters, minphi) {
+    .Call('_sctransform_qpois_reg', PACKAGE = 'sctransform', X, Y, tol, maxiters, minphi)
 }
 
