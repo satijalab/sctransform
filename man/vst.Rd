@@ -47,7 +47,7 @@ vst(
 
 \item{n_cells}{Number of cells to use when estimating parameters (default uses all cells)}
 
-\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'}
+\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'qpoisson'}
 
 \item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes); default is FALSE}
 
@@ -127,6 +127,9 @@ If \code{method} is set to 'nb', coefficients and theta are estimated by a singl
 \code{MASS::glm.nb}.
 If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
 \code{glmGamPoi::glm_gp}.
+If \code{method} is set to 'qpoisson', coefficients and overdispersion (phi) are estimated by quasi 
+poisson regression and theta is estimated based on phi - this is currently the fastest method with 
+results very similar to 'glmGamPoi'
 }
 
 \examples{

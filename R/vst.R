@@ -17,7 +17,7 @@ NULL
 #' @param latent_var_nonreg The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
-#' @param method Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'
+#' @param method Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'qpoisson'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes); default is FALSE
 #' @param theta_regularization Method to use to regularize theta; use 'log_theta' for the behavior prior to version 0.3; default is 'od_factor'
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
@@ -71,6 +71,9 @@ NULL
 #' \code{MASS::glm.nb}.
 #' If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
 #' \code{glmGamPoi::glm_gp}.
+#' If \code{method} is set to 'qpoisson', coefficients and overdispersion (phi) are estimated by quasi 
+#' poisson regression and theta is estimated based on phi - this is currently the fastest method with 
+#' results very similar to 'glmGamPoi'
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
