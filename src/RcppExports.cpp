@@ -2,7 +2,6 @@
 // Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #include <RcppArmadillo.h>
-#include <RcppEigen.h>
 #include <Rcpp.h>
 
 using namespace Rcpp;
@@ -83,28 +82,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// row_var_dense_d
-NumericVector row_var_dense_d(Eigen::Map<Eigen::MatrixXd> x);
-RcppExport SEXP _sctransform_row_var_dense_d(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXd> >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(row_var_dense_d(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// row_var_dense_i
-NumericVector row_var_dense_i(Eigen::Map<Eigen::MatrixXi> x);
-RcppExport SEXP _sctransform_row_var_dense_i(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXi> >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(row_var_dense_i(x));
-    return rcpp_result_gen;
-END_RCPP
-}
 // qpois_reg
 List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int maxiters, const double minphi);
 RcppExport SEXP _sctransform_qpois_reg(SEXP XSEXP, SEXP YSEXP, SEXP tolSEXP, SEXP maxitersSEXP, SEXP minphiSEXP) {
@@ -127,8 +104,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sctransform_row_gmean_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_dgcmatrix, 5},
     {"_sctransform_row_gmean_grouped_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_grouped_dgcmatrix, 7},
     {"_sctransform_row_var_dgcmatrix", (DL_FUNC) &_sctransform_row_var_dgcmatrix, 4},
-    {"_sctransform_row_var_dense_d", (DL_FUNC) &_sctransform_row_var_dense_d, 1},
-    {"_sctransform_row_var_dense_i", (DL_FUNC) &_sctransform_row_var_dense_i, 1},
     {"_sctransform_qpois_reg", (DL_FUNC) &_sctransform_qpois_reg, 5},
     {NULL, NULL, 0}
 };

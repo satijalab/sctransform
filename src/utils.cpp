@@ -1,10 +1,8 @@
-#include "RcppArmadillo.h"
-#include "RcppEigen.h"
+// [[Rcpp::depends(RcppArmadillo)]]
 
+#include "RcppArmadillo.h"
 using namespace Rcpp;
 
-// [[Rcpp::depends(RcppArmadillo)]]
-// [[Rcpp::depends(RcppEigen)]]
 
 // [[Rcpp::export]]
 NumericVector row_mean_dgcmatrix(NumericVector x, IntegerVector i, int rows, int cols) {
@@ -112,27 +110,6 @@ NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int 
   return rowvar;
 }
 
-// [[Rcpp::export]]
-NumericVector row_var_dense_d(Eigen::Map<Eigen::MatrixXd> x) {
-  NumericVector out(x.rows());
-  for(int i=0; i < x.rows(); ++i){
-    Eigen::ArrayXd r = x.row(i).array();
-    double rowMean = r.mean();
-    out[i] = (r - rowMean).square().sum() / (x.cols() - 1);
-  }
-  return out;
-}
-
-// [[Rcpp::export]]
-NumericVector row_var_dense_i(Eigen::Map<Eigen::MatrixXi> x) {
-  NumericVector out(x.rows());
-  for(int i=0; i < x.rows(); ++i){
-    Eigen::ArrayXd r = (x.row(i).array()).cast<double>();
-    double rowMean = r.mean();
-    out[i] = (r - rowMean).square().sum() / (x.cols() - 1);
-  }
-  return out;
-}
 
 // The following function was taken from the Rfast package
 // with kind permission from the authors.
