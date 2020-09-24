@@ -14,7 +14,10 @@ BugReports: https://github.com/ChristophH/sctransform/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
-Depends: R (>= 3.0.2)
+Depends: R (>= 3.1.0)
+LinkingTo: RcppArmadillo, Rcpp (>= 0.11.0)
+SystemRequirements: C++11
+biocViews:
 Imports:
   MASS,
   Matrix,
@@ -23,8 +26,8 @@ Imports:
   future,
   ggplot2,
   reshape2,
-  gridExtra
-LinkingTo: Rcpp (>= 0.11.0), RcppEigen
+  gridExtra,
+  matrixStats
 Suggests:
   irlba,
   testthat,

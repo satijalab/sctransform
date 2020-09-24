@@ -101,12 +101,11 @@ row_mean_grouped <- function(x, group) {
 #' @param x matrix of class \code{matrix} or \code{dgCMatrix}
 #'
 #' @return variances
+#' 
+#' @importFrom matrixStats rowVars
 row_var <- function(x) {
   if (inherits(x = x, what = 'matrix')) {
-    ret <- switch(storage.mode(x),
-                  'double' = row_var_dense_d(x),
-                  'integer' = row_var_dense_i(x),
-                  stop('Unknown matrix storage mode'))
+    ret <- rowVars(x)
     names(ret) <- rownames(x)
     return(ret)
   }
