@@ -17,7 +17,7 @@ NULL
 #' @param latent_var_nonreg The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
-#' @param method Method to use for initial parameter estimation; one of 'poisson', 'poisson_fast', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'qpoisson'
+#' @param method Method to use for initial parameter estimation; one of 'poisson', 'qpoisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes); default is FALSE
 #' @param theta_regularization Method to use to regularize theta; use 'log_theta' for the behavior prior to version 0.3; default is 'od_factor'
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
@@ -55,25 +55,19 @@ NULL
 #' @section Details:
 #' In the first step of the algorithm, per-gene glm model parameters are learned. This step can be done
 #' on a subset of genes and/or cells to speed things up.
-#' If \code{method} is set to 'poisson', glm is called with \code{family = poisson} and
+#' If \code{method} is set to 'poisson', a poisson regression is done and
 #' the negative binomial theta parameter is estimated using the response residuals in
 #' \code{theta_estimation_fun}.
-#' If \code{method} is set to 'poisson_fast', speedglm::speedglm is called with \code{family = poisson} and
-#' the negative binomial theta parameter is estimated using the response residuals in
-#' \code{MASS::theta.mm}.
-#' If \code{method} is set to 'qpoisson', a quasi poisson regression is called and
-#' the negative binomial theta parameter is estimated based on phi and the mean fitted value per gene.
-#' If \code{method} is set to 'nb_fast', glm coefficients and theta are estimated as in the
+#' If \code{method} is set to 'qpoisson', coefficients and overdispersion (phi) are estimated by quasi 
+#' poisson regression and theta is estimated based on phi and the mean fitted value - this is currently 
+#' the fastest method with results very similar to 'glmGamPoi'
+#' If \code{method} is set to 'nb_fast', coefficients and theta are estimated as in the
 #' 'poisson' method, but coefficients are then re-estimated using a proper negative binomial
-#' model in a second call to glm with
-#' \code{family = MASS::negative.binomial(theta = theta)}.
+#' model in a second call to glm with \code{family = MASS::negative.binomial(theta = theta)}.
 #' If \code{method} is set to 'nb', coefficients and theta are estimated by a single call to
 #' \code{MASS::glm.nb}.
 #' If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
 #' \code{glmGamPoi::glm_gp}.
-#' If \code{method} is set to 'qpoisson', coefficients and overdispersion (phi) are estimated by quasi 
-#' poisson regression and theta is estimated based on phi - this is currently the fastest method with 
-#' results very similar to 'glmGamPoi'
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
@@ -139,12 +133,7 @@ vst <- function(umi,
       stop('Please install the glmGamPoi package. See https://github.com/const-ae/glmGamPoi for details.')
     }
   }
-  if (method == "poisson_fast") {
-    speedglm_check <- requireNamespace("speedglm", quietly = TRUE)
-    if (!speedglm_check){
-      stop('Please install the speedglm package to use the poisson_fast method.')
-    }
-  }
+  
 
   times <- list(start_time = Sys.time())
 
@@ -394,9 +383,6 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
         umi_bin_worker <- umi_bin[indices, , drop = FALSE]
         if (method == 'poisson') {
           return(fit_poisson(umi = umi_bin_worker, model_str = model_str, data = data_step1, theta_estimation_fun = theta_estimation_fun))
-        }
-        if (method == 'poisson_fast') {
-          return(fit_poisson_fast(umi = umi_bin_worker, model_str = model_str, data = data_step1))
         }
         if (method == 'qpoisson') {
           return(fit_qpoisson(umi = umi_bin_worker, model_str = model_str, data = data_step1))
