@@ -21,7 +21,7 @@ row_var_dgcmatrix <- function(x, i, rows, cols) {
     .Call('_sctransform_row_var_dgcmatrix', PACKAGE = 'sctransform', x, i, rows, cols)
 }
 
-qpois_reg <- function(X, Y, tol, maxiters, minphi) {
-    .Call('_sctransform_qpois_reg', PACKAGE = 'sctransform', X, Y, tol, maxiters, minphi)
+qpois_reg <- function(X, Y, tol, maxiters, minphi, returnfit) {
+    .Call('_sctransform_qpois_reg', PACKAGE = 'sctransform', X, Y, tol, maxiters, minphi, returnfit)
 }
 
