@@ -83,8 +83,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // qpois_reg
-List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int maxiters, const double minphi);
-RcppExport SEXP _sctransform_qpois_reg(SEXP XSEXP, SEXP YSEXP, SEXP tolSEXP, SEXP maxitersSEXP, SEXP minphiSEXP) {
+List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int maxiters, const double minphi, const bool returnfit);
+RcppExport SEXP _sctransform_qpois_reg(SEXP XSEXP, SEXP YSEXP, SEXP tolSEXP, SEXP maxitersSEXP, SEXP minphiSEXP, SEXP returnfitSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -93,7 +93,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double >::type tol(tolSEXP);
     Rcpp::traits::input_parameter< const int >::type maxiters(maxitersSEXP);
     Rcpp::traits::input_parameter< const double >::type minphi(minphiSEXP);
-    rcpp_result_gen = Rcpp::wrap(qpois_reg(X, Y, tol, maxiters, minphi));
+    Rcpp::traits::input_parameter< const bool >::type returnfit(returnfitSEXP);
+    rcpp_result_gen = Rcpp::wrap(qpois_reg(X, Y, tol, maxiters, minphi, returnfit));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -104,7 +105,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sctransform_row_gmean_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_dgcmatrix, 5},
     {"_sctransform_row_gmean_grouped_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_grouped_dgcmatrix, 7},
     {"_sctransform_row_var_dgcmatrix", (DL_FUNC) &_sctransform_row_var_dgcmatrix, 4},
-    {"_sctransform_qpois_reg", (DL_FUNC) &_sctransform_qpois_reg, 5},
+    {"_sctransform_qpois_reg", (DL_FUNC) &_sctransform_qpois_reg, 6},
     {NULL, NULL, 0}
 };
 

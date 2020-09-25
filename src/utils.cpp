@@ -1,6 +1,7 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 
 #include "RcppArmadillo.h"
+
 using namespace Rcpp;
 
 
@@ -115,7 +116,8 @@ NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int 
 // with kind permission from the authors.
 // It has been slightly adopted for our use case here.
 // [[Rcpp::export]]
-List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int maxiters, const double minphi){
+List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int maxiters, 
+               const double minphi, const bool returnfit){
   const unsigned int n=X.nrow(), pcols=X.ncol(), d=pcols;
   
   arma::colvec b_old(d, arma::fill::zeros), b_new(d), L1(d), yhat(n), y(Y.begin(), n, false), m(n), phi(n);
@@ -139,12 +141,16 @@ List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int max
       break;
   }
   double p=sum(arma::square(phi)/m)/(n-pcols);
+  NumericVector coefs = NumericVector(b_new.begin(), b_new.end());
+  coefs.names() = colnames(X);
   
   List l;
-  l["coefficients"]=b_new;
+  l["coefficients"]=coefs;
   l["phi"]=p;
-  l["theta.guesstimate"]=arma::mean(m)/(std::max(p, minphi)-1);
+  l["theta.guesstimate"]=mean(m)/(std::max(p, minphi)-1);
+  if(returnfit){
+    l["fitted"]=NumericVector(m.begin(), m.end());
+  }
   
   return l;
 }
-
