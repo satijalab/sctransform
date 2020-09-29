@@ -218,7 +218,8 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
                           res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                           min_variance = vst_out$arguments$min_variance,
                           cell_attr = vst_out$cell_attr, bin_size = 256,
-                          verbosity = 2, verbose = TRUE, show_progress = TRUE) {
+                          verbosity = vst_out$arguments$verbosity, 
+                          verbose = TRUE, show_progress = TRUE) {
   # Take care of deprecated arguments
   args_passed <- names(sapply(match.call(), deparse))[-1]
   if ('verbose' %in% args_passed) {
@@ -302,7 +303,8 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
                              res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                              min_variance = vst_out$arguments$min_variance,
                              cell_attr = vst_out$cell_attr, bin_size = 256,
-                             verbosity = 2, verbose = TRUE, show_progress = TRUE) {
+                             verbosity = vst_out$arguments$verbosity, 
+                             verbose = TRUE, show_progress = TRUE) {
   # Take care of deprecated arguments
   args_passed <- names(sapply(match.call(), deparse))[-1]
   if ('verbose' %in% args_passed) {

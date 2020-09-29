@@ -12,7 +12,7 @@ get_residuals(
   min_variance = vst_out$arguments$min_variance,
   cell_attr = vst_out$cell_attr,
   bin_size = 256,
-  verbosity = 2,
+  verbosity = vst_out$arguments$verbosity,
   verbose = TRUE,
   show_progress = TRUE
 )
