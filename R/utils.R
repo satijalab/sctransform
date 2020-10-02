@@ -208,7 +208,7 @@ deviance_residual <- function(y, mu, theta, wt=1) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' pearson_res <- get_residuals(vst_out, pbmc)
 #' deviance_res <- get_residuals(vst_out, pbmc, residual_type = 'deviance')
@@ -294,7 +294,7 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' res_var <- get_residual_var(vst_out, pbmc)
 #' }
@@ -377,7 +377,7 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' res_var <- get_model_var(vst_out)
 #' }

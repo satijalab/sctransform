@@ -23,7 +23,7 @@
 #' @importFrom stats model.matrix p.adjust pchisq
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' # create fake clusters
 #' clustering <- 1:ncol(pbmc) %/% 100

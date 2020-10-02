@@ -15,7 +15,7 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' vst_out <- vst(pbmc, return_gene_attr = TRUE)
 #' plot_model_pars(vst_out)
 #' }
@@ -162,7 +162,7 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
 #' plot_model(vst_out, pbmc, 'EMC4')
 #' }

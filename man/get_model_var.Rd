@@ -36,7 +36,7 @@ A named vector of variances (the average across all cells), one entry per gene.
 This is based on the formula var = mu + mu^2 / theta
 }
 \examples{
-\dontrun{
+\donttest{
 vst_out <- vst(pbmc, return_cell_attr = TRUE)
 res_var <- get_model_var(vst_out)
 }

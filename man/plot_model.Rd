@@ -57,7 +57,7 @@ A ggplot object
 Plot observed UMI counts and model
 }
 \examples{
-\dontrun{
+\donttest{
 vst_out <- vst(pbmc, return_cell_attr = TRUE)
 plot_model(vst_out, pbmc, 'EMC4')
 }
