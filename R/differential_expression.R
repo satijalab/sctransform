@@ -22,14 +22,6 @@
 #' @importFrom future.apply future_lapply
 #' @importFrom stats model.matrix p.adjust pchisq
 #'
-#' @examples
-#' \donttest{
-#' vst_out <- vst(pbmc, return_cell_attr = TRUE)
-#' # create fake clusters
-#' clustering <- 1:ncol(pbmc) %/% 100
-#' res <- sctransform:::compare_expression(x = vst_out, umi = pbmc, group = clustering, val1 = 0, val2 = 2)
-#' }
-#'
 compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_size = 256,
                                cell_attr = x$cell_attr, y = x$y, min_cells = 5,
                                weighted = TRUE, randomize = FALSE, verbosity = 2,
