@@ -64,7 +64,7 @@ Compare gene expression between two groups
 vst_out <- vst(pbmc, return_cell_attr = TRUE)
 # create fake clusters
 clustering <- 1:ncol(pbmc) \%/\% 100
-res <- compare_expression(x = vst_out, umi = pbmc, group = clustering, val1 = 0, val2 = 3)
+res <- sctransform:::compare_expression(x = vst_out, umi = pbmc, group = clustering, val1 = 0, val2 = 2)
 }
 
 }

@@ -164,7 +164,7 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #' @examples
 #' \dontrun{
 #' vst_out <- vst(pbmc, return_cell_attr = TRUE)
-#' plot_model(vst_out, pbmc, 'PPBP')
+#' plot_model(vst_out, pbmc, 'EMC4')
 #' }
 #'
 plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr = x$cell_attr,

@@ -46,7 +46,7 @@ This never creates the full residual matrix and can be used to determine highly 
 }
 \examples{
 \dontrun{
-vst_out <- vst(pbmc)
+vst_out <- vst(pbmc, return_cell_attr = TRUE)
 res_var <- get_residual_var(vst_out, pbmc)
 }
 

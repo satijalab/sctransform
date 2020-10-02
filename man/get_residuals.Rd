@@ -46,7 +46,7 @@ Return Pearson or deviance residuals of regularized models
 }
 \examples{
 \dontrun{
-vst_out <- vst(pbmc)
+vst_out <- vst(pbmc, return_cell_attr = TRUE)
 pearson_res <- get_residuals(vst_out, pbmc)
 deviance_res <- get_residuals(vst_out, pbmc, residual_type = 'deviance')
 }

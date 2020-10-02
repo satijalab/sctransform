@@ -59,7 +59,7 @@ Plot observed UMI counts and model
 \examples{
 \dontrun{
 vst_out <- vst(pbmc, return_cell_attr = TRUE)
-plot_model(vst_out, pbmc, 'PPBP')
+plot_model(vst_out, pbmc, 'EMC4')
 }
 
 }
