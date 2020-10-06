@@ -175,7 +175,7 @@ vst <- function(umi,
     genes_log_gmean_step1 <- genes_log_gmean
   }
 
-  data_step1 <- cell_attr[cells_step1, ]
+  data_step1 <- cell_attr[cells_step1, , drop = FALSE]
 
   if (!is.null(n_genes) && n_genes < length(genes_step1)) {
     # density-sample genes to speed up the first step
