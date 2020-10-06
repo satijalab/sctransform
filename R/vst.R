@@ -145,7 +145,7 @@ vst <- function(umi,
 
   # we will generate output for all genes detected in at least min_cells cells
   # but for the first step of parameter estimation we might use only a subset of genes
-  genes_cell_count <- rowSums(umi > 0)
+  genes_cell_count <- rowSums(umi >= 0.01)
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
   genes_log_gmean <- log10(row_gmean(umi, eps = gmean_eps))
