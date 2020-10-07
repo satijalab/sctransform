@@ -304,7 +304,7 @@ vst <- function(umi,
   times$correct_umi = Sys.time()
   if (return_corrected_umi) {
     if (residual_type != 'pearson') {
-      warning("Will not return corrected UMI because residual type is not set to 'pearson'\n")
+      message("Will not return corrected UMI because residual type is not set to 'pearson'")
     } else {
       rv$umi_corrected <- sctransform::correct(rv, do_round = TRUE, do_pos = TRUE,
                                                verbosity = verbosity)
