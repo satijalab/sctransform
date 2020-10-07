@@ -11,8 +11,8 @@ correct(
   do_round = TRUE,
   do_pos = TRUE,
   verbosity = 2,
-  verbose = TRUE,
-  show_progress = TRUE
+  verbose = NULL,
+  show_progress = NULL
 )
 }
 \arguments{

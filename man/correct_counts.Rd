@@ -9,8 +9,8 @@ correct_counts(
   umi,
   cell_attr = x$cell_attr,
   verbosity = 2,
-  verbose = TRUE,
-  show_progress = TRUE
+  verbose = NULL,
+  show_progress = NULL
 )
 }
 \arguments{

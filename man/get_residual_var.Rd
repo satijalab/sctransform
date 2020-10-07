@@ -13,8 +13,8 @@ get_residual_var(
   cell_attr = vst_out$cell_attr,
   bin_size = 256,
   verbosity = vst_out$arguments$verbosity,
-  verbose = TRUE,
-  show_progress = TRUE
+  verbose = NULL,
+  show_progress = NULL
 )
 }
 \arguments{

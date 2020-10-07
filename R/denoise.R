@@ -77,15 +77,14 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' }
 #'
 correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
-                    do_pos = TRUE, verbosity = 2, verbose = TRUE, show_progress = TRUE) {
+                    do_pos = TRUE, verbosity = 2, verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
-  args_passed <- names(sapply(match.call(), deparse))[-1]
-  if ('verbose' %in% args_passed) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(verbose)) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     verbosity <- as.numeric(verbose)
   }
-  if ('show_progress' %in% args_passed) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(show_progress)) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     if (show_progress) {
       verbosity <- 2
     } else {
@@ -162,15 +161,14 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
 #' }
 #'
 correct_counts <- function(x, umi, cell_attr = x$cell_attr, verbosity = 2,
-                           verbose = TRUE, show_progress = TRUE) {
+                           verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
-  args_passed <- names(sapply(match.call(), deparse))[-1]
-  if ('verbose' %in% args_passed) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(verbose)) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     verbosity <- as.numeric(verbose)
   }
-  if ('show_progress' %in% args_passed) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(show_progress)) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     if (show_progress) {
       verbosity <- 2
     } else {

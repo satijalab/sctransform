@@ -219,22 +219,20 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
                           min_variance = vst_out$arguments$min_variance,
                           cell_attr = vst_out$cell_attr, bin_size = 256,
                           verbosity = vst_out$arguments$verbosity, 
-                          verbose = TRUE, show_progress = TRUE) {
+                          verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
-  args_passed <- names(sapply(match.call(), deparse))[-1]
-  if ('verbose' %in% args_passed) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(verbose)) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     verbosity <- as.numeric(verbose)
   }
-  if ('show_progress' %in% args_passed) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(show_progress)) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     if (show_progress) {
       verbosity <- 2
     } else {
       verbosity <- min(verbosity, 1)
     }
   }
-
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
   if (!is.null(dim(vst_out$model_pars_nonreg))) {
@@ -304,15 +302,14 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
                              min_variance = vst_out$arguments$min_variance,
                              cell_attr = vst_out$cell_attr, bin_size = 256,
                              verbosity = vst_out$arguments$verbosity, 
-                             verbose = TRUE, show_progress = TRUE) {
+                             verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
-  args_passed <- names(sapply(match.call(), deparse))[-1]
-  if ('verbose' %in% args_passed) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(verbose)) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     verbosity <- as.numeric(verbose)
   }
-  if ('show_progress' %in% args_passed) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(show_progress)) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     if (show_progress) {
       verbosity <- 2
     } else {
@@ -384,15 +381,14 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
 #'
 get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = FALSE,
                           bin_size = 256, verbosity = 2,
-                          verbose = TRUE, show_progress = TRUE) {
+                          verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
-  args_passed <- names(sapply(match.call(), deparse))[-1]
-  if ('verbose' %in% args_passed) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(verbose)) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     verbosity <- as.numeric(verbose)
   }
-  if ('show_progress' %in% args_passed) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(show_progress)) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     if (show_progress) {
       verbosity <- 2
     } else {
