@@ -28,8 +28,8 @@ vst(
   theta_estimation_fun = "theta.ml",
   theta_given = NULL,
   verbosity = 2,
-  verbose = TRUE,
-  show_progress = TRUE
+  verbose = NULL,
+  show_progress = NULL
 )
 }
 \arguments{

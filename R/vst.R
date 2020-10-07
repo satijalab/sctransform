@@ -106,18 +106,18 @@ vst <- function(umi,
                 theta_estimation_fun = 'theta.ml',
                 theta_given = NULL,
                 verbosity = 2,
-                verbose = TRUE,
-                show_progress = TRUE) {
-  arguments <- as.list(environment())[-c(1, 2)]
+                verbose = NULL,
+                show_progress = NULL) {
+  arguments <- as.list(environment())
+  arguments <- arguments[!names(arguments) %in% c("umi", "cell_attr")]
 
   # Take care of deprecated arguments
-  args_passed <- names(sapply(match.call(), deparse))[-1]
-  if ('verbose' %in% args_passed) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(verbose)) {
+    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     verbosity <- as.numeric(verbose)
   }
-  if ('show_progress' %in% args_passed) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead.", immediate. = TRUE)
+  if (!is.null(show_progress)) {
+    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
     if (show_progress) {
       verbosity <- 2
     } else {
