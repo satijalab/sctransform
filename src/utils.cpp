@@ -123,7 +123,7 @@ List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int max
   arma::colvec b_old(d, arma::fill::zeros), b_new(d), L1(d), yhat(n), y(Y.begin(), n, false), m(n), phi(n);
   arma::mat L2, x(X.begin(), n, pcols, false), x_tr(n, pcols);
   double dif;
-  b_old(0)=log(mean(y));
+  b_old=arma::solve(x, log1p(y), arma::solve_opts::fast);
   x_tr=x.t();
   int ij=2;
   
