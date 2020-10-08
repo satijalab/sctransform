@@ -134,7 +134,7 @@ List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int max
     L1=x_tr*phi;
     L2=x.each_col()%m;
     L2=x_tr*L2;
-    b_new=b_old+solve(L2,L1);
+    b_new=b_old+solve(L2,L1,arma::solve_opts::fast);
     dif=sum(abs(b_new-b_old));
     b_old=b_new;
     if(++ij==maxiters)
