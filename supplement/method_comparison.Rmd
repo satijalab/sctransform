@@ -39,9 +39,9 @@ In `sctransform::vst` we support several methods to estimate the parameters of t
 
 ### Methods
 
-* **`poisson`** - `glm` is called with `family = poisson` and the negative binomial theta parameter will are estimated using the response residuals. By default theta is estimated using `MASS::theta.ml`, but `MASS::theta.mm` can also be used by changing the `theta_estimation_fun` parameter.
-* **`poisson_fast`** - `speedglm::speedglm` is called with `family = poisson` and the negative binomial theta parameter is be estimated using the response residuals and `MASS::theta.mm`.
-* **`nb_fast`** - glm coefficients and theta are estimated as in the `poisson` method, but coefficients are then re-estimated using a proper negative binomial model in a second call to `glm` with `family = MASS::negative.binomial(theta = theta)`.
+* **`poisson`** - does poisson regression and the negative binomial theta parameter is estimated using the response residuals. By default theta is estimated using `MASS::theta.ml`, but `MASS::theta.mm` can also be used by changing the `theta_estimation_fun` parameter.
+* **`qpoisson`** - does quasi poisson regression to obtain coefficients and overdispersion (phi) and theta is estimated based on phi and the mean fitted value - this is currently the fastest method with results very similar to `glmGamPoi`
+* **`nb_fast`** - coefficients and theta are estimated as in the `poisson` method, but coefficients are then re-estimated using a proper negative binomial model in a call to `glm` with `family = MASS::negative.binomial(theta = theta)`.
 * **`nb`** - coefficients and theta are estimated by `MASS::glm.nb`.
 * **`glmGamPoi`** - coefficients and theta are estimated by `glmGamPoi::glm_gp`.
 
@@ -59,7 +59,7 @@ message(nrow(cm), ' genes across ', ncol(cm), ' cells')
 
 ```{r, warning=FALSE}
 result_lst <- list()
-estimation_methods <- c('poisson', 'poisson_fast', 'nb_fast', 'nb', 'glmGamPoi')
+estimation_methods <- c('poisson', 'qpoisson', 'nb_fast', 'nb', 'glmGamPoi')
 for (estimation_method in estimation_methods) {
   if (estimation_method %in% c('poisson', 'nb_fast')) {
     for (theta_estimation_fun in c('theta.ml', 'theta.mm')) {
@@ -84,12 +84,12 @@ for (estimation_method in estimation_methods) {
 }
 ```
 
-Show how the residual variances compare between methods (plot below shows log10-transfomed values)
+Show how the residual variances compare between methods (plot below shows log10-transformed values)
 
 ```{r, fig.width=10, fig.height=10, out.width='95%'}
 mat <- sapply(result_lst, function(x) x$gene_attr$residual_variance)
 colnames(mat) <- names(result_lst)
-ggpairs(data.frame(log10(mat)))
+ggpairs(data.frame(log10(mat)), progress = FALSE)
 ```
 
 Show how the residual means compare between methods
@@ -97,8 +97,10 @@ Show how the residual means compare between methods
 ```{r, fig.width=10, fig.height=10, out.width='95%'}
 mat <- sapply(result_lst, function(x) x$gene_attr$residual_mean)
 colnames(mat) <- names(result_lst)
-ggpairs(data.frame(mat))
+ggpairs(data.frame(mat), progress = FALSE)
 ```
+
+
 
 Show the model parameters for all methods
 
@@ -122,6 +124,7 @@ tmp <- lapply(names(result_lst), function(method_name) {
 })
 df <- do.call(rbind, tmp) %>% mutate(delta_t_rest = delta_t_total - delta_t_model)
 df$method_name <- factor(df$method_name, levels = df$method_name, ordered = TRUE)
+df <- arrange(df, delta_t_total) %>% mutate(method_name = factor(method_name, unique(method_name)))
 melt(df, id.vars = 'method_name', measure.vars = c('delta_t_model', 'delta_t_rest')) %>%
   ggplot(aes(method_name, value, fill = variable)) +
   geom_bar(position = 'stack', stat = 'identity') +
