@@ -1,6 +1,20 @@
 # News
 All notable changes will be documented in this file.
 
+## [0.3.1] - 2020-10-08
+### Added
+- Add a `qpoisson` method for parameter estimation that uses fast Rcpp quasi poisson regression where possible (based on `Rfast` package); this adds `RcppArmadillo` dependency
+
+### Changed
+- Remove `poisson_fast` method (replaced by `qpoisson`)
+- Use `matrixStats` package and remove `RcppEigen` dependency
+- Use quasi poisson regression where possible
+- Define cell detection event as counts >= 0.01 (instead of > 0) - this only matters to people playing around with fractional counts (see [issue #65](https://github.com/ChristophH/sctransform/issues/65))
+- Internal code restructuring and improvements
+
+### Fixed
+- Fix inefficiency of using `match.call()` in `vst()` when called via `do.call`
+
 ## [0.3] - 2020-09-19
 ### Added
 - Add support for `glmGamPoi` as method to estimate the model parameters; thanks @yuhanH for his pull request
