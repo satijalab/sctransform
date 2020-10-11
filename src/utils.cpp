@@ -121,9 +121,25 @@ List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int max
   const unsigned int n=X.nrow(), pcols=X.ncol(), d=pcols;
   
   arma::colvec b_old(d, arma::fill::zeros), b_new(d), L1(d), yhat(n), y(Y.begin(), n, false), m(n), phi(n);
+  arma::vec unique_vals;
   arma::mat L2, x(X.begin(), n, pcols, false), x_tr(n, pcols);
   double dif;
-  b_old=arma::solve(x, log1p(y), arma::solve_opts::fast);
+  
+  // Identify the intercept term(s) and initialize the coefficients
+  for(int i=0;i<pcols;++i){
+    unique_vals = arma::unique(x.unsafe_col(i));
+    
+    if(unique_vals.n_elem==1){
+      b_old(i)=log(mean(y));
+      break;
+    }
+    if((unique_vals.n_elem==2) & (unique_vals[0] == 0 | unique_vals[1] == 0)){
+      b_old(i)=arma::as_scalar(y.t()*x.unsafe_col(i));
+      b_old(i)=b_old(i)/sum(x.unsafe_col(i));
+      b_old(i)=log(std::max(1e-9, b_old(i)));
+    }
+  }
+  
   x_tr=x.t();
   int ij=2;
   
