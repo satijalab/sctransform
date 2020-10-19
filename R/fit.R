@@ -79,6 +79,6 @@ fit_glmGamPoi <- function(umi, model_str, data) {
                            col_data = data,
                            size_factors = FALSE)
   fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-4)
-  colnames(fit$Beta)[1] <- "(Intercept)"
+  colnames(fit$Beta)[match(x = 'Intercept', colnames(fit$Beta))] <- "(Intercept)"
   return(cbind(fit$theta, fit$Beta))
 }

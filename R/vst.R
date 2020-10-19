@@ -125,7 +125,6 @@ vst <- function(umi,
     }
   }
 
-
   # Check for suggested package
   if (method == "glmGamPoi") {
     glmGamPoi_check <- requireNamespace("glmGamPoi", quietly = TRUE)

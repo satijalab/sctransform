@@ -4,6 +4,12 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
   if (is.null(cell_attr)) {
     cell_attr <- data.frame(row.names = colnames(umi))
   }
+  
+  # Do not allow certain variable names
+  no_good <- c('(Intercept)', 'Intercept')
+  if (any(no_good %in% c(latent_var, batch_var, latent_var_nonreg))) {
+    stop('Do not use the following variable names for a latent variable or batch variable: ', paste(no_good, collapse = ', '))
+  }
 
   # these are the cell attributes that we know how to calculate given the count matrix
   known_attr <- c('umi', 'gene', 'log_umi', 'log_gene', 'umi_per_gene', 'log_umi_per_gene')
