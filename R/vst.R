@@ -148,8 +148,8 @@ vst <- function(umi,
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
   genes_log_gmean <- log10(row_gmean(umi, eps = gmean_eps))
-
-  if (!do_regularize) {
+  
+  if (!do_regularize && !is.null(n_genes)) {
     if (verbosity > 0) {
       message('do_regularize is set to FALSE, will use all genes')
     }
