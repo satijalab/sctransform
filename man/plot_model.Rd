@@ -17,7 +17,7 @@ plot_model(
   batches = NULL,
   as_poisson = FALSE,
   arrange_vertical = TRUE,
-  show_density = TRUE,
+  show_density = FALSE,
   gg_cmds = NULL
 )
 }
