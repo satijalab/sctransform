@@ -168,8 +168,8 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #'
 plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr = x$cell_attr,
                        do_log = TRUE, show_fit = TRUE, show_nr = FALSE, plot_residual = FALSE,
-                       batches = NULL, as_poisson = FALSE, arrange_vertical = TRUE, show_density = TRUE,
-                       gg_cmds = NULL) {
+                       batches = NULL, as_poisson = FALSE, arrange_vertical = TRUE, 
+                       show_density = FALSE, gg_cmds = NULL) {
   if (is.null(batches)) {
     if (!is.null(x$arguments$batch_var)) {
       batches <- cell_attr[, x$arguments$batch_var]
@@ -203,7 +203,9 @@ plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr
   df$gene <- factor(df$gene, ordered=TRUE, levels=unique(df$gene))
   g <- ggplot(df, aes_(~x, ~y)) + geom_point(alpha=0.5, shape=16)
   if (show_density) {
-    g <- g + geom_density_2d(color = 'lightblue', size=0.5)
+    bandwidths <- c(bw.nrd0(g$data$x), bw.nrd0(g$data$y))
+    g <- g + geom_density_2d(color = 'lightblue', size=0.5, h = bandwidths,
+                             contour_var = "ndensity")
   }
   if (show_fit) {
     for (b in unique(df$batch)) {
