@@ -31,7 +31,7 @@ NULL
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_estimation_fun Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative
-#' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
+#' @param theta_given If method is set to nb_theta_given, this should be a named numeric vector of fixed theta values for the genes; if method is offset, this should be a single value; default is NULL
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #' @param verbose Deprecated; use verbosity instead
 #' @param show_progress Deprecated; use verbosity instead
@@ -68,6 +68,16 @@ NULL
 #' \code{MASS::glm.nb}.
 #' If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
 #' \code{glmGamPoi::glm_gp}.
+#' 
+#' A special case is \code{method = 'offset'}. Here no regression parameters are learned, but
+#' instead an offset model is assumed. The latent variable is set to log_umi and a fixed 
+#' slope of log(10) is used (offset). The intercept is given by log(gene_mean) - log(avg_cell_umi). 
+#' Theta is set
+#' to 100 by default, but can be changed using the \code{theta_given} parameter (single numeric value).
+#' If the offset method is used, the following parameters are overwritten:
+#' \code{cell_attr <- NULL, latent_var <- c('log_umi'), batch_var <- NULL, latent_var_nonreg <- NULL,
+#' n_genes <- NULL, n_cells <- NULL, do_regularize <- FALSE}
+#' 
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
@@ -130,6 +140,22 @@ vst <- function(umi,
     glmGamPoi_check <- requireNamespace("glmGamPoi", quietly = TRUE)
     if (!glmGamPoi_check){
       stop('Please install the glmGamPoi package. See https://github.com/const-ae/glmGamPoi for details.')
+    }
+  }
+  
+  # Special case offset model - override most parameters
+  if (method == 'offset') {
+    cell_attr <- NULL
+    latent_var <- c('log_umi')
+    batch_var <- NULL
+    latent_var_nonreg <- NULL
+    n_genes <- NULL
+    n_cells <- NULL
+    do_regularize <- FALSE
+    if (is.null(theta_given)) {
+      theta_given <- 100
+    } else {
+      theta_given <- theta_given[1]
     }
   }
   
@@ -331,6 +357,11 @@ vst <- function(umi,
       gene_attr$residual_mean = rowMeans(rv$y)
       gene_attr$residual_variance = row_var(rv$y)
     }
+    # Special case offset model - also calculate arithmetic mean
+    if (method == 'offset') {
+      gene_attr$amean <- rowMeans(umi)
+    }
+    
     rv[['gene_attr']] <- gene_attr
   }
 
@@ -346,6 +377,17 @@ vst <- function(umi,
 get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
                            method, data_step1, theta_given, theta_estimation_fun,
                            verbosity) {
+  # Special case offset model 
+  if (method == 'offset') {
+    gene_mean <- rowMeans(umi)
+    mean_cell_sum <- mean(colSums(umi))
+    model_pars <- cbind(rep(theta_given, nrow(umi)),
+                        log(gene_mean) - log(mean_cell_sum),
+                        rep(log(10), nrow(umi)))
+    dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
+    return(model_pars)
+  }
+  
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
   if (verbosity > 0) {

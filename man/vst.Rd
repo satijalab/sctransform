@@ -75,7 +75,7 @@ vst(
 
 \item{theta_estimation_fun}{Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative}
 
-\item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
+\item{theta_given}{If method is set to nb_theta_given, this should be a named numeric vector of fixed theta values for the genes; if method is offset, this should be a single value; default is NULL}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
 
@@ -124,6 +124,15 @@ If \code{method} is set to 'nb', coefficients and theta are estimated by a singl
 \code{MASS::glm.nb}.
 If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
 \code{glmGamPoi::glm_gp}.
+
+A special case is \code{method = 'offset'}. Here no regression parameters are learned, but
+instead an offset model is assumed. The latent variable is set to log_umi and a fixed 
+slope of log(10) is used (offset). The intercept is given by log(gene_mean) - log(avg_cell_umi). 
+Theta is set
+to 100 by default, but can be changed using the \code{theta_given} parameter (single numeric value).
+If the offset method is used, the following parameters are overwritten:
+\code{cell_attr <- NULL, latent_var <- c('log_umi'), batch_var <- NULL, latent_var_nonreg <- NULL,
+n_genes <- NULL, n_cells <- NULL, do_regularize <- FALSE}
 }
 
 \examples{
