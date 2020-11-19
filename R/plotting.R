@@ -180,6 +180,7 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #' @import ggplot2
 #' @import reshape2
 #' @importFrom gridExtra grid.arrange
+#' @importFrom stats bw.nrd0
 #'
 #' @export
 #'
