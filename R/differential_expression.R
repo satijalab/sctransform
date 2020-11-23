@@ -487,4 +487,34 @@ model_comparison_ttest <- function(y, group) {
   return(c(tt$p.value, diff(tt$estimate)))
 }
 
+# non-parametric differential expression test
+np_de_test <- function(y, labels, N = 100, S = 100, randomize = FALSE) {
+  if (!inherits(x = y, what = 'matrix')) {
+    stop('y must be a matrix')
+  }
+  labels <- droplevels(as.factor(labels))
+  if (length(levels(labels)) > 2) {
+    stop('only two groups can be compared')
+  }
+  if (N < 50 || S < 50) {
+    stop('N and S must both be at least 50')
+  }
+  if (ncol(y) != length(labels)) {
+    stop('number of columns in y and length of label vector must match')
+  }
+  labels <- as.integer(labels)-1L
+  if (randomize) {
+    res <- apply(y, 1, function(x) distribution_shift(mean_boot_grouped(x, sample(labels), N = 100, S = 100)))
+  } else {
+    res <- apply(y, 1, function(x) distribution_shift(mean_boot_grouped(x, labels, N = 100, S = 100)))
+  }
+  #res <- data.frame(t(res))
+  #colnames(res) <- c('q16_a', 'q50_a', 'q84_a', 'q16_b', 'q50_b', 'q84_b', 'div', 'z')
+  res <- data.frame(t(res[c(2, 5, 7, 8), ]))
+  colnames(res) <- c('mu1', 'mu2', 'div', 'z')
+  gene <- rownames(res)
+  res <- cbind(gene, res)
+  rownames(res) <- NULL
+  return(res)
+}
 

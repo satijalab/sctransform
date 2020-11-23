@@ -21,6 +21,22 @@ row_var_dgcmatrix <- function(x, i, rows, cols) {
     .Call('_sctransform_row_var_dgcmatrix', PACKAGE = 'sctransform', x, i, rows, cols)
 }
 
+grouped_mean_diff_per_row <- function(x, group, shuffle) {
+    .Call('_sctransform_grouped_mean_diff_per_row', PACKAGE = 'sctransform', x, group, shuffle)
+}
+
+mean_boot <- function(x, N, S) {
+    .Call('_sctransform_mean_boot', PACKAGE = 'sctransform', x, N, S)
+}
+
+mean_boot_grouped <- function(x, group, N, S) {
+    .Call('_sctransform_mean_boot_grouped', PACKAGE = 'sctransform', x, group, N, S)
+}
+
+distribution_shift <- function(x) {
+    .Call('_sctransform_distribution_shift', PACKAGE = 'sctransform', x)
+}
+
 qpois_reg <- function(X, Y, tol, maxiters, minphi, returnfit) {
     .Call('_sctransform_qpois_reg', PACKAGE = 'sctransform', X, Y, tol, maxiters, minphi, returnfit)
 }
