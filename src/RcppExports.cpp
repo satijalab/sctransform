@@ -82,6 +82,57 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// grouped_mean_diff_per_row
+NumericVector grouped_mean_diff_per_row(NumericMatrix x, IntegerVector group, bool shuffle);
+RcppExport SEXP _sctransform_grouped_mean_diff_per_row(SEXP xSEXP, SEXP groupSEXP, SEXP shuffleSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< bool >::type shuffle(shuffleSEXP);
+    rcpp_result_gen = Rcpp::wrap(grouped_mean_diff_per_row(x, group, shuffle));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mean_boot
+NumericVector mean_boot(NumericVector x, int N, int S);
+RcppExport SEXP _sctransform_mean_boot(SEXP xSEXP, SEXP NSEXP, SEXP SSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type S(SSEXP);
+    rcpp_result_gen = Rcpp::wrap(mean_boot(x, N, S));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mean_boot_grouped
+NumericMatrix mean_boot_grouped(NumericVector x, IntegerVector group, int N, int S);
+RcppExport SEXP _sctransform_mean_boot_grouped(SEXP xSEXP, SEXP groupSEXP, SEXP NSEXP, SEXP SSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type S(SSEXP);
+    rcpp_result_gen = Rcpp::wrap(mean_boot_grouped(x, group, N, S));
+    return rcpp_result_gen;
+END_RCPP
+}
+// distribution_shift
+NumericVector distribution_shift(NumericMatrix x);
+RcppExport SEXP _sctransform_distribution_shift(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(distribution_shift(x));
+    return rcpp_result_gen;
+END_RCPP
+}
 // qpois_reg
 List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int maxiters, const double minphi, const bool returnfit);
 RcppExport SEXP _sctransform_qpois_reg(SEXP XSEXP, SEXP YSEXP, SEXP tolSEXP, SEXP maxitersSEXP, SEXP minphiSEXP, SEXP returnfitSEXP) {
@@ -105,6 +156,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sctransform_row_gmean_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_dgcmatrix, 5},
     {"_sctransform_row_gmean_grouped_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_grouped_dgcmatrix, 7},
     {"_sctransform_row_var_dgcmatrix", (DL_FUNC) &_sctransform_row_var_dgcmatrix, 4},
+    {"_sctransform_grouped_mean_diff_per_row", (DL_FUNC) &_sctransform_grouped_mean_diff_per_row, 3},
+    {"_sctransform_mean_boot", (DL_FUNC) &_sctransform_mean_boot, 3},
+    {"_sctransform_mean_boot_grouped", (DL_FUNC) &_sctransform_mean_boot_grouped, 4},
+    {"_sctransform_distribution_shift", (DL_FUNC) &_sctransform_distribution_shift, 1},
     {"_sctransform_qpois_reg", (DL_FUNC) &_sctransform_qpois_reg, 6},
     {NULL, NULL, 0}
 };

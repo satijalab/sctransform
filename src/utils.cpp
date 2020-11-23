@@ -1,6 +1,7 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 
 #include "RcppArmadillo.h"
+#include "math.h"
 
 using namespace Rcpp;
 
@@ -110,6 +111,124 @@ NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int 
   }
   return rowvar;
 }
+
+// from Rcpp gallery https://gallery.rcpp.org/articles/stl-random-shuffle/
+// wrapper around R's RNG such that we get a uniform distribution over
+// [0,n) as required by the STL algorithm
+inline int randWrapper(const int n) { return floor(unif_rand()*n); }
+
+// assume two groups
+// assume group integers to be 0 and 1
+// [[Rcpp::export]]
+NumericVector grouped_mean_diff_per_row(NumericMatrix x, IntegerVector group, bool shuffle) {
+  int nrows = x.nrow();
+  int ncols = x.ncol();
+  NumericMatrix tmp(2, nrows);
+  IntegerVector groupsize(2);
+  NumericVector ret(nrows, 0.0);
+  
+  if (shuffle) {
+    std::random_shuffle(group.begin(), group.end(), randWrapper);
+  }
+  
+  for (int i = 0; i < ncols; i++) {
+    ++groupsize(group(i));
+    for (int j = 0; j < nrows; j++) {
+      tmp(group(i), j) += x(j,i);
+    }
+  }
+  for (int j = 0; j < nrows; j++) {
+    ret(j) = (tmp(0, j) / groupsize(0)) - (tmp(1, j) / groupsize(1));
+  }
+  return ret;
+}
+
+// Bootstrapped mean 
+// [[Rcpp::export]]
+NumericVector mean_boot(NumericVector x, int N, int S) {
+  NumericVector ret(N);
+  for (int i = 0; i < N; i++) {
+    ret(i) = mean(sample(x, S, true));
+  }
+  return ret;
+}
+
+// Bootstrapped mean per group
+// assume group vector uses contiguous integers starting from 0
+// [[Rcpp::export]]
+NumericMatrix mean_boot_grouped(NumericVector x, IntegerVector group, int N, int S) {
+  // how many groups are there
+  int groups = max(group) + 1;
+  // we need as many columns
+  NumericMatrix ret(N, groups);
+  
+  for (int g = 0; g < groups; g++) {
+    NumericVector xg = x[group == g];
+    ret(_, g) = mean_boot(xg, N, S);
+  }
+  return ret;
+}
+
+// Based on bootstrapped means per group quantify differences
+// x is the result of mean_boot_grouped; make sure there are only two columns
+// [[Rcpp::export]]
+NumericVector distribution_shift(NumericMatrix x) {
+  int N = x.nrow();
+  int cs = 0;
+  int cs_sum = 0;
+  double sd0, sd1;
+  // we also want to return three quantile scores per group
+  IntegerVector qidx = {
+    (int) floor(0.16 * N - 1),
+    (int) round(0.5 * N - 1),
+    (int) ceil(0.84 * N - 1)
+  };
+  // the quantile results and current index
+  NumericVector res(8);
+  int q0i = 0;
+  int q1i = 0;
+  // current rank per group
+  int r0 = 0;
+  int r1 = 0;
+  arma::uvec indices = arma::sort_index(as<arma::mat>(x));
+  arma::uvec::const_iterator it = indices.begin();
+  arma::uvec::const_iterator it_end = indices.end();
+  for (; it != it_end; ++it) {
+    if ((*it) < N) {
+      cs += 1;
+      if (q0i < 3 & r0 == qidx[q0i]) {
+        res[q0i] = x[*it];
+        q0i++;
+      }
+      r0++;
+    } else {
+      cs -= 1;
+      if (q1i < 3 & r1 == qidx[q1i]) {
+        res[q1i+3] = x[*it];
+        q1i++;
+      }
+      r1++;
+    }
+    cs_sum += cs;
+  }
+  res[6] = (double) cs_sum / N / N;
+  // add z-score-like score
+  if (res[4] > res[1]) {
+    // second group has higher mean
+    sd0 = res[2] - res[1];
+    sd1 = res[4] - res[3];
+  } else {
+    sd0 = res[1] - res[0];
+    sd1 = res[5] - res[4];
+  }
+  //res[7] = (res[4] - res[1]) / sqrt(sd0 * sd1);
+  //res[7] = (res[4] - res[1]) / ((sd0 + sd1) / 2);
+  res[7] = (res[4] - res[1]) / sqrt((sd0*sd0 + sd1*sd1) / 2);
+  return res;
+}
+
+
+
 
 
 // The following function was taken from the Rfast package
