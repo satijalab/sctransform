@@ -76,7 +76,10 @@ NULL
 #' to 100 by default, but can be changed using the \code{theta_given} parameter (single numeric value).
 #' If the offset method is used, the following parameters are overwritten:
 #' \code{cell_attr <- NULL, latent_var <- c('log_umi'), batch_var <- NULL, latent_var_nonreg <- NULL,
-#' n_genes <- NULL, n_cells <- NULL, do_regularize <- FALSE}
+#' n_genes <- NULL, n_cells <- NULL, do_regularize <- FALSE}. Further, \code{method = 'offset_shared_theta_estimate'}
+#' exists where the 250 most highly expressed genes with detectio rate of at least 0.5 are used
+#' to estimate a theta that is then shared across all genes. Thetas are estimated per individual gene
+#' using 5000 randomly selected cells. The final theta used for all genes is then the average.
 #' 
 #'
 #' @import Matrix
@@ -144,7 +147,7 @@ vst <- function(umi,
   }
   
   # Special case offset model - override most parameters
-  if (method == 'offset') {
+  if (startsWith(x = method, prefix = 'offset')) {
     cell_attr <- NULL
     latent_var <- c('log_umi')
     batch_var <- NULL
@@ -358,7 +361,7 @@ vst <- function(umi,
       gene_attr$residual_variance = row_var(rv$y)
     }
     # Special case offset model - also calculate arithmetic mean
-    if (method == 'offset') {
+    if (startsWith(x = method, prefix = 'offset')) {
       gene_attr$amean <- rowMeans(umi)
     }
     
@@ -377,14 +380,41 @@ vst <- function(umi,
 get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
                            method, data_step1, theta_given, theta_estimation_fun,
                            verbosity) {
-  # Special case offset model 
-  if (method == 'offset') {
+  # Special case offset model with one theta for all genes
+  if (startsWith(x = method, prefix = 'offset')) {
     gene_mean <- rowMeans(umi)
     mean_cell_sum <- mean(colSums(umi))
     model_pars <- cbind(rep(theta_given, nrow(umi)),
                         log(gene_mean) - log(mean_cell_sum),
                         rep(log(10), nrow(umi)))
     dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
+    if (method == 'offset_shared_theta_estimate') {
+      # use all genes with detection rate > 0.5 to estimate theta
+      # if there are more, use the 250 most highly expressed ones
+      # use at most 5000 cells (random sample)
+      use_genes <- rowMeans(umi > 0) > 0.5
+      if (sum(use_genes) > 250) {
+        o <- order(-row_gmean(umi[use_genes, ]))
+        use_genes <- which(use_genes)[o[1:250]]
+      }
+      use_cells <- sample(x = ncol(umi), size = min(ncol(umi), 5000), replace = FALSE)
+      if (verbosity > 0) {
+        message('Estimate shared theta for offset model')
+        message('Using ', length(x = use_genes), ' genes, ', length(x = use_cells), ' cells')
+      }
+      y <- as.matrix(umi[use_genes, use_cells])
+      regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[use_cells, ])
+      mu <- exp(tcrossprod(model_pars[use_genes, -1, drop=FALSE], regressor_data))
+      if (requireNamespace("glmGamPoi", quietly = TRUE)) {
+        theta <- 1 / sapply(1:nrow(y), function(i) {
+          glmGamPoi::gampoi_overdispersion_mle(y = y[i, ], mean = mu[i, ])$estimate
+        })
+        theta <- theta[is.finite(theta)]
+      } else {
+        theta <- as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
+      }
+      model_pars[, 'theta'] <- mean(theta)
+    }
     return(model_pars)
   }
   
