@@ -5,96 +5,145 @@
 
 using namespace Rcpp;
 
+// from Rcpp gallery https://gallery.rcpp.org/articles/stl-random-shuffle/
+// wrapper around R's RNG such that we get a uniform distribution over
+// [0,n) as required by the STL algorithm
+inline int randWrapper(const int n) { return floor(unif_rand()*n); }
 
 // [[Rcpp::export]]
-NumericVector row_mean_dgcmatrix(NumericVector x, IntegerVector i, int rows, int cols) {
+NumericVector row_mean_dgcmatrix(S4 matrix) {
+  NumericVector x = matrix.slot("x");
+  IntegerVector i = matrix.slot("i");
+  IntegerVector dim = matrix.slot("Dim");
+  int rows = dim[0];
+  int cols = dim[1];
+  
   NumericVector ret(rows, 0.0);
-  for (int k=0; k<x.length(); ++k) {
+  int x_length = x.length();
+  for (int k=0; k<x_length; ++k) {
     ret[i[k]] += x[k];
   }
   for (int k=0; k<rows; ++k) {
     ret[k] /= cols;
   }
+  List dn = matrix.slot("Dimnames");
+  ret.attr("names") = as<CharacterVector>(dn[0]);
   return ret;
 }
 
 // [[Rcpp::export]]
-NumericMatrix row_mean_grouped_dgcmatrix(NumericVector x, IntegerVector i, IntegerVector p,
-                                         IntegerVector group, int groups, int rows) {
+NumericMatrix row_mean_grouped_dgcmatrix(S4 matrix, IntegerVector group, 
+                                         bool shuffle) {
+  NumericVector x = matrix.slot("x");
+  IntegerVector i = matrix.slot("i");
+  IntegerVector p = matrix.slot("p");
+  IntegerVector dim = matrix.slot("Dim");
+  int rows = dim[0];
+  CharacterVector levs = group.attr("levels");
+  int groups = levs.length();
   NumericMatrix ret(rows, groups);
   IntegerVector groupsize(groups, 0);
-
+  int x_length = x.length();
+  
+  if (shuffle) {
+    group = clone(group);
+    std::random_shuffle(group.begin(), group.end(), randWrapper);
+  }
+  
   int col = 0;
-  for (int k=0; k<x.length(); ++k) {
+  for (int k=0; k<x_length; ++k) {
     while (k>=p[col]) {
       ++col;
+      ++groupsize[group[col-1]-1];
     }
-    ret(i[k], group[col-1]) += x[k];
+    ret(i[k], group[col-1]-1) += x[k];
   }
-
-  for (int k=0; k<group.length(); ++k) {
-    ++groupsize[group[k]];
-  }
-
+  
   for (int j=0; j<groups; ++j) {
-    for (int k=0; k<rows; ++k) {
-      ret(k, j) /= groupsize[j];
+    if (groupsize[j] == 0) {
+      ret(_, j) = rep(NumericVector::get_na(), rows);
+    } else{
+      ret(_, j) = ret(_, j) / groupsize[j];
     }
   }
+  colnames(ret) = levs;
+  List dn = matrix.slot("Dimnames");
+  rownames(ret) = as<CharacterVector>(dn[0]);
   return ret;
 }
 
 // [[Rcpp::export]]
-NumericVector row_gmean_dgcmatrix(NumericVector x, IntegerVector i, int rows, int cols, double eps) {
+NumericVector row_gmean_dgcmatrix(S4 matrix, double eps) {
+  NumericVector x = matrix.slot("x");
+  IntegerVector i = matrix.slot("i");
+  IntegerVector dim = matrix.slot("Dim");
+  int rows = dim[0];
+  int cols = dim[1];
+  
   NumericVector ret(rows, 0.0);
   IntegerVector nzero(rows, cols);
-  for (int k=0; k<x.length(); ++k) {
+  int x_length = x.length();
+  double log_eps = log(eps);
+  
+  for (int k=0; k<x_length; ++k) {
     ret[i[k]] += log(x[k] + eps);
     nzero[i[k]] -= 1;
   }
   for (int k=0; k<rows; ++k) {
-    ret[k] = exp((ret[k] + log(eps) * nzero[k]) / cols) - eps;
+    ret[k] = exp((ret[k] + log_eps * nzero[k]) / cols) - eps;
   }
+  List dn = matrix.slot("Dimnames");
+  ret.attr("names") = as<CharacterVector>(dn[0]);
   return ret;
 }
 
 // [[Rcpp::export]]
-NumericMatrix row_gmean_grouped_dgcmatrix(NumericVector x, IntegerVector i, IntegerVector p,
-                                         IntegerVector group, int groups, int rows, double eps) {
+NumericMatrix row_gmean_grouped_dgcmatrix(S4 matrix, IntegerVector group, 
+                                          double eps, bool shuffle) {
+  NumericVector x = matrix.slot("x");
+  IntegerVector i = matrix.slot("i");
+  IntegerVector p = matrix.slot("p");
+  IntegerVector dim = matrix.slot("Dim");
+  int rows = dim[0];
+  CharacterVector levs = group.attr("levels");
+  int groups = levs.length();
   NumericMatrix ret(rows, groups);
-  IntegerMatrix nzero(rows, groups);
   IntegerVector groupsize(groups, 0);
-
-  for (int k=0; k<group.length(); ++k) {
-    ++groupsize[group[k]];
-  }
-
-  for (int k=0; k<groups; ++k) {
-    IntegerMatrix::Column col = nzero(_, k);
-    col = col + groupsize[k];
+  int x_length = x.length();
+  IntegerMatrix nonzero(rows, groups);
+  double log_eps = log(eps);
+  
+  if (shuffle) {
+    group = clone(group);
+    std::random_shuffle(group.begin(), group.end(), randWrapper);
   }
 
   int col = 0;
-  for (int k=0; k<x.length(); ++k) {
+  for (int k=0; k<x_length; ++k) {
     while (k>=p[col]) {
       ++col;
+      ++groupsize[group[col-1]-1];
     }
-    ret(i[k], group[col-1]) += log(x[k] + eps);
-    nzero(i[k], group[col-1]) -= 1;
+    ret(i[k], group[col-1]-1) += log(x[k] + eps);
+    ++nonzero(i[k], group[col-1]-1);
   }
 
   for (int j=0; j<groups; ++j) {
     for (int k=0; k<rows; ++k) {
-      ret(k, j) = exp((ret(k, j) + log(eps) * nzero(k, j)) / groupsize[j]) - eps;
+      ret(k, j) = exp((ret(k, j) + log_eps * (groupsize[j] - nonzero(k, j))) / groupsize[j]) - eps;
     }
   }
+  colnames(ret) = levs;
+  List dn = matrix.slot("Dimnames");
+  rownames(ret) = as<CharacterVector>(dn[0]);
   return ret;
 }
 
 // [[Rcpp::export]]
 NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int cols) {
   NumericVector rowmean(rows, 0.0);
-  for (int k=0; k<x.length(); ++k) {
+  int x_length = x.length();
+  for (int k=0; k<x_length; ++k) {
     rowmean[i[k]] += x[k];
   }
   for (int k=0; k<rows; ++k) {
@@ -102,7 +151,7 @@ NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int 
   }
   NumericVector rowvar(rows, 0.0);
   IntegerVector nzero(rows, cols);
-  for (int k=0; k<x.length(); ++k) {
+  for (int k=0; k<x_length; ++k) {
     rowvar[i[k]] += pow(x[k] - rowmean[i[k]], 2);
     nzero[i[k]] -= 1;
   }
@@ -111,11 +160,6 @@ NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int 
   }
   return rowvar;
 }
-
-// from Rcpp gallery https://gallery.rcpp.org/articles/stl-random-shuffle/
-// wrapper around R's RNG such that we get a uniform distribution over
-// [0,n) as required by the STL algorithm
-inline int randWrapper(const int n) { return floor(unif_rand()*n); }
 
 // assume two groups
 // assume group integers to be 0 and 1
@@ -128,6 +172,7 @@ NumericVector grouped_mean_diff_per_row(NumericMatrix x, IntegerVector group, bo
   NumericVector ret(nrows, 0.0);
   
   if (shuffle) {
+    group = clone(group);
     std::random_shuffle(group.begin(), group.end(), randWrapper);
   }
   
