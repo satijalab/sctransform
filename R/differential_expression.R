@@ -487,6 +487,111 @@ model_comparison_ttest <- function(y, group) {
   return(c(tt$p.value, diff(tt$estimate)))
 }
 
+#' Non-parametric differential expression test for count data
+#'
+#' @param y A matrix of counts; must be (or inherit from) class dgCMatrix
+#' @param labels A factor giving the group labels; must have exactly two levels
+#' @param R The number of random permutations used to derive the p-values; default is 66
+#' @param log2FC_th Threshold to remove genes from testing; absolute log2FC must be at least
+#' this large for a gene to be tested; default is \code{log2(1.2)}
+#' @param mean_th Threshold to remove genes from testing; gene mean must be at least this
+#' large for a gene to be tested; default is 0.05
+#' @param mean_type Which type of mean to use; if \code{'geometric'} (default) the geometric mean is
+#' used; to avoid \code{log(0)} we use \code{log1p} to add 1 to all counts and log-transform, 
+#' calculate the arithmetic mean, and then back-transform and subtract 1 using \code{exp1m}; if
+#' this parameter is set to \code{'arithmetic'} the data is used as is
+#' @param verbosity Integer controlling how much messages the function prints; 0 is silent, 1 (default) is not
+#'
+#' @return Data frame of results
+#' 
+#' @section Details:
+#' The observed difference in mean is compared against a distribution
+#' obtained by random shuffling of the group labels. For each gene every 
+#' random permutation yields a difference in mean and from the population of
+#' these background differences we estimate a mean and standard
+#' deviation. This mean and standard deviation are used to turn the observed
+#' difference in mean into a z-score and then into a p-value. Finally,
+#' all p-values (for the tested genes) are adjusted using the Benjamini & Hochberg
+#' method (fdr). The log2FC values in the output are \code{log2(mean1 / mean2)}.
+#' 
+#' @import Matrix
+#' @importFrom matrixStats rowMeans2 rowSds
+#' @importFrom stats p.adjust pnorm
+#' 
+#' @export
+#'
+#' @examples
+#' \donttest{
+#' clustering <- 1:ncol(pbmc) %% 2
+#' vst_out <- vst(pbmc, return_corrected_umi = TRUE)
+#' de_res <- np_de_test_cd(y = vst_out$umi_corrected, labels = clustering)
+#' }
+#'
+np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2), 
+                          mean_th = 0.05, mean_type = 'geometric',
+                          verbosity = 1) {
+  if (is.na(match(x = mean_type, table = c('geometric', 'arithmetic')))) {
+    stop('mean_type must be geometric or arithmetic')
+  }
+  if (!inherits(x = y, what = 'dgCMatrix')) {
+    stop('y must be a dgCMatrix')
+  }
+  labels <- droplevels(as.factor(labels))
+  if (length(levels(labels)) > 2) {
+    stop('only two groups can be compared')
+  }
+  lab_tab <- table(labels)
+  if (R < 13) {
+    stop('R must be at least 13')
+  }
+  if (verbosity > 0) {
+    message('Non-parametric DE test for count data')
+    message(sprintf('Using %s mean and %d random permutations', mean_type, R))
+    message('Input: ', nrow(y), ' genes, ', ncol(y), ' cells')
+    message(sprintf('Comparing %s (group 1, N = %d) to %s (group2, N = %d)', 
+                    levels(labels)[1], lab_tab[1], levels(labels)[2], lab_tab[2]))
+  }
+  # for all the genes, get the mean per group
+  if (mean_type == 'geometric') {
+    y@x <- log1p(y@x)
+    means <- expm1(row_mean_grouped_dgcmatrix(matrix = y, group = labels, shuffle = FALSE))
+  } else {
+    means <- row_mean_grouped_dgcmatrix(matrix = y, group = labels, shuffle = FALSE)
+  }
+  res <- data.frame(mean1 = means[, 1],
+                    mean2 = means[, 2],
+                    mean_diff = means[, 1] - means[, 2],
+                    log2FC = log2(means[, 1] / means[, 2]))
+  # remove genes according to the filters
+  if (log2FC_th > 0 || mean_th > 0) {
+    res <- res[abs(res$log2FC) > log2FC_th & (res$mean1 > mean_th | res$mean2 > mean_th), ]
+    if (verbosity > 0) {
+      message(sprintf('Keeping %d genes after initial filtering', nrow(res)))
+    }
+    
+  }
+  
+  # now get the random background for mean_diff
+  y_ss <- y[rownames(res), ]
+  if (mean_type == 'geometric') {
+    mean_diff_rnd <- sapply(1:R, function(i) {
+      means_r <- expm1(row_mean_grouped_dgcmatrix(matrix = y_ss, group = labels, shuffle = TRUE))
+      means_r[, 1] - means_r[, 2]
+    })
+  } else {
+    mean_diff_rnd <- sapply(1:R, function(i) {
+      means_r <- row_mean_grouped_dgcmatrix(matrix = y_ss, group = labels, shuffle = TRUE)
+      means_r[, 1] - means_r[, 2]
+    })
+  }
+  
+  # use background to get z-scores and p-values
+  res$zscore <- (res$mean_diff - rowMeans2(mean_diff_rnd)) / rowSds(mean_diff_rnd)
+  res$pval <- 2 * pnorm(-abs(res$zscore))
+  res$pval_adj <- p.adjust(res$pval, method = 'BH')
+  return(res)
+}
+
 # non-parametric differential expression test
 np_de_test <- function(y, labels, N = 100, S = 100, randomize = FALSE) {
   if (!inherits(x = y, what = 'matrix')) {
