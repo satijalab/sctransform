@@ -56,6 +56,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// row_nonzero_count_dgcmatrix
+IntegerVector row_nonzero_count_dgcmatrix(S4 matrix);
+RcppExport SEXP _sctransform_row_nonzero_count_dgcmatrix(SEXP matrixSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< S4 >::type matrix(matrixSEXP);
+    rcpp_result_gen = Rcpp::wrap(row_nonzero_count_dgcmatrix(matrix));
+    return rcpp_result_gen;
+END_RCPP
+}
+// row_nonzero_count_grouped_dgcmatrix
+IntegerMatrix row_nonzero_count_grouped_dgcmatrix(S4 matrix, IntegerVector group);
+RcppExport SEXP _sctransform_row_nonzero_count_grouped_dgcmatrix(SEXP matrixSEXP, SEXP groupSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< S4 >::type matrix(matrixSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
+    rcpp_result_gen = Rcpp::wrap(row_nonzero_count_grouped_dgcmatrix(matrix, group));
+    return rcpp_result_gen;
+END_RCPP
+}
 // row_var_dgcmatrix
 NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int cols);
 RcppExport SEXP _sctransform_row_var_dgcmatrix(SEXP xSEXP, SEXP iSEXP, SEXP rowsSEXP, SEXP colsSEXP) {
@@ -143,6 +166,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sctransform_row_mean_grouped_dgcmatrix", (DL_FUNC) &_sctransform_row_mean_grouped_dgcmatrix, 3},
     {"_sctransform_row_gmean_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_dgcmatrix, 2},
     {"_sctransform_row_gmean_grouped_dgcmatrix", (DL_FUNC) &_sctransform_row_gmean_grouped_dgcmatrix, 4},
+    {"_sctransform_row_nonzero_count_dgcmatrix", (DL_FUNC) &_sctransform_row_nonzero_count_dgcmatrix, 1},
+    {"_sctransform_row_nonzero_count_grouped_dgcmatrix", (DL_FUNC) &_sctransform_row_nonzero_count_grouped_dgcmatrix, 2},
     {"_sctransform_row_var_dgcmatrix", (DL_FUNC) &_sctransform_row_var_dgcmatrix, 4},
     {"_sctransform_grouped_mean_diff_per_row", (DL_FUNC) &_sctransform_grouped_mean_diff_per_row, 3},
     {"_sctransform_mean_boot", (DL_FUNC) &_sctransform_mean_boot, 3},

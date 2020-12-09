@@ -158,6 +158,52 @@ NumericMatrix row_gmean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
 }
 
 // [[Rcpp::export]]
+IntegerVector row_nonzero_count_dgcmatrix(S4 matrix) {
+  IntegerVector i = matrix.slot("i");
+  IntegerVector dim = matrix.slot("Dim");
+  int rows = dim[0];
+  
+  IntegerVector ret(rows, 0);
+  int i_len = i.length();
+  for(int k = 0; k < i_len; ++k) {
+    ret[i[k]]++;
+  }
+  
+  List dn = matrix.slot("Dimnames");
+  if (dn[0] != R_NilValue) {
+    ret.attr("names") = as<CharacterVector>(dn[0]);
+  }
+  return ret;
+}
+
+// [[Rcpp::export]]
+IntegerMatrix row_nonzero_count_grouped_dgcmatrix(S4 matrix, IntegerVector group) {
+  IntegerVector p = matrix.slot("p");
+  IntegerVector i = matrix.slot("i");
+  int i_length = i.length();
+  IntegerVector dim = matrix.slot("Dim");
+  int rows = dim[0];
+  CharacterVector levs = group.attr("levels");
+  int groups = levs.length();
+  IntegerMatrix ret(rows, groups);
+  
+  int col = 0;
+  for (int k=0; k<i_length; ++k) {
+    while (k>=p[col]) {
+      ++col;
+    }
+    ret(i[k], group[col-1]-1)++;
+  }
+  
+  colnames(ret) = levs;
+  List dn = matrix.slot("Dimnames");
+  if (dn[0] != R_NilValue) {
+    rownames(ret) = as<CharacterVector>(dn[0]);
+  }
+  return ret;
+}
+
+// [[Rcpp::export]]
 NumericVector row_var_dgcmatrix(NumericVector x, IntegerVector i, int rows, int cols) {
   NumericVector rowmean(rows, 0.0);
   int x_length = x.length();

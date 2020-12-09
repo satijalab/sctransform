@@ -17,6 +17,14 @@ row_gmean_grouped_dgcmatrix <- function(matrix, group, eps, shuffle) {
     .Call('_sctransform_row_gmean_grouped_dgcmatrix', PACKAGE = 'sctransform', matrix, group, eps, shuffle)
 }
 
+row_nonzero_count_dgcmatrix <- function(matrix) {
+    .Call('_sctransform_row_nonzero_count_dgcmatrix', PACKAGE = 'sctransform', matrix)
+}
+
+row_nonzero_count_grouped_dgcmatrix <- function(matrix, group) {
+    .Call('_sctransform_row_nonzero_count_grouped_dgcmatrix', PACKAGE = 'sctransform', matrix, group)
+}
+
 row_var_dgcmatrix <- function(x, i, rows, cols) {
     .Call('_sctransform_row_var_dgcmatrix', PACKAGE = 'sctransform', x, i, rows, cols)
 }
