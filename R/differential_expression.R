@@ -568,11 +568,11 @@ np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2),
     if (verbosity > 0) {
       message(sprintf('Keeping %d genes after initial filtering', nrow(res)))
     }
-    
+    # TODO handle the case where no genes remain after filtering
   }
   
   # now get the random background for mean_diff
-  y_ss <- y[rownames(res), ]
+  y_ss <- y[rownames(res), , drop = FALSE]
   if (mean_type == 'geometric') {
     mean_diff_rnd <- sapply(1:R, function(i) {
       means_r <- expm1(row_mean_grouped_dgcmatrix(matrix = y_ss, group = labels, shuffle = TRUE))
