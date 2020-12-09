@@ -39,6 +39,7 @@ NumericMatrix row_mean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
   IntegerVector p = matrix.slot("p");
   IntegerVector dim = matrix.slot("Dim");
   int rows = dim[0];
+  int cols = dim[1];
   CharacterVector levs = group.attr("levels");
   int groups = levs.length();
   NumericMatrix ret(rows, groups);
@@ -57,6 +58,10 @@ NumericMatrix row_mean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
       ++groupsize[group[col-1]-1];
     }
     ret(i[k], group[col-1]-1) += x[k];
+  }
+  while (col < cols) {
+    ++col;
+    ++groupsize[group[col-1]-1];
   }
   
   for (int j=0; j<groups; ++j) {
@@ -105,6 +110,7 @@ NumericMatrix row_gmean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
   IntegerVector p = matrix.slot("p");
   IntegerVector dim = matrix.slot("Dim");
   int rows = dim[0];
+  int cols = dim[1];
   CharacterVector levs = group.attr("levels");
   int groups = levs.length();
   NumericMatrix ret(rows, groups);
@@ -126,6 +132,10 @@ NumericMatrix row_gmean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
     }
     ret(i[k], group[col-1]-1) += log(x[k] + eps);
     ++nonzero(i[k], group[col-1]-1);
+  }
+  while (col < cols) {
+    ++col;
+    ++groupsize[group[col-1]-1];
   }
 
   for (int j=0; j<groups; ++j) {
