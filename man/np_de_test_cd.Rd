@@ -10,6 +10,8 @@ np_de_test_cd(
   R = 66,
   log2FC_th = log2(1.2),
   mean_th = 0.05,
+  cells_th = 3,
+  only_pos = FALSE,
   mean_type = "geometric",
   verbosity = 1
 )
@@ -26,6 +28,12 @@ this large for a gene to be tested; default is \code{log2(1.2)}}
 
 \item{mean_th}{Threshold to remove genes from testing; gene mean must be at least this
 large for a gene to be tested; default is 0.05}
+
+\item{cells_th}{Threshold to remove genes from testing; gene must be detected (non-zero count)
+in at least this many cells in the group with higher mean; default is 3}
+
+\item{only_pos}{Test only genes with positive fold change (mean in group 1 > mean in group2); 
+default is FALSE}
 
 \item{mean_type}{Which type of mean to use; if \code{'geometric'} (default) the geometric mean is
 used; to avoid \code{log(0)} we use \code{log1p} to add 1 to all counts and log-transform, 

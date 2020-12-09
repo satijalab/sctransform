@@ -496,6 +496,10 @@ model_comparison_ttest <- function(y, group) {
 #' this large for a gene to be tested; default is \code{log2(1.2)}
 #' @param mean_th Threshold to remove genes from testing; gene mean must be at least this
 #' large for a gene to be tested; default is 0.05
+#' @param cells_th Threshold to remove genes from testing; gene must be detected (non-zero count)
+#' in at least this many cells in the group with higher mean; default is 3
+#' @param only_pos Test only genes with positive fold change (mean in group 1 > mean in group2); 
+#' default is FALSE
 #' @param mean_type Which type of mean to use; if \code{'geometric'} (default) the geometric mean is
 #' used; to avoid \code{log(0)} we use \code{log1p} to add 1 to all counts and log-transform, 
 #' calculate the arithmetic mean, and then back-transform and subtract 1 using \code{exp1m}; if
@@ -528,8 +532,8 @@ model_comparison_ttest <- function(y, group) {
 #' }
 #'
 np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2), 
-                          mean_th = 0.05, mean_type = 'geometric',
-                          verbosity = 1) {
+                          mean_th = 0.05, cells_th = 3, only_pos = FALSE,
+                          mean_type = 'geometric', verbosity = 1) {
   if (is.na(match(x = mean_type, table = c('geometric', 'arithmetic')))) {
     stop('mean_type must be geometric or arithmetic')
   }
@@ -551,6 +555,8 @@ np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2),
     message(sprintf('Comparing %s (group 1, N = %d) to %s (group2, N = %d)', 
                     levels(labels)[1], lab_tab[1], levels(labels)[2], lab_tab[2]))
   }
+  # for all the genes, get the number of non-zero observations per group
+  cells <- row_nonzero_count_grouped_dgcmatrix(matrix = y, group = labels)
   # for all the genes, get the mean per group
   if (mean_type == 'geometric') {
     y@x <- log1p(y@x)
@@ -559,19 +565,33 @@ np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2),
     means <- row_mean_grouped_dgcmatrix(matrix = y, group = labels, shuffle = FALSE)
   }
   res <- data.frame(mean1 = means[, 1],
+                    cells1 = cells[, 1],
                     mean2 = means[, 2],
+                    cells2 = cells[, 2],
                     mean_diff = means[, 1] - means[, 2],
                     log2FC = log2(means[, 1] / means[, 2]))
+  
   # remove genes according to the filters
-  if (log2FC_th > 0 || mean_th > 0) {
-    res <- res[abs(res$log2FC) > log2FC_th & (res$mean1 > mean_th | res$mean2 > mean_th), ]
+  if (log2FC_th > 0 || mean_th > 0 || cells_th > 0 || only_pos) {
+    sel1 <- abs(res$log2FC) >= log2FC_th
+    sel2 <- res$mean1 >= mean_th | res$mean2 >= mean_th
+    sel3 <- (res$log2FC >= 0 & res$cells1 >= cells_th) | (res$log2FC <= 0 & res$cells2 >= cells_th)
+    if (only_pos) {
+      sel4 <- res$log2FC > 0
+    } else {
+      sel4 <- rep(TRUE, nrow(res))
+    }
+    res <- res[sel1 & sel2 & sel3 & sel4, , drop = FALSE]
     if (verbosity > 0) {
       message(sprintf('Keeping %d genes after initial filtering', nrow(res)))
     }
-    # TODO handle the case where no genes remain after filtering
+    # handle the case where no genes remain after filtering
+    if (nrow(res) == 0) {
+      return(res)
+    }
   }
   
-  # now get the random background for mean_diff
+  # now get the empirical null distribution for mean_diff
   y_ss <- y[rownames(res), , drop = FALSE]
   if (mean_type == 'geometric') {
     mean_diff_rnd <- sapply(1:R, function(i) {
@@ -585,7 +605,9 @@ np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2),
     })
   }
   
-  # use background to get z-scores and p-values
+  # use null distribution to get empirical p-values
+  # also approximate null with normal and derive z-scores and p-values
+  res$emp_pval <- (rowSums((abs(mean_diff_rnd) - abs(res$mean_diff)) >= 0) + 1) / (R + 1)
   res$zscore <- (res$mean_diff - rowMeans2(mean_diff_rnd)) / rowSds(mean_diff_rnd)
   res$pval <- 2 * pnorm(-abs(res$zscore))
   res$pval_adj <- p.adjust(res$pval, method = 'BH')
