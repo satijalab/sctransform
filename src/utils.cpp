@@ -27,7 +27,9 @@ NumericVector row_mean_dgcmatrix(S4 matrix) {
     ret[k] /= cols;
   }
   List dn = matrix.slot("Dimnames");
-  ret.attr("names") = as<CharacterVector>(dn[0]);
+  if (dn[0] != R_NilValue) {
+    ret.attr("names") = as<CharacterVector>(dn[0]);
+  }
   return ret;
 }
 
@@ -73,7 +75,9 @@ NumericMatrix row_mean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
   }
   colnames(ret) = levs;
   List dn = matrix.slot("Dimnames");
-  rownames(ret) = as<CharacterVector>(dn[0]);
+  if (dn[0] != R_NilValue) {
+    rownames(ret) = as<CharacterVector>(dn[0]);
+  }
   return ret;
 }
 
@@ -98,7 +102,9 @@ NumericVector row_gmean_dgcmatrix(S4 matrix, double eps) {
     ret[k] = exp((ret[k] + log_eps * nzero[k]) / cols) - eps;
   }
   List dn = matrix.slot("Dimnames");
-  ret.attr("names") = as<CharacterVector>(dn[0]);
+  if (dn[0] != R_NilValue) {
+    ret.attr("names") = as<CharacterVector>(dn[0]);
+  }
   return ret;
 }
 
@@ -145,7 +151,9 @@ NumericMatrix row_gmean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
   }
   colnames(ret) = levs;
   List dn = matrix.slot("Dimnames");
-  rownames(ret) = as<CharacterVector>(dn[0]);
+  if (dn[0] != R_NilValue) {
+    rownames(ret) = as<CharacterVector>(dn[0]);
+  }
   return ret;
 }
 
