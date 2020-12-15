@@ -305,14 +305,14 @@ NumericVector distribution_shift(NumericMatrix x) {
   for (; it != it_end; ++it) {
     if ((*it) < N) {
       cs += 1;
-      if (q0i < 3 & r0 == qidx[q0i]) {
+      if ((q0i < 3) & (r0 == qidx[q0i])) {
         res[q0i] = x[*it];
         q0i++;
       }
       r0++;
     } else {
       cs -= 1;
-      if (q1i < 3 & r1 == qidx[q1i]) {
+      if ((q1i < 3) & (r1 == qidx[q1i])) {
         res[q1i+3] = x[*it];
         q1i++;
       }
@@ -361,7 +361,7 @@ List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int max
       b_old(i)=log(mean(y));
       break;
     }
-    if((unique_vals.n_elem==2) & (unique_vals[0] == 0 | unique_vals[1] == 0)){
+    if((unique_vals.n_elem==2) & ((unique_vals[0] == 0) | (unique_vals[1] == 0))){
       b_old(i)=arma::as_scalar(y.t()*x.unsafe_col(i));
       b_old(i)=b_old(i)/sum(x.unsafe_col(i));
       b_old(i)=log(std::max(1e-9, b_old(i)));
