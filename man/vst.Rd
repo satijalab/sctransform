@@ -132,7 +132,10 @@ Theta is set
 to 100 by default, but can be changed using the \code{theta_given} parameter (single numeric value).
 If the offset method is used, the following parameters are overwritten:
 \code{cell_attr <- NULL, latent_var <- c('log_umi'), batch_var <- NULL, latent_var_nonreg <- NULL,
-n_genes <- NULL, n_cells <- NULL, do_regularize <- FALSE}
+n_genes <- NULL, n_cells <- NULL, do_regularize <- FALSE}. Further, \code{method = 'offset_shared_theta_estimate'}
+exists where the 250 most highly expressed genes with detectio rate of at least 0.5 are used
+to estimate a theta that is then shared across all genes. Thetas are estimated per individual gene
+using 5000 randomly selected cells. The final theta used for all genes is then the average.
 }
 
 \examples{

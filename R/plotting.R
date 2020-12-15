@@ -67,7 +67,7 @@ plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
   df_fit$type <- 'regularized'
   df_fit$is_outl <- FALSE
   
-  if (vst_out$arguments$method == 'offset') {
+  if (startsWith(x = vst_out$arguments$method, prefix = 'offset')) {
     df$x <- vst_out$gene_attr[df$gene, 'amean']
     df_fit$x <- vst_out$gene_attr[df_fit$gene, 'amean']
     xlab <- 'Arithmetic mean of gene [log10]'
@@ -80,7 +80,7 @@ plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
   df_plot <- rbind(df, df_fit)
   df_plot$parameter <- factor(df_plot$parameter, levels = ordered_par_names)
   
-  if (!vst_out$arguments$do_regularize || vst_out$arguments$method == 'offset') {
+  if (!vst_out$arguments$do_regularize || startsWith(x = vst_out$arguments$method, prefix = 'offset')) {
     df_plot <- df_plot[df_plot$type == 'single gene estimate', ]
     legend_pos <- 'none'
   } else {
@@ -102,7 +102,7 @@ get_model_par_mat <- function(vst_out, model_pars, use_nonreg, show_theta = FALS
                               verbosity = 2) {
   mp <- model_pars
   # transform theta to overdispersion factor
-  if (vst_out$arguments$method == 'offset') {
+  if (startsWith(x = vst_out$arguments$method, prefix = 'offset')) {
     mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'amean'] / mp[, 'theta'])
   } else {
     mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'gmean'] / mp[, 'theta'])
