@@ -2,11 +2,11 @@
 
 export(correct)
 export(correct_counts)
+export(diff_mean_test)
 export(generate)
 export(get_model_var)
 export(get_residual_var)
 export(get_residuals)
-export(np_de_test_cd)
 export(plot_model)
 export(plot_model_pars)
 export(smooth_via_pca)

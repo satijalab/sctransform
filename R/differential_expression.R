@@ -487,36 +487,53 @@ model_comparison_ttest <- function(y, group) {
   return(c(tt$p.value, diff(tt$estimate)))
 }
 
-#' Non-parametric differential expression test for count data
+#' Non-parametric differential expression test for sparse non-negative data
 #'
-#' @param y A matrix of counts; must be (or inherit from) class dgCMatrix
+#' @param y A matrix of counts; must be (or inherit from) class dgCMatrix; genes are row,
+#' cells are columns
 #' @param labels A factor giving the group labels; must have exactly two levels
-#' @param R The number of random permutations used to derive the p-values; default is 66
+#' @param R The number of random permutations used to derive the p-values; default is 99
 #' @param log2FC_th Threshold to remove genes from testing; absolute log2FC must be at least
 #' this large for a gene to be tested; default is \code{log2(1.2)}
 #' @param mean_th Threshold to remove genes from testing; gene mean must be at least this
 #' large for a gene to be tested; default is 0.05
 #' @param cells_th Threshold to remove genes from testing; gene must be detected (non-zero count)
-#' in at least this many cells in the group with higher mean; default is 3
+#' in at least this many cells in the group with higher mean; default is 5
 #' @param only_pos Test only genes with positive fold change (mean in group 1 > mean in group2); 
 #' default is FALSE
+#' @param only_top_n Test only the this number of genes from both ends of the log2FC spectrum
+#' after all of the above filters have been applied; useful to get only the top markers; 
+#' only used if set to a numeric value; default is NULL
 #' @param mean_type Which type of mean to use; if \code{'geometric'} (default) the geometric mean is
 #' used; to avoid \code{log(0)} we use \code{log1p} to add 1 to all counts and log-transform, 
 #' calculate the arithmetic mean, and then back-transform and subtract 1 using \code{exp1m}; if
 #' this parameter is set to \code{'arithmetic'} the data is used as is
-#' @param verbosity Integer controlling how much messages the function prints; 0 is silent, 1 (default) is not
+#' @param verbosity Integer controlling how many messages the function prints; 
+#' 0 is silent, 1 (default) is not
 #'
 #' @return Data frame of results
 #' 
 #' @section Details:
+#' This model-free test is applied to each gene (row) individually but is
+#' optimized to make use of the efficient sparse data representation of
+#' the input. A permutation null distribution us used to assess the 
+#' significance of the observed difference in mean between two groups.
+#' 
 #' The observed difference in mean is compared against a distribution
 #' obtained by random shuffling of the group labels. For each gene every 
 #' random permutation yields a difference in mean and from the population of
 #' these background differences we estimate a mean and standard
-#' deviation. This mean and standard deviation are used to turn the observed
+#' deviation for the null distribution. 
+#' This mean and standard deviation are used to turn the observed
 #' difference in mean into a z-score and then into a p-value. Finally,
 #' all p-values (for the tested genes) are adjusted using the Benjamini & Hochberg
 #' method (fdr). The log2FC values in the output are \code{log2(mean1 / mean2)}.
+#' Empirical p-values are also calculated: \code{emp_pval = (b + 1) / (R + 1)}
+#' where b is the number of times the absolute difference in mean from a random 
+#' permutation is at least as large as the absolute value of the observed difference
+#' in mean, R is the number of random permutations. This is an upper bound of
+#' the real empirical p-value that would be obtained by enumerating all possible
+#' group label permutations.
 #' 
 #' @import Matrix
 #' @importFrom matrixStats rowMeans2 rowSds
@@ -528,11 +545,12 @@ model_comparison_ttest <- function(y, group) {
 #' \donttest{
 #' clustering <- 1:ncol(pbmc) %% 2
 #' vst_out <- vst(pbmc, return_corrected_umi = TRUE)
-#' de_res <- np_de_test_cd(y = vst_out$umi_corrected, labels = clustering)
+#' de_res <- diff_mean_test(y = vst_out$umi_corrected, labels = clustering)
 #' }
 #'
-np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2), 
-                          mean_th = 0.05, cells_th = 3, only_pos = FALSE,
+diff_mean_test <- function(y, labels, R = 99, log2FC_th = log2(1.2), 
+                          mean_th = 0.05, cells_th = 5, only_pos = FALSE,
+                          only_top_n = NULL,
                           mean_type = 'geometric', verbosity = 1) {
   if (is.na(match(x = mean_type, table = c('geometric', 'arithmetic')))) {
     stop('mean_type must be geometric or arithmetic')
@@ -540,14 +558,18 @@ np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2),
   if (!inherits(x = y, what = 'dgCMatrix')) {
     stop('y must be a dgCMatrix')
   }
+  if (R < 13) {
+    stop('R must be at least 13')
+  }
+  if (!is.null(only_top_n) & (!is.numeric(only_top_n) | length(only_top_n) > 1)) {
+    stop('only_top_n must be NULL or a single numeric value')
+  }
   labels <- droplevels(as.factor(labels))
   if (length(levels(labels)) > 2) {
     stop('only two groups can be compared')
   }
   lab_tab <- table(labels)
-  if (R < 13) {
-    stop('R must be at least 13')
-  }
+  
   if (verbosity > 0) {
     message('Non-parametric DE test for count data')
     message(sprintf('Using %s mean and %d random permutations', mean_type, R))
@@ -559,7 +581,7 @@ np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2),
   cells <- row_nonzero_count_grouped_dgcmatrix(matrix = y, group = labels)
   # for all the genes, get the mean per group
   if (mean_type == 'geometric') {
-    y@x <- log1p(y@x)
+    y@x <- log(y@x + 1)
     means <- expm1(row_mean_grouped_dgcmatrix(matrix = y, group = labels, shuffle = FALSE))
   } else {
     means <- row_mean_grouped_dgcmatrix(matrix = y, group = labels, shuffle = FALSE)
@@ -572,16 +594,23 @@ np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2),
                     log2FC = log2(means[, 1] / means[, 2]))
   
   # remove genes according to the filters
-  if (log2FC_th > 0 || mean_th > 0 || cells_th > 0 || only_pos) {
+  if (log2FC_th > 0 || mean_th > 0 || cells_th > 0 || only_pos || !is.null(only_top_n)) {
     sel1 <- abs(res$log2FC) >= log2FC_th
     sel2 <- res$mean1 >= mean_th | res$mean2 >= mean_th
     sel3 <- (res$log2FC >= 0 & res$cells1 >= cells_th) | (res$log2FC <= 0 & res$cells2 >= cells_th)
     if (only_pos) {
       sel4 <- res$log2FC > 0
     } else {
-      sel4 <- rep(TRUE, nrow(res))
+      sel4 <- TRUE
     }
     res <- res[sel1 & sel2 & sel3 & sel4, , drop = FALSE]
+    if (!is.null(only_top_n)) {
+      sel0 <- rank(-res$log2FC) <= only_top_n
+      if (!only_pos) {
+        sel0 <- sel0 | rank(res$log2FC) <= only_top_n
+      }
+      res <- res[sel0, , drop = FALSE]
+    }
     if (verbosity > 0) {
       message(sprintf('Keeping %d genes after initial filtering', nrow(res)))
     }
@@ -608,11 +637,16 @@ np_de_test_cd <- function(y, labels, R = 66, log2FC_th = log2(1.2),
   # use null distribution to get empirical p-values
   # also approximate null with normal and derive z-scores and p-values
   res$emp_pval <- (rowSums((abs(mean_diff_rnd) - abs(res$mean_diff)) >= 0) + 1) / (R + 1)
-  res$zscore <- (res$mean_diff - rowMeans2(mean_diff_rnd)) / rowSds(mean_diff_rnd)
+  res$emp_pval_adj <- p.adjust(res$emp_pval, method = 'BH')
+  #res$zscore <- (res$mean_diff - rowMeans2(mean_diff_rnd)) / rowSds(mean_diff_rnd)
+  sds <- sqrt(rowSums(mean_diff_rnd^2)/(R-1))
+  res$zscore <- (res$mean_diff - rowMeans2(mean_diff_rnd)) / sds
   res$pval <- 2 * pnorm(-abs(res$zscore))
   res$pval_adj <- p.adjust(res$pval, method = 'BH')
   return(res)
 }
+
+
 
 # non-parametric differential expression test
 np_de_test <- function(y, labels, N = 100, S = 100, randomize = FALSE) {
