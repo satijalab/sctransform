@@ -39,6 +39,16 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
     new_attr <- do.call(cbind, new_attr)
     cell_attr <- cbind(cell_attr, new_attr[, setdiff(colnames(new_attr), colnames(cell_attr)), drop = TRUE])
   }
+  
+  # make sure no NA, NaN, Inf values are in cell attributes - they would cause
+  # problems later on
+  rel_attr <- cell_attr[, c(latent_var, batch_var, latent_var_nonreg)]
+  if (any(is.na(rel_attr)) || 
+      any(is.nan(rel_attr)) || 
+      any(is.infinite(rel_attr))) {
+    stop('cell attributes cannot contain any NA, NaN, or infinite values')
+  }
+  
   return(cell_attr)
 }
 
