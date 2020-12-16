@@ -19,14 +19,13 @@ Available vignettes:
 
 ## Known Issues
 
-* `error in evaluating the argument 'x' in selecting a method for function 't': missing value where TRUE/FALSE needed` - this is happens when poisson regression fails due to poor initialization (affected methods are poisson, qpoisson, nb_fast). The problem has been fixed in the develop branch. ([issue #71](https://github.com/ChristophH/sctransform/issues/71))
-* There can be problems deploying shiny apps due to the `biocViews:` line in the DESCRIPTION file. Fixed in the develop branch. ([issue #72](https://github.com/ChristophH/sctransform/issues/72))
-* No residuals when using `method = 'glmGamPoi'` while specifying a `batch_var`. Fixed in the develop branch. ([issue #74](https://github.com/ChristophH/sctransform/issues/74))
-
-To install from the develop branch run `remotes::install_github("ChristophH/sctransform@develop")`
+None so far - please use [the issue tracker](https://github.com/ChristophH/sctransform/issues) if you encounter a problem
 
 ## News
 For a detailed change log have a look at the file [NEWS.md](https://github.com/ChristophH/sctransform/blob/master/NEWS.md)
+
+### v0.3.2
+This release improves the coefficient initialization in quasi poisson regression that sometimes led to errors. There are also some minor bug fixes and a new non-parametric differential expression test for sparse non-negative data (`diff_mean_test`).
 
 ### v0.3.1
 This release fixes a performance regression when `sctransform::vst` was called via `do.call`, as is the case in the Seurat wrapper. 
