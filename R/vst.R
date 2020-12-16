@@ -17,7 +17,7 @@ NULL
 #' @param latent_var_nonreg The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
-#' @param method Method to use for initial parameter estimation; one of 'poisson', 'qpoisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi'
+#' @param method Method to use for initial parameter estimation; one of 'poisson', 'qpoisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'offset', 'offset_shared_theta_estimate'; default is 'poisson'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes); default is FALSE
 #' @param theta_regularization Method to use to regularize theta; use 'log_theta' for the behavior prior to version 0.3; default is 'od_factor'
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
@@ -400,18 +400,15 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
       }
       use_cells <- sample(x = ncol(umi), size = min(ncol(umi), 5000), replace = FALSE)
       if (verbosity > 0) {
-        message('Estimate shared theta for offset model')
-        message('Using ', length(x = use_genes), ' genes, ', length(x = use_cells), ' cells')
+        message(sprintf('Estimate shared theta for offset model using %d genes, %d cells', 
+                        length(x = use_genes), length(x = use_cells)))
       }
       y <- as.matrix(umi[use_genes, use_cells])
       regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[use_cells, ])
       mu <- exp(tcrossprod(model_pars[use_genes, -1, drop=FALSE], regressor_data))
-      if (requireNamespace("glmGamPoi", quietly = TRUE)) {
-        theta <- 1 / glmGamPoi::overdispersion_mle(y = y, mean = mu)$estimate
-        theta <- theta[is.finite(theta)]
-      } else {
-        theta <- as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
-      }
+      theta <- sapply(1:nrow(y), function(i) {
+        as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
+      })
       model_pars[, 'theta'] <- mean(theta)
     }
     return(model_pars)
