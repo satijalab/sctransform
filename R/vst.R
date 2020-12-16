@@ -406,9 +406,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
       regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[use_cells, ])
       mu <- exp(tcrossprod(model_pars[use_genes, -1, drop=FALSE], regressor_data))
       if (requireNamespace("glmGamPoi", quietly = TRUE)) {
-        theta <- 1 / sapply(1:nrow(y), function(i) {
-          glmGamPoi::gampoi_overdispersion_mle(y = y[i, ], mean = mu[i, ])$estimate
-        })
+        theta <- 1 / glmGamPoi::overdispersion_mle(y = y, mean = mu)$estimate
         theta <- theta[is.finite(theta)]
       } else {
         theta <- as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
