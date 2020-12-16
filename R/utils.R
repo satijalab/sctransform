@@ -4,6 +4,12 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
   if (is.null(cell_attr)) {
     cell_attr <- data.frame(row.names = colnames(umi))
   }
+  
+  # Do not allow certain variable names
+  no_good <- c('(Intercept)', 'Intercept')
+  if (any(no_good %in% c(latent_var, batch_var, latent_var_nonreg))) {
+    stop('Do not use the following variable names for a latent variable or batch variable: ', paste(no_good, collapse = ', '))
+  }
 
   # these are the cell attributes that we know how to calculate given the count matrix
   known_attr <- c('umi', 'gene', 'log_umi', 'log_gene', 'umi_per_gene', 'log_umi_per_gene')
@@ -33,6 +39,16 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
     new_attr <- do.call(cbind, new_attr)
     cell_attr <- cbind(cell_attr, new_attr[, setdiff(colnames(new_attr), colnames(cell_attr)), drop = TRUE])
   }
+  
+  # make sure no NA, NaN, Inf values are in cell attributes - they would cause
+  # problems later on
+  rel_attr <- cell_attr[, c(latent_var, batch_var, latent_var_nonreg)]
+  if (any(is.na(rel_attr)) || 
+      any(is.nan(rel_attr)) || 
+      any(is.infinite(rel_attr))) {
+    stop('cell attributes cannot contain any NA, NaN, or infinite values')
+  }
+  
   return(cell_attr)
 }
 
@@ -47,54 +63,14 @@ row_gmean <- function(x, eps = 1) {
     return(exp(rowMeans(log(x + eps))) - eps)
   }
   if (inherits(x = x, what = 'dgCMatrix')) {
-    ret <- row_gmean_dgcmatrix(x = x@x, i = x@i, rows = nrow(x), cols = ncol(x), eps = eps)
+    ret <- row_gmean_dgcmatrix(matrix = x, eps = eps)
     names(ret) <- rownames(x)
     return(ret)
   }
   stop('matrix x needs to be of class matrix or dgCMatrix')
 }
 
-#' Geometric mean per row grouped by a factor
-#'
-#' @param x matrix of class \code{dgCMatrix}
-#' @param group factor to group the columns by (will be converted using \code{as.factor} and \code{droplevels})
-#' @param eps small value to add to x to avoid log(0); default is 1
-#'
-#' @return matrix of geometric means
-row_gmean_grouped <- function(x, group, eps = 1) {
-  group <- droplevels(as.factor(group))
-  if (inherits(x = x, what = 'dgCMatrix')) {
-    ret <- row_gmean_grouped_dgcmatrix(x = x@x, i = x@i, p = x@p,
-                                       group = as.integer(group) - 1,
-                                       groups = length(levels(group)),
-                                       rows = nrow(x),
-                                       eps = eps)
-    rownames(ret) <- rownames(x)
-    colnames(ret) <- levels(group)
-    return(ret)
-  }
-  stop('matrix x needs to be of class dgCMatrix')
-}
 
-#' Arithmetic mean per row grouped by a factor
-#'
-#' @param x matrix of class \code{dgCMatrix}
-#' @param group factor to group the columns by (will be converted using \code{as.factor} and \code{droplevels})
-#'
-#' @return matrix of arithmetic means
-row_mean_grouped <- function(x, group) {
-  group <- droplevels(as.factor(group))
-  if (inherits(x = x, what = 'dgCMatrix')) {
-    ret <- row_mean_grouped_dgcmatrix(x = x@x, i = x@i, p = x@p,
-                                      group = as.integer(group) - 1,
-                                      groups = length(levels(group)),
-                                      rows = nrow(x))
-    rownames(ret) <- rownames(x)
-    colnames(ret) <- levels(group)
-    return(ret)
-  }
-  stop('matrix x needs to be of class dgCMatrix')
-}
 
 #' Variance per row
 #'

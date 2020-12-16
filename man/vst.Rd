@@ -75,7 +75,7 @@ vst(
 
 \item{theta_estimation_fun}{Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative}
 
-\item{theta_given}{Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL}
+\item{theta_given}{If method is set to nb_theta_given, this should be a named numeric vector of fixed theta values for the genes; if method is offset, this should be a single value; default is NULL}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
 
@@ -105,7 +105,7 @@ Apply variance stabilizing transformation to UMI count data using a regularized 
 This will remove unwanted effects from UMI data and return Pearson residuals.
 Uses future_lapply; you can set the number of cores it will use to n with plan(strategy = "multicore", workers = n).
 If n_genes is set, only a (somewhat-random) subset of genes is used for estimating the
-initial model parameters.
+initial model parameters. For details see \href{http://dx.doi.org/10.1186/s13059-019-1874-1}{doi: 10.1186/s13059-019-1874-1}.
 }
 \section{Details}{
 
@@ -124,6 +124,19 @@ If \code{method} is set to 'nb', coefficients and theta are estimated by a singl
 \code{MASS::glm.nb}.
 If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
 \code{glmGamPoi::glm_gp}.
+
+A special case is \code{method = 'offset'}. Here no regression parameters are learned, but
+instead an offset model is assumed. The latent variable is set to log_umi and a fixed 
+slope of log(10) is used (offset). The intercept is given by log(gene_mean) - log(avg_cell_umi). 
+See Lause et al. (\href{https://doi.org/10.1101/2020.12.01.405886}{bioRxiv 2020.12.01.405886}) for details.
+Theta is set
+to 100 by default, but can be changed using the \code{theta_given} parameter (single numeric value).
+If the offset method is used, the following parameters are overwritten:
+\code{cell_attr <- NULL, latent_var <- c('log_umi'), batch_var <- NULL, latent_var_nonreg <- NULL,
+n_genes <- NULL, n_cells <- NULL, do_regularize <- FALSE}. Further, \code{method = 'offset_shared_theta_estimate'}
+exists where the 250 most highly expressed genes with detection rate of at least 0.5 are used
+to estimate a theta that is then shared across all genes. Thetas are estimated per individual gene
+using 5000 randomly selected cells. The final theta used for all genes is then the average.
 }
 
 \examples{

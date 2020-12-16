@@ -62,20 +62,38 @@ plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
   df$parameter <- factor(df$parameter, levels = ordered_par_names)
   df_fit <- melt(mp_fit, varnames = c('gene', 'parameter'), as.is = TRUE)
   df_fit$parameter <- factor(df_fit$parameter, levels = ordered_par_names)
-  df$gene_gmean <- vst_out$gene_attr[df$gene, 'gmean']
   df$is_outl <- vst_out$model_pars_outliers
-  df_fit$gene_gmean <- vst_out$gene_attr[df_fit$gene, 'gmean']
   df$type <- 'single gene estimate'
   df_fit$type <- 'regularized'
   df_fit$is_outl <- FALSE
+  
+  if (startsWith(x = vst_out$arguments$method, prefix = 'offset')) {
+    df$x <- vst_out$gene_attr[df$gene, 'amean']
+    df_fit$x <- vst_out$gene_attr[df_fit$gene, 'amean']
+    xlab <- 'Arithmetic mean of gene [log10]'
+  } else {
+    df$x <- vst_out$gene_attr[df$gene, 'gmean']
+    df_fit$x <- vst_out$gene_attr[df_fit$gene, 'gmean']
+    xlab <- 'Geometric mean of gene [log10]'
+  }
+  
   df_plot <- rbind(df, df_fit)
   df_plot$parameter <- factor(df_plot$parameter, levels = ordered_par_names)
-  g <- ggplot(df_plot, aes_(x=~log10(gene_gmean), y=~value, color=~type)) +
+  
+  if (!vst_out$arguments$do_regularize || startsWith(x = vst_out$arguments$method, prefix = 'offset')) {
+    df_plot <- df_plot[df_plot$type == 'single gene estimate', ]
+    legend_pos <- 'none'
+  } else {
+    legend_pos <- 'bottom'
+  }
+  
+  g <- ggplot(df_plot, aes_(x=~log10(x), y=~value, color=~type)) +
     geom_point(data=df, aes_(shape=~is_outl), size=0.5, alpha=0.5) +
     scale_shape_manual(values=c(16, 4), guide = FALSE) +
     geom_point(data=df_fit, size=0.66, alpha=0.5, shape=16) +
     facet_wrap(~ parameter, scales = 'free_y', ncol = ncol(mp)) +
-    theme(legend.position='bottom')
+    theme(legend.position = legend_pos) +
+    xlab(label = xlab)
   return(g)
 }
 
@@ -84,7 +102,12 @@ get_model_par_mat <- function(vst_out, model_pars, use_nonreg, show_theta = FALS
                               verbosity = 2) {
   mp <- model_pars
   # transform theta to overdispersion factor
-  mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'gmean'] / mp[, 'theta'])
+  if (startsWith(x = vst_out$arguments$method, prefix = 'offset')) {
+    mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'amean'] / mp[, 'theta'])
+  } else {
+    mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'gmean'] / mp[, 'theta'])
+  }
+  
   colnames(mp)[1] <- 'log10(od_factor)'
   ordered_par_names <- colnames(mp)[c(2:ncol(mp), 1)]
   if (show_theta) {
@@ -118,7 +141,7 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
   res <- pmin(res, x$arguments$res_clip_range[2])
   res <- pmax(res, x$arguments$res_clip_range[1])
   ret_df <- data.frame(mu = mu, sd = sd, res = res)
-  # in case we have individaul (non-regularized) parameters
+  # in case we have individual (non-regularized) parameters
   if (gene %in% rownames(x$model_pars)) {
     coefs <- x$model_pars[gene, -1, drop=FALSE]
     theta <- x$model_pars[gene, 1]
@@ -157,6 +180,7 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #' @import ggplot2
 #' @import reshape2
 #' @importFrom gridExtra grid.arrange
+#' @importFrom stats bw.nrd0
 #'
 #' @export
 #'
@@ -168,8 +192,8 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #'
 plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr = x$cell_attr,
                        do_log = TRUE, show_fit = TRUE, show_nr = FALSE, plot_residual = FALSE,
-                       batches = NULL, as_poisson = FALSE, arrange_vertical = TRUE, show_density = TRUE,
-                       gg_cmds = NULL) {
+                       batches = NULL, as_poisson = FALSE, arrange_vertical = TRUE, 
+                       show_density = FALSE, gg_cmds = NULL) {
   if (is.null(batches)) {
     if (!is.null(x$arguments$batch_var)) {
       batches <- cell_attr[, x$arguments$batch_var]
@@ -203,7 +227,9 @@ plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr
   df$gene <- factor(df$gene, ordered=TRUE, levels=unique(df$gene))
   g <- ggplot(df, aes_(~x, ~y)) + geom_point(alpha=0.5, shape=16)
   if (show_density) {
-    g <- g + geom_density_2d(color = 'lightblue', size=0.5)
+    bandwidths <- c(bw.nrd0(g$data$x), bw.nrd0(g$data$y))
+    g <- g + geom_density_2d(color = 'lightblue', size=0.5, h = bandwidths,
+                             contour_var = "ndensity")
   }
   if (show_fit) {
     for (b in unique(df$batch)) {

@@ -1,6 +1,23 @@
 # News
 All notable changes will be documented in this file.
 
+## [0.3.2] - 2020-12-16
+### Added
+- Ability to control the values of latent variables when calculating corrected counts
+- Offset model as method, including the ability to use a single estimated theta for all genes
+- Nonparametric differential expression test for sparse non-negative data
+
+### Changed
+- Improve poor coefficient initialization in quasi poisson regression
+- When plotting model, do not show density by default; change bandwidth to `bw.nrd0`
+- Updates to C++ code to use sparse matrices as S4 objects
+- Add check for NA, NaN, Inf values in cell attributes
+
+### Fixed
+- Remove biocViews from DESCRIPTION - not needed and was causing problems with deploying shiny apps
+- Fix bug where a coefficient was given the wrong name when using `glmGamPoi` (only affected runs with a batch variable set)
+
+
 ## [0.3.1] - 2020-10-08
 ### Added
 - Add a `qpoisson` method for parameter estimation that uses fast Rcpp quasi poisson regression where possible (based on `Rfast` package); this adds `RcppArmadillo` dependency

@@ -8,6 +8,7 @@ correct(
   x,
   data = "y",
   cell_attr = x$cell_attr,
+  as_is = FALSE,
   do_round = TRUE,
   do_pos = TRUE,
   verbosity = 2,
@@ -21,6 +22,9 @@ correct(
 \item{data}{The name of the entry in x that holds the data}
 
 \item{cell_attr}{Provide cell meta data holding latent data info}
+
+\item{as_is}{Use cell attributes as is and do not use the median; set to TRUE if you want to 
+manually control the values of the latent factors; default is FALSE}
 
 \item{do_round}{Round the result to integers}
 

@@ -60,6 +60,8 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @param x A list that provides model parameters and optionally meta data; use output of vst function
 #' @param data The name of the entry in x that holds the data
 #' @param cell_attr Provide cell meta data holding latent data info
+#' @param as_is Use cell attributes as is and do not use the median; set to TRUE if you want to 
+#' manually control the values of the latent factors; default is FALSE
 #' @param do_round Round the result to integers
 #' @param do_pos Set negative values in the result to zero
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
@@ -76,8 +78,9 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' umi_corrected <- correct(vst_out)
 #' }
 #'
-correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
-                    do_pos = TRUE, verbosity = 2, verbose = NULL, show_progress = NULL) {
+correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
+                    do_round = TRUE, do_pos = TRUE, verbosity = 2, 
+                    verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
   if (!is.null(verbose)) {
     warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
@@ -96,7 +99,9 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, do_round = TRUE,
     data <- x[[data]]
   }
   # when correcting, set all latent variables to median values
-  cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
+  if (!as_is) {
+    cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
+  }
   regressor_data <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
 
   genes <- rownames(data)

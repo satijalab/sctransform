@@ -8,7 +8,7 @@ NULL
 #' This will remove unwanted effects from UMI data and return Pearson residuals.
 #' Uses future_lapply; you can set the number of cores it will use to n with plan(strategy = "multicore", workers = n).
 #' If n_genes is set, only a (somewhat-random) subset of genes is used for estimating the
-#' initial model parameters.
+#' initial model parameters. For details see \href{http://dx.doi.org/10.1186/s13059-019-1874-1}{doi: 10.1186/s13059-019-1874-1}.
 #'
 #' @param umi A matrix of UMI counts with genes as rows and cells as columns
 #' @param cell_attr A data frame containing the dependent variables; if omitted a data frame with umi and gene will be generated
@@ -31,7 +31,7 @@ NULL
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_estimation_fun Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative
-#' @param theta_given Named numeric vector of fixed theta values for the genes; will only be used if method is set to nb_theta_given; default is NULL
+#' @param theta_given If method is set to nb_theta_given, this should be a named numeric vector of fixed theta values for the genes; if method is offset, this should be a single value; default is NULL
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #' @param verbose Deprecated; use verbosity instead
 #' @param show_progress Deprecated; use verbosity instead
@@ -68,6 +68,20 @@ NULL
 #' \code{MASS::glm.nb}.
 #' If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
 #' \code{glmGamPoi::glm_gp}.
+#' 
+#' A special case is \code{method = 'offset'}. Here no regression parameters are learned, but
+#' instead an offset model is assumed. The latent variable is set to log_umi and a fixed 
+#' slope of log(10) is used (offset). The intercept is given by log(gene_mean) - log(avg_cell_umi). 
+#' See Lause et al. (\href{https://doi.org/10.1101/2020.12.01.405886}{bioRxiv 2020.12.01.405886}) for details.
+#' Theta is set
+#' to 100 by default, but can be changed using the \code{theta_given} parameter (single numeric value).
+#' If the offset method is used, the following parameters are overwritten:
+#' \code{cell_attr <- NULL, latent_var <- c('log_umi'), batch_var <- NULL, latent_var_nonreg <- NULL,
+#' n_genes <- NULL, n_cells <- NULL, do_regularize <- FALSE}. Further, \code{method = 'offset_shared_theta_estimate'}
+#' exists where the 250 most highly expressed genes with detection rate of at least 0.5 are used
+#' to estimate a theta that is then shared across all genes. Thetas are estimated per individual gene
+#' using 5000 randomly selected cells. The final theta used for all genes is then the average.
+#' 
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
@@ -125,12 +139,27 @@ vst <- function(umi,
     }
   }
 
-
   # Check for suggested package
   if (method == "glmGamPoi") {
     glmGamPoi_check <- requireNamespace("glmGamPoi", quietly = TRUE)
     if (!glmGamPoi_check){
       stop('Please install the glmGamPoi package. See https://github.com/const-ae/glmGamPoi for details.')
+    }
+  }
+  
+  # Special case offset model - override most parameters
+  if (startsWith(x = method, prefix = 'offset')) {
+    cell_attr <- NULL
+    latent_var <- c('log_umi')
+    batch_var <- NULL
+    latent_var_nonreg <- NULL
+    n_genes <- NULL
+    n_cells <- NULL
+    do_regularize <- FALSE
+    if (is.null(theta_given)) {
+      theta_given <- 100
+    } else {
+      theta_given <- theta_given[1]
     }
   }
   
@@ -149,8 +178,8 @@ vst <- function(umi,
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
   genes_log_gmean <- log10(row_gmean(umi, eps = gmean_eps))
-
-  if (!do_regularize) {
+  
+  if (!do_regularize && !is.null(n_genes)) {
     if (verbosity > 0) {
       message('do_regularize is set to FALSE, will use all genes')
     }
@@ -332,6 +361,11 @@ vst <- function(umi,
       gene_attr$residual_mean = rowMeans(rv$y)
       gene_attr$residual_variance = row_var(rv$y)
     }
+    # Special case offset model - also calculate arithmetic mean
+    if (startsWith(x = method, prefix = 'offset')) {
+      gene_attr$amean <- rowMeans(umi)
+    }
+    
     rv[['gene_attr']] <- gene_attr
   }
 
@@ -347,6 +381,42 @@ vst <- function(umi,
 get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
                            method, data_step1, theta_given, theta_estimation_fun,
                            verbosity) {
+  # Special case offset model with one theta for all genes
+  if (startsWith(x = method, prefix = 'offset')) {
+    gene_mean <- rowMeans(umi)
+    mean_cell_sum <- mean(colSums(umi))
+    model_pars <- cbind(rep(theta_given, nrow(umi)),
+                        log(gene_mean) - log(mean_cell_sum),
+                        rep(log(10), nrow(umi)))
+    dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
+    if (method == 'offset_shared_theta_estimate') {
+      # use all genes with detection rate > 0.5 to estimate theta
+      # if there are more, use the 250 most highly expressed ones
+      # use at most 5000 cells (random sample)
+      use_genes <- rowMeans(umi > 0) > 0.5
+      if (sum(use_genes) > 250) {
+        o <- order(-row_gmean(umi[use_genes, ]))
+        use_genes <- which(use_genes)[o[1:250]]
+      }
+      use_cells <- sample(x = ncol(umi), size = min(ncol(umi), 5000), replace = FALSE)
+      if (verbosity > 0) {
+        message('Estimate shared theta for offset model')
+        message('Using ', length(x = use_genes), ' genes, ', length(x = use_cells), ' cells')
+      }
+      y <- as.matrix(umi[use_genes, use_cells])
+      regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[use_cells, ])
+      mu <- exp(tcrossprod(model_pars[use_genes, -1, drop=FALSE], regressor_data))
+      if (requireNamespace("glmGamPoi", quietly = TRUE)) {
+        theta <- 1 / glmGamPoi::overdispersion_mle(y = y, mean = mu)$estimate
+        theta <- theta[is.finite(theta)]
+      } else {
+        theta <- as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
+      }
+      model_pars[, 'theta'] <- mean(theta)
+    }
+    return(model_pars)
+  }
+  
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
   if (verbosity > 0) {
