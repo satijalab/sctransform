@@ -44,6 +44,8 @@ In `sctransform::vst` we support several methods to estimate the parameters of t
 * **`nb_fast`** - coefficients and theta are estimated as in the `poisson` method, but coefficients are then re-estimated using a proper negative binomial model in a call to `glm` with `family = MASS::negative.binomial(theta = theta)`.
 * **`nb`** - coefficients and theta are estimated by `MASS::glm.nb`.
 * **`glmGamPoi`** - coefficients and theta are estimated by `glmGamPoi::glm_gp`.
+* **`offset`** - no regression parameters are learned, but instead an offset model is assumed. The latent variable is set to log_umi and a fixed slope of `log(10)` is used (offset). The intercept is given by `log(gene_mean) - log(avg_cell_umi)`. Theta is set to 100 by default, but can be changed using the theta_given parameter
+* **`offset_shared_theta_estimate`** - like offset above, but the 250 most highly expressed genes with detection rate of at least 0.5 are used to estimate a theta that is then shared across all genes. Thetas are estimated per individual gene using 5000 randomly selected cells. The final theta used for all genes is then the average.
 
 ### Comparison
 
@@ -59,7 +61,7 @@ message(nrow(cm), ' genes across ', ncol(cm), ' cells')
 
 ```{r, warning=FALSE}
 result_lst <- list()
-estimation_methods <- c('poisson', 'qpoisson', 'nb_fast', 'nb', 'glmGamPoi')
+estimation_methods <- c('poisson', 'qpoisson', 'nb_fast', 'nb', 'glmGamPoi', 'offset', 'offset_shared_theta_estimate')
 for (estimation_method in estimation_methods) {
   if (estimation_method %in% c('poisson', 'nb_fast')) {
     for (theta_estimation_fun in c('theta.ml', 'theta.mm')) {
@@ -86,7 +88,7 @@ for (estimation_method in estimation_methods) {
 
 Show how the residual variances compare between methods (plot below shows log10-transformed values)
 
-```{r, fig.width=10, fig.height=10, out.width='95%'}
+```{r, fig.width=14, fig.height=14, out.width='95%'}
 mat <- sapply(result_lst, function(x) x$gene_attr$residual_variance)
 colnames(mat) <- names(result_lst)
 ggpairs(data.frame(log10(mat)), progress = FALSE)
@@ -94,7 +96,7 @@ ggpairs(data.frame(log10(mat)), progress = FALSE)
 
 Show how the residual means compare between methods
 
-```{r, fig.width=10, fig.height=10, out.width='95%'}
+```{r, fig.width=14, fig.height=14, out.width='95%'}
 mat <- sapply(result_lst, function(x) x$gene_attr$residual_mean)
 colnames(mat) <- names(result_lst)
 ggpairs(data.frame(mat), progress = FALSE)
@@ -104,7 +106,7 @@ ggpairs(data.frame(mat), progress = FALSE)
 
 Show the model parameters for all methods
 
-```{r, fig.width=12, fig.height=10, out.width='95%'}
+```{r, fig.width=12, fig.height=12, out.width='95%'}
 plot_lst <- lapply(names(result_lst), function(method_name) {
   plot_model_pars(result_lst[[method_name]], show_theta = TRUE) + ggtitle(method_name)
 })
