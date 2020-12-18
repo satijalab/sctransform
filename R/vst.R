@@ -406,9 +406,14 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
       y <- as.matrix(umi[use_genes, use_cells])
       regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[use_cells, ])
       mu <- exp(tcrossprod(model_pars[use_genes, -1, drop=FALSE], regressor_data))
-      theta <- sapply(1:nrow(y), function(i) {
-        as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
-      })
+      if (requireNamespace("glmGamPoi", quietly = TRUE) && getNamespaceVersion('glmGamPoi') >= '1.2') {
+        theta <- 1 / glmGamPoi::overdispersion_mle(y = y, mean = mu)$estimate
+        theta <- theta[is.finite(theta)]
+      } else {
+        theta <- sapply(1:nrow(y), function(i) {
+          as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
+        })
+      }
       model_pars[, 'theta'] <- mean(theta)
     }
     return(model_pars)
