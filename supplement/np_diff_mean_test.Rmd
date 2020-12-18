@@ -1,0 +1,347 @@
+---
+title: "Non-parametric test for difference in mean"
+author: "Christoph Hafemeister"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    highlight: pygments
+    df_print: kable
+link-citations: true
+references:
+- id: phipson2010
+  title: "Permutation P-values Should Never Be Zero: Calculating Exact P-values When Permutations Are Randomly Drawn"
+  author:
+  - family: Phipson
+    given: Belinda
+  - family: Smyth
+    given: Gordon K
+  container-title: Statistical Applications in Genetics and Molecular Biology
+  volume: 9
+  URL: "https://doi.org/10.2202/1544-6115.1585"
+  DOI: 10.2202/1544-6115.1585
+  issue: 1
+  publisher: De Gruyter
+  type: article-journal
+  issued:
+    year: 2010
+    month: 10
+- id: hartwig2013
+  title: "Two-Tailed P-Values Calculation in PermutationBased Tests: A Warning Against “Asymptotic Bias” in Randomized Clinical Trials"
+  author:
+  - family: Hartwig
+    given: Fernando Pires
+  container-title: Journal of Clinical Trials
+  URL: "https://doi.org/10.4172/2167-0870.1000145"
+  DOI: 10.4172/2167-0870.1000145
+  type: article-journal
+  issued:
+    year: 2013
+    month: 9
+---
+
+```{r setup, include = FALSE}
+library('Matrix')
+library('ggplot2')
+library('reshape2')
+library('sctransform')
+library('knitr')
+library('dplyr')
+library('ggrepel')
+library('patchwork')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = FALSE,
+  warning = FALSE,
+  digits = 2,
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff=80),
+  optipng = '-o 5 -strip all -quiet',
+  fig.width=6.5, fig.height=2.5, dpi=100, out.width = '80%'
+)
+old_theme <- theme_set(theme_bw(base_size=10))
+set.seed(6646428)
+tic <- proc.time()
+```
+
+<style>
+.table {
+    width: auto;
+}
+</style>
+
+## Introduction
+
+With this vignette we introduce the non-parametric differential expression test for sparse non-negative data.
+
+The observed difference in mean between two groups 
+is compared against a null distribution
+obtained by random shuffling of the group labels. 
+
+Empirical p-values are also calculated: \code{emp_pval = (b + 1) / (R + 1)}
+where b is the number of times the absolute difference in mean from a random 
+permutation is at least as large as the absolute value of the observed difference
+in mean, R is the number of random permutations. This is an upper bound of
+the real empirical p-value that would be obtained by enumerating all possible
+group label permutations.
+
+Additionally, we approximate the empirical null distribution with a normal
+distribution and turn the observed
+difference in mean into a z-score and then into a p-value. Finally,
+all p-values (for the tested genes) are adjusted using the Benjamini & Hochberg
+method (fdr). 
+
+The log2FC values in the output are \code{log2(mean1 / mean2)}.
+
+## Load some data
+
+We use the publicly available "10k PBMCs from a Healthy Donor (v3 chemistry)" data (11,769 cells) from 10x Genomics available at 
+https://support.10xgenomics.com/single-cell-gene-expression/datasets/3.0.0/pbmc_10k_v3 
+
+We apply the following filters:
+
+* max nCount_RNA = 25,000
+* min nFeature_RNA = 300
+* max nFeature_RNA = 5,000
+* max percent.mt = 20
+
+10,939 cells remain and are mapped to cell types using [Azimuth](https://satijalab.org/azimuth/)
+
+We then keep only those cell types that have at least 5 cells with mapping score > 0.66 and further remove all genes that have not been detected in at least 5 cells.
+
+```{r}
+counts <- Seurat::Read10X_h5('~/Projects/data_warehouse/raw_public_10x/pbmc_10k_v3_filtered_feature_bc_matrix.h5')
+predictions <- read.delim('~/Projects/data_warehouse/raw_public_10x/pbmc_10k_v3_azimuth_pred.tsv', row.names = 1)
+
+tab <- table(predictions$predicted.id, predictions$predicted.score > 0.66)
+keep_types <- rownames(tab)[tab[, 2] >= 5]
+keep_cells <- rownames(predictions)[predictions$predicted.id %in% keep_types]
+
+counts <- counts[, keep_cells]
+counts <- counts[rowSums(counts > 0) >= 5, ]
+predictions <- predictions[keep_cells, ]
+
+cell_types <- factor(predictions$predicted.id, levels = names(sort(table(predictions$predicted.id), decreasing = TRUE)))
+```
+
+We now have a count matrix of `r nrow(counts)` genes and `r ncol(counts)` cells with the following cell type labels:
+
+```{r}
+data.frame(table(cell_types))
+```
+
+## Motivation
+
+Here we illustrate the concept of the test using CD14 Monocytes as group 1 and all remaining cells as group 2. We will show two example genes: MYL12A (not differentially expressed), and CD14.
+
+```{r}
+goi <- c('MYL12A', 'CD14')
+df <- melt(t(as.matrix(counts[goi, , drop = FALSE])), varnames = c('cell', 'gene'), value.name = 'counts')
+df$cell_type <- factor(c('rest', 'CD14 Mono')[(cell_types == 'CD14 Mono') + 1])
+# calculate the (geometric) mean per group
+df_sum <- group_by(df, gene, cell_type) %>% 
+  summarise(mean = expm1(mean(log1p(counts))), mid = median(range(counts)), .groups = 'drop')
+# and the difference of means
+df_diff <- group_by(df_sum, gene) %>% 
+  summarise(diff_mean = mean[1] - mean[2], 
+            label = sprintf('Difference in mean: %1.2g\nlog2 fold-change: %1.2g', diff_mean, log2(mean[1] / mean[2])), 
+            x = max(mid), 
+            y = Inf, 
+            .groups = 'drop')
+p1 <- ggplot(df, aes(counts, y = ..density.., fill = cell_type)) +
+  geom_histogram(binwidth = 1, position = 'identity', alpha = 0.4) +
+  geom_vline(data = df_sum, aes(xintercept = mean, color = cell_type)) +
+  geom_label(data = df_diff, aes(x, y, label = label), 
+            vjust = 1, inherit.aes = FALSE, size = 3) +
+  facet_wrap(~ gene, scales = 'free') +
+  xlab('Gene counts') + ylab('Proportion of cells') +
+  ggtitle('Observed data and differences in geometric mean')
+plot(p1)
+```
+
+The plot above shows the UMI counts per gene per group. Also shown is the difference in mean (mean1 - mean2) and the log2 fold-change (log2(mean1 / mean2)). To find out whether the observed difference in mean is significant we look at the null distribution of difference in mean, i.e. we shuffle the labels (here we use 99 repetitions) and calculate the difference in mean.
+
+```{r}
+# calculate null distribution of difference in mean for each gene
+grp <- factor(c('rest', 'CD14 Mono')[(cell_types == 'CD14 Mono') + 1])
+tmp_counts <- counts[goi, , drop = FALSE]
+R <- 99
+diff_mean_null <- sapply(1:R, function(i) {
+  mean_r <- sctransform:::row_gmean_grouped_dgcmatrix(matrix = tmp_counts, group = grp, eps = 1, shuffle = TRUE)
+  mean_r[, 1] - mean_r[, 2]
+})
+df_null <- melt(diff_mean_null, varnames = c('gene', 'iteration'), value.name = 'diff_mean')
+
+p2 <- ggplot(df_null, aes(diff_mean)) + 
+  geom_histogram(bins = 33) +
+  facet_wrap(~ gene, scales = 'free') +
+  xlab('Difference in geometric mean') + ylab('Count') +
+  ggtitle('Null distribution of differences in geometric mean')
+plot(p2)
+```
+
+The null distribution of 'difference in mean' shown above indicates what values to expect if the null is true (no difference in mean between the two groups). We can use the distribution to obtain an empirical p-value by asking how often the absolute value of the null distribution is larger or equal to the observed difference in mean. We use the absolute value since this is a two-tailed test, and use a pseudo-count in nominator and denominator when turning the observed frequencies into p-values (see @phipson2010 and @hartwig2013 for discussions).
+
+```{r}
+
+# given the null distribution, get empirical p-value, fit a gaussian and get
+# approximated p-value
+df_res <- left_join(df_null, df_diff, by = 'gene') %>% 
+  group_by(gene) %>% 
+  summarise(
+    emp_pval = (sum((abs(diff_mean.x) - abs(diff_mean.y)) >= 0) + 1) / (R + 1), 
+    sds = sqrt(sum(diff_mean.x^2)/(R-1)),
+    zscore = (diff_mean.y[1] - mean(diff_mean.x)) / sds,
+    pval = 2 * pnorm(-abs(zscore)),
+    min_r = min(diff_mean.x),
+    max_r = max(diff_mean.x),
+    mean_r = mean(diff_mean.x),
+    observed = diff_mean.y[1],
+    .groups = 'drop')
+df_fit <- group_by(df_res, gene) %>% 
+  summarise(x = seq(from = min(min_r, observed), to = max(max_r, observed), length.out = 333),
+            y = dnorm(x = x, mean = mean_r, sd = sds), .groups = 'drop')
+df_anno <- group_by(df_res, gene) %>% 
+  summarise(x = max(max_r, observed),
+            y = Inf,
+            label = sprintf('Empirical p-value: %1.2g\nApprox. p-value: %1.2g', emp_pval, pval))
+
+p3 <- ggplot(df_null, aes(diff_mean, y = ..density..)) + 
+  geom_histogram(bins = 33, aes(fill = 'gray70')) +
+  geom_line(data = df_fit, aes(x = x, y = y, linetype = '1')) +
+  geom_vline(data = df_res, aes(xintercept = observed, linetype = '2'), show_guide=FALSE) +
+  geom_label(data = df_anno, aes(x, y, label = label), hjust = 1, vjust = 1, size = 3) +
+  facet_wrap(~ gene, scales = 'free') +
+  xlab('Difference in geometric mean') + ylab('Distribution density') +
+  ggtitle('Using the null distribution to obtain p-values') +
+  scale_fill_manual(name = '', values = 'gray70', labels = sprintf('null distribution', R)) +
+  scale_linetype_manual(name = '', values = c(1, 2), labels = c('Approximated null', 'Observed difference\nin mean'))
+plot(p3)
+```
+
+The lowest possible empirical p-value is 1/(R+1) whith R being the number of random permutation used. However, the gaussian approximation of the null distribution allows us to calculate z-scores and consequently p-values that are lower than that. While the approximation using a gaussian might not be exact, especially for genes with very low detection rate or when cell numbers are very low, it generally agrees well with the empirical data.
+
+## Example 1: DE of CD14 Mono vs CD16 Mono
+
+First, we will take the count matrix and fit a model using `sctransform::vst`, and in a second step obtain corrected counts (with the sequencing depth effect removed). Then compare the two groups.
+
+```{r}
+vst_out <- vst(umi = counts, method = 'qpoisson', residual_type = 'none', return_cell_attr = TRUE, verbosity = 0)
+counts_corrected <- correct_counts(x = vst_out, umi = counts, verbosity = 0)
+```
+
+By default `sctransform::diff_mean_test` applies some moderate pre-filtering  and
+tests only genes with:
+
+* absolute log2-fold-change of at least log2(1.2) (`r log2(1.2)`) AND
+* mean value of at least 0.05 in at least one of the tested groups AND
+* at least 5 non-zero observations in the group with higher mean
+
+Here we disable the first filter, but require a mean of at least 0.1 in at least
+one of the groups. We show results as a volcano plot and highlight the top DE genes (based on p-value or log-fold-change).
+
+```{r}
+sel <- cell_types %in% c('CD14 Mono', 'CD16 Mono')
+sel_counts <- counts_corrected[, sel]
+sel_labels <- cell_types[sel]
+bm <- bench::mark(
+  de_res <- diff_mean_test(y = sel_counts, 
+                           labels = sel_labels, 
+                           log2FC_th = 0, 
+                           mean_th = 0.1),
+  max_iterations = 1, 
+  filter_gc = FALSE
+)
+de_res <- tibble::rownames_to_column(de_res, var = 'gene')
+knitr::kable(data.frame(bm[, 5:9]), caption = "Benchmarking details")
+```
+
+```{r, fig.height=6, fig.width=8, out.width='80%'}
+top_markers <- arrange(de_res, sign(log2FC), -abs(log2FC)) %>%
+  group_by(sign(log2FC)) %>%
+  filter(rank(-abs(zscore), ties.method = "first") <= 4 |
+         rank(-abs(log2FC), ties.method = "first") <= 4) %>%
+  ungroup() %>%
+  select(gene, mean1, mean2, log2FC, emp_pval_adj, pval_adj, zscore)
+  
+p1 <- ggplot(de_res, aes(log2FC, pmax(-0.5, log10(abs(zscore))))) + 
+  geom_point(aes(color = emp_pval_adj < 0.05 & pval_adj < 0.05)) + 
+  geom_point(data = top_markers, color = 'deeppink') +
+  geom_text_repel(data = top_markers, mapping = aes(label = gene)) +
+  theme(legend.position = 'bottom') +
+  ylab('Zscore [log10 of absolute value, clipped at -0.5]') +
+  xlab('log2 fold-change (log2(mean1 / mean2))')
+
+p1
+```
+
+Top markers per cell type
+
+```{r}
+filter(top_markers, log2FC < 0) %>% DT::datatable(rownames = FALSE, options = list(paging = FALSE, searching = FALSE)) %>% DT::formatRound(2:7, digits = 2)
+filter(top_markers, log2FC > 0) %>% DT::datatable(rownames = FALSE, options = list(paging = FALSE, searching = FALSE)) %>% DT::formatRound(2:7, digits = 2)
+```
+
+## Example 2: Top markers for all cell types
+
+Here we repeatedly use the test to find gene that are high for each cell type compared to the rest. To speed things up, we use fewer random permutations (49) and test only the 222 genes with highest log2 fold-change.
+
+```{r}
+ctypes <- levels(cell_types)
+bm <- bench::mark(
+  res_lst <- lapply(ctypes, function(ct) {
+    ct_res <- sctransform::diff_mean_test(y = counts_corrected, 
+                                         labels = cell_types != ct, 
+                                         R = 49,
+                                         only_pos = TRUE, 
+                                         only_top_n = 222,
+                                         verbosity = 0)
+    ct_res$label1 <- ct
+    ct_res$label2 <- 'rest'
+    tibble::rownames_to_column(.data = ct_res, var = 'gene')
+  })
+)
+knitr::kable(data.frame(bm[, 5:9]), caption = "Benchmarking details")
+de_res <- Reduce(rbind, res_lst)
+de_res$label1 <- factor(de_res$label1, levels = ctypes)
+```
+
+Show one plot per cell type and highlight the top 4 markers with respect to p-value and the top 4 markers with respect to log2FC.
+
+```{r, fig.height=16, fig.width=8, out.width='100%'}
+top_markers <- group_by(de_res, label1) %>% 
+  filter(rank(-zscore, ties.method = "first") <= 4 | rank(-log2FC, ties.method = "first") <= 4) %>% select(label1, gene, mean1, mean2, log2FC, zscore, emp_pval_adj)
+
+ggplot(de_res, aes(pmin(log2FC, 10), pmin(log10(zscore), 4))) + 
+  geom_point(aes(color = emp_pval_adj < 0.05)) + 
+  geom_point(data = top_markers, color = 'deeppink') +
+  geom_text_repel(data = top_markers, mapping = aes(label = gene)) +
+  facet_wrap(~ label1, ncol = 3) + 
+  theme(legend.position = 'bottom')
+```
+
+Table of top markers per cell type
+
+```{r}
+DT::datatable(top_markers, rownames = FALSE) %>% DT::formatRound(3:7, digits = 2)
+```
+
+
+## Session info and runtime
+
+Session info
+```{r}
+sessionInfo()
+```
+
+Runtime
+```{r}
+print(proc.time() - tic)
+```
+
+## References
+
