@@ -44,8 +44,8 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
   # problems later on
   rel_attr <- cell_attr[, c(latent_var, batch_var, latent_var_nonreg)]
   if (any(is.na(rel_attr)) || 
-      any(is.nan(rel_attr)) || 
-      any(is.infinite(rel_attr))) {
+      any(is.nan(unlist(rel_attr, use.names = FALSE))) || 
+      any(is.infinite(unlist(rel_attr, use.names = FALSE)))) {
     stop('cell attributes cannot contain any NA, NaN, or infinite values')
   }
   
