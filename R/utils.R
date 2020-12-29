@@ -5,6 +5,11 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
     cell_attr <- data.frame(row.names = colnames(umi))
   }
   
+  # Make sure rownames of cell attributes match cell names in count matrix
+  if (!identical(rownames(cell_attr), colnames(umi))) {
+    stop('cell attribute row names must match column names of count matrix')
+  }
+  
   # Do not allow certain variable names
   no_good <- c('(Intercept)', 'Intercept')
   if (any(no_good %in% c(latent_var, batch_var, latent_var_nonreg))) {
@@ -42,11 +47,13 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
   
   # make sure no NA, NaN, Inf values are in cell attributes - they would cause
   # problems later on
-  rel_attr <- cell_attr[, c(latent_var, batch_var, latent_var_nonreg)]
-  if (any(is.na(rel_attr)) || 
-      any(is.nan(rel_attr)) || 
-      any(is.infinite(rel_attr))) {
-    stop('cell attributes cannot contain any NA, NaN, or infinite values')
+  for (ca in c(latent_var, batch_var, latent_var_nonreg)) {
+    ca_values <- cell_attr[, ca]
+    if (any(is.na(ca_values)) || 
+        any(is.nan(ca_values)) || 
+        any(is.infinite(ca_values))) {
+      stop('cell attribute "', ca, '" contains NA, NaN, or infinite value')
+    }
   }
   
   return(cell_attr)
