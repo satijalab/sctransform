@@ -5,6 +5,11 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
     cell_attr <- data.frame(row.names = colnames(umi))
   }
   
+  # Make sure count matrix has row and column names
+  if (is.null(rownames(umi)) || is.null(colnames(umi))) {
+    stop('count matrix must have row and column names')
+  }
+  
   # Make sure rownames of cell attributes match cell names in count matrix
   if (!identical(rownames(cell_attr), colnames(umi))) {
     stop('cell attribute row names must match column names of count matrix')

@@ -568,6 +568,9 @@ diff_mean_test <- function(y, labels, R = 99, log2FC_th = log2(1.2),
   if (length(levels(labels)) > 2) {
     stop('only two groups can be compared')
   }
+  if (length(labels) != ncol(y)) {
+    stop('length of labels must be equal to the number of columns in y')
+  }
   lab_tab <- table(labels)
   
   if (verbosity > 0) {
