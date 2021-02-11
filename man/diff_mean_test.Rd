@@ -6,7 +6,8 @@
 \usage{
 diff_mean_test(
   y,
-  labels,
+  group_labels,
+  compare = "each_vs_rest",
   R = 99,
   log2FC_th = log2(1.2),
   mean_th = 0.05,
@@ -21,7 +22,9 @@ diff_mean_test(
 \item{y}{A matrix of counts; must be (or inherit from) class dgCMatrix; genes are row,
 cells are columns}
 
-\item{labels}{A factor giving the group labels; must have exactly two levels}
+\item{group_labels}{A factor giving the group labels; must have exactly two levels}
+
+\item{compare}{Specifies which groups to compare, see details; default is 'each_vs_rest'}
 
 \item{R}{The number of random permutations used to derive the p-values; default is 99}
 
@@ -77,13 +80,21 @@ permutation is at least as large as the absolute value of the observed differenc
 in mean, R is the number of random permutations. This is an upper bound of
 the real empirical p-value that would be obtained by enumerating all possible
 group label permutations.
+
+There are multiple ways the group comparisons can be specified based on the compare
+parameter. The default, \code{'each_vs_rest'}, does multiple comparisons, one per 
+group vs all remaining cells. \code{'all_vs_all'}, also does multiple comparisons, 
+covering all groups pairs. If compare is set to a length two character vector, e.g.
+\code{c('T-cells', 'B-cells')}, one comparison between those two groups is done.
+To put multiple groups on either side of a single comparison, use a list of length two. 
+E.g. \code{compare = list(c('cluster1', 'cluster5'), c('cluster3'))}.
 }
 
 \examples{
 \donttest{
 clustering <- 1:ncol(pbmc) \%\% 2
 vst_out <- vst(pbmc, return_corrected_umi = TRUE)
-de_res <- diff_mean_test(y = vst_out$umi_corrected, labels = clustering)
+de_res <- diff_mean_test(y = vst_out$umi_corrected, group_labels = clustering)
 }
 
 }

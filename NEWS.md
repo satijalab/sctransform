@@ -1,6 +1,19 @@
 # News
 All notable changes will be documented in this file.
 
+## [0.3.2.9003] - 2020-02-11
+### Added
+- `compare` argument to the nonparametric differential expression test `diff_mean_test()` to allow for multiple comparisons and various ways to specify which groups to compare
+- Input checking at various places in `vst()` and `diff_mean_test()`
+
+### Changed
+- Major speed improvements for `diff_mean_test()`
+- Changed the `labels` argument to `group_labels` in `diff_mean_test()`
+
+### Fixed
+- Fix bug where factors in cell attributes gave error when checking for NA, NaN, inf
+
+
 ## [0.3.2] - 2020-12-16
 ### Added
 - Ability to control the values of latent variables when calculating corrected counts

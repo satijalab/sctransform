@@ -29,7 +29,7 @@ references:
     year: 2010
     month: 10
 - id: hartwig2013
-  title: "Two-Tailed P-Values Calculation in PermutationBased Tests: A Warning Against “Asymptotic Bias” in Randomized Clinical Trials"
+  title: "Two-Tailed P-Values Calculation in Permutation Based Tests: A Warning Against “Asymptotic Bias” in Randomized Clinical Trials"
   author:
   - family: Hartwig
     given: Fernando Pires
@@ -63,6 +63,8 @@ knitr::opts_chunk$set(
   optipng = '-o 5 -strip all -quiet',
   fig.width=6.5, fig.height=2.5, dpi=100, out.width = '80%'
 )
+options(dplyr.summarise.inform = FALSE)
+options(tibble.width = Inf)
 old_theme <- theme_set(theme_bw(base_size=10))
 set.seed(6646428)
 tic <- proc.time()
@@ -74,18 +76,22 @@ tic <- proc.time()
 }
 </style>
 
+> **_NOTE:_** This document was generated with `sctransform` version `r packageVersion(pkg = 'sctransform')`
+
 ## Introduction
 
-With this vignette we introduce the non-parametric differential expression test for sparse non-negative data.
+With this vignette we introduce the non-parametric differential expression test for sparse non-negative data as seen in single-cell RNA sequencing.
 
-The observed difference in mean between two groups 
-is compared against a null distribution
+The test is a model-free randomization test where the
+observed difference in mean between two groups 
+is compared against a null distribution that is
 obtained by random shuffling of the group labels. 
 
-Empirical p-values are also calculated: \code{emp_pval = (b + 1) / (R + 1)}
-where b is the number of times the absolute difference in mean from a random 
+Given the observed difference and the null distribution, empirical p-values are 
+calculated: `emp_pval = (b + 1) / (R + 1)`
+where `b` is the number of times the absolute difference in mean from a random 
 permutation is at least as large as the absolute value of the observed difference
-in mean, R is the number of random permutations. This is an upper bound of
+in mean, `R` is the number of random permutations. This is an upper bound of
 the real empirical p-value that would be obtained by enumerating all possible
 group label permutations.
 
@@ -95,7 +101,9 @@ difference in mean into a z-score and then into a p-value. Finally,
 all p-values (for the tested genes) are adjusted using the Benjamini & Hochberg
 method (fdr). 
 
-The log2FC values in the output are \code{log2(mean1 / mean2)}.
+The log2FC values in the output are `log2(mean1 / mean2)`.
+
+The current implementation only supports sparse matrices of class `dgCMatrix` from the `Matrix` package and has been optimized for speed (see benchmarking results below).
 
 ## Load some data
 
@@ -225,7 +233,7 @@ plot(p3)
 
 The lowest possible empirical p-value is 1/(R+1) whith R being the number of random permutation used. However, the gaussian approximation of the null distribution allows us to calculate z-scores and consequently p-values that are lower than that. While the approximation using a gaussian might not be exact, especially for genes with very low detection rate or when cell numbers are very low, it generally agrees well with the empirical data.
 
-## Example 1: DE of CD14 Mono vs CD16 Mono
+## Example 1: DE of CD14 Mono vs CD16 Mono (one vs one)
 
 First, we will take the count matrix and fit a model using `sctransform::vst`, and in a second step obtain corrected counts (with the sequencing depth effect removed). Then compare the two groups.
 
@@ -245,18 +253,185 @@ Here we disable the first filter, but require a mean of at least 0.1 in at least
 one of the groups. We show results as a volcano plot and highlight the top DE genes (based on p-value or log-fold-change).
 
 ```{r}
-sel <- cell_types %in% c('CD14 Mono', 'CD16 Mono')
-sel_counts <- counts_corrected[, sel]
-sel_labels <- cell_types[sel]
 bm <- bench::mark(
-  de_res <- diff_mean_test(y = sel_counts, 
-                           labels = sel_labels, 
+  de_res <- diff_mean_test(y = counts_corrected, 
+                           group_labels = cell_types, 
+                           compare = c('CD14 Mono', 'CD16 Mono'),
                            log2FC_th = 0, 
                            mean_th = 0.1),
   max_iterations = 1, 
   filter_gc = FALSE
 )
-de_res <- tibble::rownames_to_column(de_res, var = 'gene')
+knitr::kable(data.frame(bm[, 5:9]), caption = "Benchmarking details")
+```
+
+The runtime for the tests was `r as.character(bm$total_time)`. In total, `r nrow(de_res)` genes were tested. 
+`r sum(de_res$emp_pval_adj <= 0.05 & abs(de_res$log2FC) >= 1)` genes showed a mean that was significantly different between groups (FDR <= 0.05 based on empirical p-values) AND had an absolute log2 fold-change of at least 1 (i.e. `abs(log2(mean1/mean2)) >= 1`).
+
+```{r, fig.height=6, fig.width=8, out.width='80%'}
+top_markers <- arrange(de_res, sign(log2FC), -abs(log2FC)) %>%
+  group_by(sign(log2FC)) %>%
+  filter(rank(-abs(zscore), ties.method = "first") <= 4 |
+         rank(-abs(log2FC), ties.method = "first") <= 4) %>%
+  ungroup() %>%
+  select(gene, mean1, mean2, log2FC, emp_pval_adj, pval_adj, zscore)
+  
+p1 <- ggplot(de_res, aes(log2FC, pmax(-0.5, log10(abs(zscore))))) + 
+  geom_point(aes(color = emp_pval_adj < 0.05 & pval_adj < 0.05)) + 
+  geom_point(data = top_markers, color = 'deeppink') +
+  geom_text_repel(data = top_markers, mapping = aes(label = gene)) +
+  theme(legend.position = 'bottom') +
+  ylab('Zscore [log10 of absolute value, clipped at -0.5]') +
+  xlab('log2 fold-change (log2(mean1 / mean2))')
+
+show(p1)
+```
+
+Top markers per cell type
+
+```{r}
+filter(top_markers, log2FC < 0) %>% DT::datatable(rownames = FALSE, options = list(paging = FALSE, searching = FALSE)) %>% DT::formatRound(2:7, digits = 2)
+filter(top_markers, log2FC > 0) %>% DT::datatable(rownames = FALSE, options = list(paging = FALSE, searching = FALSE)) %>% DT::formatRound(2:7, digits = 2)
+```
+
+## Example 2: Top markers for all cell types (each vs rest)
+
+Here we use the test to find genes that are high for each cell type compared to the rest. This is the default behavior of the test function. To speed things up, we use fewer random permutations (49) and test only the 222 genes with highest log2 fold-change.
+
+```{r}
+bm <- bench::mark(
+  de_res <- diff_mean_test(y = counts_corrected, 
+                           group_labels = cell_types, 
+                           R = 49, 
+                           only_pos = TRUE, 
+                           only_top_n = 222,
+                           verbosity = 0)
+)
+knitr::kable(data.frame(bm[, 5:9]), caption = "Benchmarking details")
+```
+
+Show one plot per cell type and highlight the top 4 markers with respect to p-value and the top 4 markers with respect to log2FC.
+
+```{r, fig.height=16, fig.width=8, out.width='100%'}
+top_markers <- group_by(de_res, group1) %>% 
+  filter(rank(-zscore, ties.method = "first") <= 4 | rank(-log2FC, ties.method = "first") <= 4) %>% select(group1, gene, mean1, mean2, log2FC, zscore, emp_pval_adj)
+
+p1 <- ggplot(de_res, aes(pmin(log2FC, 10), pmin(log10(zscore), 4))) + 
+  geom_point(aes(color = emp_pval_adj < 0.05)) + 
+  geom_point(data = top_markers, color = 'deeppink') +
+  geom_text_repel(data = top_markers, mapping = aes(label = gene)) +
+  facet_wrap(~ group1, ncol = 3) + 
+  theme(legend.position = 'bottom')
+show(p1)
+```
+
+Table of top markers per cell type
+
+```{r}
+DT::datatable(top_markers, rownames = FALSE) %>% DT::formatRound(3:7, digits = 2)
+```
+
+## Example 3: Unique markers for all cell types (all vs all)
+
+Since the test is pretty fast we can run all pairwise comparisons to try to find genes that 
+are cell type specific across many individual comparisons. 
+
+```{r}
+bm <- bench::mark(
+  de_res <- diff_mean_test(y = counts_corrected, 
+                           group_labels = cell_types, 
+                           compare = 'all_vs_all',
+                           R = 49, 
+                           mean_th = 0.1, 
+                           log2FC_th = 0,
+                           verbosity = 0)
+)
+knitr::kable(data.frame(bm[, 5:9]), caption = "Benchmarking details")
+```
+
+There are `r length(unique(paste(de_res$group1, de_res$group2)))` unique cell type pairs in the output. 
+On average `r round(nrow(de_res)/length(unique(paste(de_res$group1, de_res$group2))))` genes were tested in each comparison.
+Below we list the top genes per cell type ranked by fold change and the number of times it was a cell type marker (absolute log2FC >= 0 and p-value <= 0.05). We also show the minimum log2 fold-change and the maximum p-value across all comparisons.
+
+```{r}
+log2fc_th <- 0#log2(1.2)
+p_th <- 0.05
+fn <- function(fc, pval, fc_th = 0, p_th = Inf) {
+  worst <- which.min(fc)
+  wp <- pval[worst]
+  if (fc[worst] < 0) {
+    wp <- 1 - wp
+  }
+  data.frame(n = sum(fc >= fc_th & pval <= p_th),
+             log2FC = fc[worst],
+             pval = wp)
+}
+tmp1 <- group_by(de_res, gene, group1) %>% 
+  summarise(fn(log2FC, pval))
+
+tmp1 <- group_by(de_res, gene, group1) %>% 
+  summarise(n = sum(log2FC >= log2fc_th),
+            n_sig = sum(log2FC >= log2fc_th & pval <= p_th),
+            log2FC = min(log2FC), 
+            pval = max(pval, log2FC < 0))
+
+tmp2 <- group_by(de_res, gene, group2) %>% 
+  summarise(n = sum(log2FC <= -log2fc_th),
+            n_sig = sum(log2FC <= -log2fc_th & pval <= p_th),
+            log2FC = min(-log2FC), 
+            pval = max(pval, log2FC < 0))
+
+top_markers <- full_join(tmp1, tmp2, by = c('group1' = 'group2', 'gene' = 'gene')) %>%
+  rename(cell_type = group1) %>%
+  mutate(comparisons = mapply(sum, n.x, n.y, na.rm = TRUE),
+         n_sig = mapply(sum, n_sig.x, n_sig.y, na.rm = TRUE),
+         log2FC = pmin(log2FC.x, log2FC.y, na.rm = TRUE),
+         pval = pmax(pval.x, pval.y, na.rm = TRUE)) %>%
+  arrange(cell_type, -comparisons, -log2FC*n_sig, pval) %>%
+  group_by(cell_type) %>%
+  slice_head(n = 4) %>%
+  select(cell_type, gene, comparisons, log2FC, pval)
+  
+DT::datatable(top_markers, rownames = FALSE, caption = 'Cell type specific markers') %>% 
+  DT::formatRound(4:5, digits = 2)
+```
+
+Heatmap of top markers
+
+```{r, fig.width=13, fig.height=4, out.width='100%'}
+mat <- sctransform:::row_gmean_grouped_dgcmatrix(
+  matrix = counts_corrected[unique(top_markers$gene), ], group = cell_types, eps = 1, shuffle = FALSE)
+mat <- t(scale(t(mat)))
+
+p1 <- melt(mat, varnames = c('gene', 'celltype')) %>% 
+  mutate(celltype = factor(celltype, levels = rev(colnames(mat)))) %>%
+  ggplot(aes(gene, celltype, fill = value)) +
+  geom_tile(colour = "gray66") +
+  scale_fill_gradient2(low = 'white', mid = 'white', high = 'black', 
+                       name = 'Geometric mean of each gene per cell type, scaled per gene') +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(x = NULL, y = NULL) +
+  scale_x_discrete(expand = c(0, 0)) + 
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(legend.position = 'top', axis.ticks = element_blank()) 
+show(p1)
+```
+
+## Example 4: CD4 vs CD8 T cells (some vs some)
+
+We can also test one or more groups against one or more other groups. As an example we test CD4 vs CD8 cells (in each group we combine Naive, TCM, TEM subgroups). The cell type identities for the comparison are passed as a list of length two to the `compare` argument of the `diff_mean_test` function.
+
+```{r}
+bm <- bench::mark(
+  de_res <- diff_mean_test(y = counts_corrected, 
+                           group_labels = cell_types, 
+                           compare = list(c('CD4 Naive', 'CD4 TCM', 'CD4 TEM'),
+                                          c('CD8 Naive', 'CD8 TCM', 'CD8 TEM')),
+                           log2FC_th = 0, 
+                           mean_th = 0.1),
+  max_iterations = 1, 
+  filter_gc = FALSE
+)
 knitr::kable(data.frame(bm[, 5:9]), caption = "Benchmarking details")
 ```
 
@@ -276,58 +451,74 @@ p1 <- ggplot(de_res, aes(log2FC, pmax(-0.5, log10(abs(zscore))))) +
   ylab('Zscore [log10 of absolute value, clipped at -0.5]') +
   xlab('log2 fold-change (log2(mean1 / mean2))')
 
-p1
+show(p1)
 ```
 
-Top markers per cell type
+Top markers per group
 
 ```{r}
-filter(top_markers, log2FC < 0) %>% DT::datatable(rownames = FALSE, options = list(paging = FALSE, searching = FALSE)) %>% DT::formatRound(2:7, digits = 2)
-filter(top_markers, log2FC > 0) %>% DT::datatable(rownames = FALSE, options = list(paging = FALSE, searching = FALSE)) %>% DT::formatRound(2:7, digits = 2)
+filter(top_markers, log2FC < 0) %>% DT::datatable(rownames = FALSE, options = list(paging = FALSE, searching = FALSE), caption = 'Higher in CD8') %>% DT::formatRound(2:7, digits = 2)
+filter(top_markers, log2FC > 0) %>% DT::datatable(rownames = FALSE, options = list(paging = FALSE, searching = FALSE), caption = 'Higher in CD4') %>% DT::formatRound(2:7, digits = 2)
 ```
 
-## Example 2: Top markers for all cell types
+## Example 5: Using the test with Seurat
 
-Here we repeatedly use the test to find gene that are high for each cell type compared to the rest. To speed things up, we use fewer random permutations (49) and test only the 222 genes with highest log2 fold-change.
+The functionality outlined in the examples above can also be applied to Seurat objects. We demonstrate this with an example below where we perform unsupervised clustering followed by cluster marker identification (as in example 2).
+
+```{r, fig.height=5.5, fig.width=5.3, out.width='50%'}
+library('Seurat')
+s <- CreateSeuratObject(counts = counts)
+# run sctransform
+s <- SCTransform(s, verbose = FALSE, method = 'qpoisson')
+# 'standard' workflow
+s <- RunPCA(s, verbose = FALSE)
+s <- RunUMAP(s, dims = 1:30, verbose = FALSE)
+s <- FindNeighbors(s, dims = 1:30, verbose = FALSE)
+s <- FindClusters(s, verbose = FALSE)
+DimPlot(s, label = TRUE) + NoLegend() + ggtitle('Unsupervised clustering')
+```
+
+The cells have been grouped into `r length(levels(s$seurat_clusters))` clusters. We are now going to use `sctransform::diff_mean_test` to find the top cluster markers. For this we access the normalized counts that are in the `SCT` assay and the cluster labels.
 
 ```{r}
-ctypes <- levels(cell_types)
 bm <- bench::mark(
-  res_lst <- lapply(ctypes, function(ct) {
-    ct_res <- sctransform::diff_mean_test(y = counts_corrected, 
-                                         labels = cell_types != ct, 
-                                         R = 49,
-                                         only_pos = TRUE, 
-                                         only_top_n = 222,
-                                         verbosity = 0)
-    ct_res$label1 <- ct
-    ct_res$label2 <- 'rest'
-    tibble::rownames_to_column(.data = ct_res, var = 'gene')
-  })
+  de_res <- diff_mean_test(y = GetAssayData(s, assay = 'SCT', slot = 'counts'), 
+                           group_labels = s$seurat_clusters, 
+                           R = 49, 
+                           only_pos = TRUE, 
+                           only_top_n = 222,
+                           verbosity = 0)
 )
 knitr::kable(data.frame(bm[, 5:9]), caption = "Benchmarking details")
-de_res <- Reduce(rbind, res_lst)
-de_res$label1 <- factor(de_res$label1, levels = ctypes)
 ```
 
-Show one plot per cell type and highlight the top 4 markers with respect to p-value and the top 4 markers with respect to log2FC.
+```{r, fig.height=12, fig.width=8, out.width='100%'}
+top_markers <- group_by(de_res, group1) %>% 
+  filter(rank(-zscore, ties.method = "first") <= 4 | rank(-log2FC, ties.method = "first") <= 4) %>% select(group1, gene, mean1, mean2, log2FC, zscore, emp_pval_adj)
 
-```{r, fig.height=16, fig.width=8, out.width='100%'}
-top_markers <- group_by(de_res, label1) %>% 
-  filter(rank(-zscore, ties.method = "first") <= 4 | rank(-log2FC, ties.method = "first") <= 4) %>% select(label1, gene, mean1, mean2, log2FC, zscore, emp_pval_adj)
-
-ggplot(de_res, aes(pmin(log2FC, 10), pmin(log10(zscore), 4))) + 
+p1 <- ggplot(de_res, aes(pmin(log2FC, 10), pmin(log10(zscore), 4))) + 
   geom_point(aes(color = emp_pval_adj < 0.05)) + 
   geom_point(data = top_markers, color = 'deeppink') +
   geom_text_repel(data = top_markers, mapping = aes(label = gene)) +
-  facet_wrap(~ label1, ncol = 3) + 
+  facet_wrap(~ group1, ncol = 4) + 
   theme(legend.position = 'bottom')
+show(p1)
 ```
 
-Table of top markers per cell type
+Table of top markers per cluster
 
 ```{r}
 DT::datatable(top_markers, rownames = FALSE) %>% DT::formatRound(3:7, digits = 2)
+```
+Seurat heatmap
+
+```{r, fig.width=14, fig.height=8, out.width='100%'}
+marker_genes <- group_by(de_res, group1) %>% 
+  filter(rank(-log2FC, ties.method = "first") <= 4) %>% 
+  pull(gene)
+# make sure all markers are in the scale.data slot (by default only the highly variable genes are there)
+s <- GetResidual(s, features = marker_genes, verbose = FALSE)
+DoHeatmap(s, features = marker_genes, slot = 'scale.data')
 ```
 
 

@@ -491,7 +491,8 @@ model_comparison_ttest <- function(y, group) {
 #'
 #' @param y A matrix of counts; must be (or inherit from) class dgCMatrix; genes are row,
 #' cells are columns
-#' @param labels A factor giving the group labels; must have exactly two levels
+#' @param group_labels A factor giving the group labels; must have exactly two levels
+#' @param compare Specifies which groups to compare, see details; default is 'each_vs_rest'
 #' @param R The number of random permutations used to derive the p-values; default is 99
 #' @param log2FC_th Threshold to remove genes from testing; absolute log2FC must be at least
 #' this large for a gene to be tested; default is \code{log2(1.2)}
@@ -535,6 +536,14 @@ model_comparison_ttest <- function(y, group) {
 #' the real empirical p-value that would be obtained by enumerating all possible
 #' group label permutations.
 #' 
+#' There are multiple ways the group comparisons can be specified based on the compare
+#' parameter. The default, \code{'each_vs_rest'}, does multiple comparisons, one per 
+#' group vs all remaining cells. \code{'all_vs_all'}, also does multiple comparisons, 
+#' covering all groups pairs. If compare is set to a length two character vector, e.g.
+#' \code{c('T-cells', 'B-cells')}, one comparison between those two groups is done.
+#' To put multiple groups on either side of a single comparison, use a list of length two. 
+#' E.g. \code{compare = list(c('cluster1', 'cluster5'), c('cluster3'))}.
+#' 
 #' @import Matrix
 #' @importFrom matrixStats rowMeans2 rowSds
 #' @importFrom stats p.adjust pnorm
@@ -545,13 +554,16 @@ model_comparison_ttest <- function(y, group) {
 #' \donttest{
 #' clustering <- 1:ncol(pbmc) %% 2
 #' vst_out <- vst(pbmc, return_corrected_umi = TRUE)
-#' de_res <- diff_mean_test(y = vst_out$umi_corrected, labels = clustering)
+#' de_res <- diff_mean_test(y = vst_out$umi_corrected, group_labels = clustering)
 #' }
 #'
-diff_mean_test <- function(y, labels, R = 99, log2FC_th = log2(1.2), 
-                          mean_th = 0.05, cells_th = 5, only_pos = FALSE,
-                          only_top_n = NULL,
-                          mean_type = 'geometric', verbosity = 1) {
+diff_mean_test <- function(y, group_labels, 
+                           compare = 'each_vs_rest', 
+                           R = 99, log2FC_th = log2(1.2), 
+                           mean_th = 0.05, cells_th = 5, only_pos = FALSE,
+                           only_top_n = NULL,
+                           mean_type = 'geometric', 
+                           verbosity = 1) {
   if (is.na(match(x = mean_type, table = c('geometric', 'arithmetic')))) {
     stop('mean_type must be geometric or arithmetic')
   }
@@ -564,91 +576,186 @@ diff_mean_test <- function(y, labels, R = 99, log2FC_th = log2(1.2),
   if (!is.null(only_top_n) & (!is.numeric(only_top_n) | length(only_top_n) > 1)) {
     stop('only_top_n must be NULL or a single numeric value')
   }
-  labels <- droplevels(as.factor(labels))
-  if (length(levels(labels)) > 2) {
-    stop('only two groups can be compared')
+  group_labels <- droplevels(as.factor(group_labels))
+  lab_tab <- table(group_labels)
+  group_levels <- levels(group_labels)
+  G <- length(group_levels)
+  if (length(group_labels) != ncol(y)) {
+    stop('length of group labels must be equal to the number of columns in y')
   }
-  if (length(labels) != ncol(y)) {
-    stop('length of labels must be equal to the number of columns in y')
-  }
-  lab_tab <- table(labels)
   
   if (verbosity > 0) {
     message('Non-parametric DE test for count data')
     message(sprintf('Using %s mean and %d random permutations', mean_type, R))
-    message('Input: ', nrow(y), ' genes, ', ncol(y), ' cells')
-    message(sprintf('Comparing %s (group 1, N = %d) to %s (group2, N = %d)', 
-                    levels(labels)[1], lab_tab[1], levels(labels)[2], lab_tab[2]))
+    message('Input: ', nrow(y), ' genes, ', ncol(y), ' cells; ', length(group_levels), ' groups')
   }
+  
+  # Set up the comparisons we want to do; each comparison is a list
+  # name1, name2, labels grp1, labels grp2
+  if (compare[1] == 'each_vs_rest') {
+    comparisons <- lapply(group_levels, function(x) list(x, 'rest', x, setdiff(group_levels, x)))
+  } else if (compare[1] == 'all_vs_all') {
+    comparisons <- list()
+    for (i in 1:(G-1)) {
+      for (j in (i+1):G) {
+        comparisons[[length(comparisons) + 1]] <- list(group_levels[i], group_levels[j], group_levels[i], group_levels[j])
+      }
+    }
+  } else if (inherits(x = compare, what = 'character') &&
+      length(compare) == 2 &&
+      all(compare %in% group_levels))  {
+    if (compare[1] == compare[2]) {
+      stop('Group 1 and 2 need to be different - please check your compare argument')
+    }
+    comparisons <- list(list(compare[1], compare[2], compare[1], compare[2]))
+  } else if (inherits(x = compare, what = 'list') &&
+             length(compare) == 2 &&
+             all(unlist(lapply(compare, inherits, what = 'character')))) {
+    compare <- lapply(compare, unique)
+    if (length(intersect(compare[[1]], compare[[2]])) > 0) {
+      stop('Intersection between group 1 and 2 - please check your compare argument')
+    }
+    comparisons <- list(list('group1', 'group2', compare[[1]], compare[[2]]))
+  } else {
+    stop("Make sure the compare argument is 'each_vs_rest' or 'all_vs_all' or a length 2 
+          character vector with both entries present in the group_labels argument or 
+          a list of length 2 with each entry being a character vector of group labels")
+  }
+  
   # for all the genes, get the number of non-zero observations per group
-  cells <- row_nonzero_count_grouped_dgcmatrix(matrix = y, group = labels)
-  # for all the genes, get the mean per group
+  cells <- row_nonzero_count_grouped_dgcmatrix(matrix = y, group = group_labels)
+  # if we want to use the geometric mean, it's fastest to convert all counts to
+  # log1p upfront, then use expm1 of arithmetic mean later on
   if (mean_type == 'geometric') {
     y@x <- log(y@x + 1)
-    means <- expm1(row_mean_grouped_dgcmatrix(matrix = y, group = labels, shuffle = FALSE))
+    means <- row_mean_grouped_dgcmatrix(matrix = y, group = group_labels, shuffle = FALSE)
   } else {
-    means <- row_mean_grouped_dgcmatrix(matrix = y, group = labels, shuffle = FALSE)
+    means <- row_mean_grouped_dgcmatrix(matrix = y, group = group_labels, shuffle = FALSE)
   }
-  res <- data.frame(mean1 = means[, 1],
-                    cells1 = cells[, 1],
-                    mean2 = means[, 2],
-                    cells2 = cells[, 2],
-                    mean_diff = means[, 1] - means[, 2],
-                    log2FC = log2(means[, 1] / means[, 2]))
   
-  # remove genes according to the filters
-  if (log2FC_th > 0 || mean_th > 0 || cells_th > 0 || only_pos || !is.null(only_top_n)) {
-    sel1 <- abs(res$log2FC) >= log2FC_th
-    sel2 <- res$mean1 >= mean_th | res$mean2 >= mean_th
-    sel3 <- (res$log2FC >= 0 & res$cells1 >= cells_th) | (res$log2FC <= 0 & res$cells2 >= cells_th)
-    if (only_pos) {
-      sel4 <- res$log2FC > 0
-    } else {
-      sel4 <- TRUE
-    }
-    res <- res[sel1 & sel2 & sel3 & sel4, , drop = FALSE]
-    if (!is.null(only_top_n)) {
-      sel0 <- rank(-res$log2FC) <= only_top_n
-      if (!only_pos) {
-        sel0 <- sel0 | rank(res$log2FC) <= only_top_n
-      }
-      res <- res[sel0, , drop = FALSE]
-    }
+  # Run the test for each comparison
+  res_lst <- lapply(comparisons, function(comp) {
+    # we might only be using a subset of the input cells; set up here
+    sel_columns1 <- group_labels %in% comp[[3]]
+    sel_columns2 <- group_labels %in% comp[[4]]
+    sel_columns <- sel_columns1 | sel_columns2
+    comp_group_labels <- factor(sel_columns2[sel_columns])
+    
     if (verbosity > 0) {
-      message(sprintf('Keeping %d genes after initial filtering', nrow(res)))
+      message(sprintf('Comparing %s (group1, N = %d) to %s (group2, N = %d)',
+                     comp[[1]], sum(sel_columns1), comp[[2]], sum(sel_columns2)))
     }
-    # handle the case where no genes remain after filtering
-    if (nrow(res) == 0) {
-      return(res)
+    comp_cells <- do.call(cbind, lapply(comp[3:4], function(x) combine_counts(cells, x)))
+    comp_means <- do.call(cbind, lapply(comp[3:4], function(x) combine_means(means, lab_tab, x, mean_type)))
+    
+    res <- data.frame(gene = rownames(means),
+                      group1 = comp[[1]],
+                      mean1 = comp_means[, 1],
+                      cells1 = comp_cells[, 1],
+                      group2 = comp[[2]],
+                      mean2 = comp_means[, 2],
+                      cells2 = comp_cells[, 2])
+    res$mean_diff <- res$mean1 - res$mean2
+    res$log2FC <- log2(res$mean1 / res$mean2)
+    
+    # remove genes according to the filters
+    if (log2FC_th > 0 || mean_th > 0 || cells_th > 0 || only_pos || !is.null(only_top_n)) {
+      sel1 <- abs(res$log2FC) >= log2FC_th
+      sel2 <- res$mean1 >= mean_th | res$mean2 >= mean_th
+      sel3 <- (res$log2FC >= 0 & res$cells1 >= cells_th) | (res$log2FC <= 0 & res$cells2 >= cells_th)
+      if (only_pos) {
+        sel4 <- res$log2FC > 0
+      } else {
+        sel4 <- TRUE
+      }
+      res <- res[sel1 & sel2 & sel3 & sel4, , drop = FALSE]
+      if (!is.null(only_top_n)) {
+        sel0 <- rank(-res$log2FC) <= only_top_n
+        if (!only_pos) {
+          sel0 <- sel0 | rank(res$log2FC) <= only_top_n
+        }
+        res <- res[sel0, , drop = FALSE]
+      }
+      if (verbosity > 0) {
+        message(sprintf('Keeping %d genes after initial filtering', nrow(res)))
+      }
+      # handle the case where no genes remain after filtering
+      if (nrow(res) == 0) {
+        return(res)
+      }
     }
+    
+    # now get the empirical null distribution for mean_diff
+    y_ss <- y[rownames(res), sel_columns, drop = FALSE]
+    if (mean_type == 'geometric') {
+      mean_diff_rnd <- do.call(cbind, lapply(1:R, function(i) {
+        means_r <- expm1(row_mean_grouped_dgcmatrix(matrix = y_ss, group = comp_group_labels, shuffle = TRUE))
+        means_r[, 1, drop = FALSE] - means_r[, 2, drop = FALSE]
+      }))
+    } else {
+      mean_diff_rnd <- do.call(cbind, lapply(1:R, function(i) {
+        means_r <- row_mean_grouped_dgcmatrix(matrix = y_ss, group = comp_group_labels, shuffle = TRUE)
+        means_r[, 1, drop = FALSE] - means_r[, 2, drop = FALSE]
+      }))
+    }
+    
+    # use null distribution to get empirical p-values
+    # also approximate null with normal and derive z-scores and p-values
+    res$emp_pval <- (rowSums((abs(mean_diff_rnd) - abs(res$mean_diff)) >= 0) + 1) / (R + 1)
+    res$emp_pval_adj <- p.adjust(res$emp_pval, method = 'BH')
+    #res$zscore <- (res$mean_diff - rowMeans2(mean_diff_rnd)) / rowSds(mean_diff_rnd)
+    sds <- sqrt(rowSums(mean_diff_rnd^2)/(R-1))
+    res$zscore <- (res$mean_diff - rowMeans2(mean_diff_rnd)) / sds
+    res$pval <- 2 * pnorm(-abs(res$zscore))
+    res$pval_adj <- p.adjust(res$pval, method = 'BH')
+    
+    if (length(comparisons) > 1) {
+      rownames(res) <- NULL
+    }
+    return(res)
+  })
+  res <- Reduce(rbind, res_lst)
+  if (compare == 'each_vs_rest') {
+    res$group1 <- factor(res$group1, levels = group_levels)
+    res$group2 <- factor(res$group2)
+  } 
+  if (compare == 'all_vs_all') {
+    res$group1 <- factor(res$group1, levels = group_levels)
+    res$group2 <- factor(res$group2, levels = group_levels)
   }
-  
-  # now get the empirical null distribution for mean_diff
-  y_ss <- y[rownames(res), , drop = FALSE]
-  if (mean_type == 'geometric') {
-    mean_diff_rnd <- sapply(1:R, function(i) {
-      means_r <- expm1(row_mean_grouped_dgcmatrix(matrix = y_ss, group = labels, shuffle = TRUE))
-      means_r[, 1] - means_r[, 2]
-    })
-  } else {
-    mean_diff_rnd <- sapply(1:R, function(i) {
-      means_r <- row_mean_grouped_dgcmatrix(matrix = y_ss, group = labels, shuffle = TRUE)
-      means_r[, 1] - means_r[, 2]
-    })
-  }
-  
-  # use null distribution to get empirical p-values
-  # also approximate null with normal and derive z-scores and p-values
-  res$emp_pval <- (rowSums((abs(mean_diff_rnd) - abs(res$mean_diff)) >= 0) + 1) / (R + 1)
-  res$emp_pval_adj <- p.adjust(res$emp_pval, method = 'BH')
-  #res$zscore <- (res$mean_diff - rowMeans2(mean_diff_rnd)) / rowSds(mean_diff_rnd)
-  sds <- sqrt(rowSums(mean_diff_rnd^2)/(R-1))
-  res$zscore <- (res$mean_diff - rowMeans2(mean_diff_rnd)) / sds
-  res$pval <- 2 * pnorm(-abs(res$zscore))
-  res$pval_adj <- p.adjust(res$pval, method = 'BH')
   return(res)
 }
 
+# helper functions
+
+combine_counts <- function(group_counts, columns) {
+ as.matrix(rowSums(group_counts[, columns, drop = FALSE]))
+}
+
+# combine per-group-mean to get the mean spanning multiple groups
+# in an act of irrational premature optimization, we pass the 
+# log-space mean when mean_type is geometric - need to make sure to 
+# transform with exp1m before returning
+combine_means <- function(means, n_items, columns, mean_type) {
+  if (length(columns) == 1) {
+    if (mean_type == 'arithmetic') {
+      return(means[, columns, drop = FALSE])
+    }
+    if (mean_type == 'geometric') {
+      return(expm1(means[, columns, drop = FALSE]))
+    }
+  }
+  means <- means[, columns]
+  n_items <- n_items[columns]
+  tmp <- sweep(x = means, MARGIN = 2, STATS = n_items, FUN = '*')
+  
+  if (mean_type == 'arithmetic') {
+    return(as.matrix(rowSums(tmp) / sum(n_items)))
+  }
+  if (mean_type == 'geometric') {
+    return(as.matrix(expm1(rowSums(tmp) / sum(n_items))))
+  }
+}
 
 
 # non-parametric differential expression test
