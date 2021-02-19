@@ -1,0 +1,374 @@
+---
+title: "Using sctransform with Smart-Seq2 data"
+author: "Christoph Hafemeister"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    highlight: pygments
+    df_print: kable
+link-citations: true
+---
+
+```{r setup, include = FALSE}
+library('Matrix')
+library('ggplot2')
+library('reshape2')
+library('sctransform')
+library('Seurat')
+library('knitr')
+library('dplyr')
+library('ggrepel')
+library('patchwork')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = FALSE,
+  warning = FALSE,
+  digits = 2,
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff=80),
+  optipng = '-o 5 -strip all -quiet',
+  fig.width=6.5, fig.height=2.5, dpi=100, out.width = '80%'
+)
+options(dplyr.summarise.inform = FALSE)
+options(tibble.width = Inf)
+old_theme <- theme_set(theme_bw(base_size=10))
+set.seed(6646428)
+tic <- proc.time()
+
+base_dir <- '/Users/christoph/Projects/Smart-Seq2-transform'
+facs <- readRDS(file = file.path(base_dir, 'data', 'tabula_muris_facs_raw_Marrow.rds'))
+```
+
+<style>
+.table {
+    width: auto;
+}
+</style>
+
+> **_NOTE:_** This document was generated with `sctransform` version `r packageVersion(pkg = 'sctransform')`
+
+## Introduction
+
+With this vignette we explore whether sctransform can be used with Smart-Seq2 data and what changes to the default parameters might be needed.
+
+As an example data set we use the Smart-Seq2 data from the [Tabula muris project](https://github.com/czbiohub/tabula-muris).
+
+
+## Load and subset data
+
+We have already loaded the data as a list `facs` with components `counts` and `meta_data`. Here we have already subsetted the data to contain only cells from bone marrow. There are a total of `r ncol(facs$counts)` cells.
+
+## Explore data
+
+Distribution of total counts per cell
+```{r}
+# we are going to ignore the spike-in controls 
+is_ercc <- grepl(pattern = "^ERCC-", x = rownames(facs$counts))
+facs$meta_data$counts <- sparseMatrixStats::colSums2(x = facs$counts, rows = !is_ercc)
+
+p1 <- ggplot(facs$meta_data, aes(plate, log10(counts))) +
+  geom_boxplot(aes(fill = mouse.id)) +
+  coord_flip()
+show(p1)
+```
+
+Distribution of genes detected per cell
+```{r}
+facs$meta_data$genes <- sparseMatrixStats::colSums2(x = facs$counts >0, rows = !is_ercc)
+
+p1 <- ggplot(facs$meta_data, aes(plate, log10(genes))) +
+  geom_boxplot(aes(fill = mouse.id)) +
+  coord_flip()
+show(p1)
+```
+
+Plot some more cell attributes: Distribution of spike in controls (ERCC), ribosomal genes, mitochondrial read fraction
+```{r, out.width='100%', fig.width=10, fig.height=8}
+facs$meta_data$pct_ercc <- sparseMatrixStats::colSums2(x = facs$counts, rows = is_ercc) / sparseMatrixStats::colSums2(x = facs$counts) * 100
+
+is_ribo <- grepl('^Mrp[sl]', rownames(facs$counts))
+facs$meta_data$pct_ribo <- sparseMatrixStats::colSums2(x = facs$counts, rows = is_ribo) / facs$meta_data$counts * 100
+
+mitocarta <- readxl::read_excel(path = file.path(base_dir, 'data', 'Mouse.MitoCarta3.0.xls'), sheet = 2)
+mito_genes <- mitocarta$Symbol[1:400]
+is_mito <- rownames(facs$counts) %in% mito_genes
+facs$meta_data$pct_mito <- sparseMatrixStats::colSums2(x = facs$counts, rows = is_mito) / facs$meta_data$counts * 100
+
+entropy <- function(p) {
+  -sum(p * log(p), na.rm = TRUE)
+}
+facs$meta_data$entropy <- apply(t(facs$counts[!is_ercc, ]) / facs$meta_data$counts, 1, entropy)
+
+p1 <- ggplot(facs$meta_data, aes(plate, pct_ercc)) +
+  geom_boxplot(aes(fill = mouse.id)) +
+  coord_flip()
+p2 <- ggplot(facs$meta_data, aes(plate, pct_ribo)) +
+  geom_boxplot(aes(fill = mouse.id)) +
+  coord_flip()
+p3 <- ggplot(facs$meta_data, aes(plate, pct_mito)) +
+  geom_boxplot(aes(fill = mouse.id)) +
+  coord_flip()
+p4 <- ggplot(facs$meta_data, aes(plate, exp(entropy))) +
+  geom_boxplot(aes(fill = mouse.id)) +
+  coord_flip()
+show(((p1 + p2) / (p3 + p4)) + plot_layout(guides = "collect"))
+```
+
+Number of cells per mouse
+```{r}
+group_by(facs$meta_data, mouse.id) %>% summarise(n = n())
+```
+
+## Normalizing the data using `sctransform::vst`
+
+```{r}
+vst_out <- vst(umi = facs$counts[!is_ercc, ], cell_attr = facs$meta_data, 
+               method = 'qpoisson', return_cell_attr = TRUE,
+               verbosity = 1)
+```
+
+### Distribution of cell counts and gene mean
+
+```{r}
+p1 <- ggplot(vst_out$cell_attr, aes(log_umi)) +
+  geom_histogram(binwidth = 0.05) +
+  xlab('Total counts per cell [log10]') +
+  ylab('Number of cells')
+p2 <- ggplot(vst_out$gene_attr, aes(log10(gmean))) +
+  geom_histogram(binwidth = 0.05) +
+  xlab('Geometric mean of gene [log10]') +
+  ylab('Number of genes')
+show(p1 | p2)
+```
+
+
+### Look at model parameters
+```{r}
+p1 <- plot_model_pars(vst_out, show_theta = TRUE, show_var = TRUE, verbosity = 0)
+show(p1)
+```
+
+It looks like there is a relationship between the mean of a gene and the model parameters and it is similar in style to what we see with UMI data.
+However, we see a much higher variance for all genes compared to UMI data where we usually see var = mean for genes with mean < 10.
+
+### Mean-variance plot
+
+```{r, fig.height=4}
+ga <- tibble::rownames_to_column(vst_out$gene_attr, var = 'gene') %>% 
+  mutate(highlight = rank(-residual_variance) <= 25)
+
+p1 <- ggplot(ga, aes(log10(gmean), sqrt(residual_variance), label = gene)) + 
+  geom_point() + geom_smooth() +
+  geom_text_repel(data = filter(ga, highlight), size = 3, color = 'red') +
+  geom_point(data = filter(ga, highlight), size = 0.66, color = 'red') +
+  ggtitle('Residual variance as function of gene mean')
+show(p1)
+```
+
+
+### Look at the residual mean and variance for all genes
+```{r}
+p1 <- ggplot(vst_out$gene_attr, aes(residual_mean)) + geom_histogram(binwidth = 0.01) + xlim(-3, 3)
+p2 <- ggplot(vst_out$gene_attr, aes(residual_variance)) + geom_histogram(binwidth = 0.1) + geom_vline(xintercept = 1, color = "red") + xlim(0, 10)
+show(p1 + p2)
+```
+
+The residual variance is quite covers a wide range is not as peaked around 1 as we are used to from UMI data. Perhaps this is not surprising since we do not have UMIs to remove technical noise introduced during PCR amplification.
+
+As a result we might want to change the way we clip very high residuals to make sure signal from biologically variable genes is not dampened.
+
+### Look at gene models
+
+Look at the models of the top variable genes
+```{r, out.width='100%', fig.width=10, fig.height=4}
+goi <- filter(ga, rank(-residual_variance) < 5) %>% pull(gene)
+plot_model(x = vst_out, umi = facs$counts, goi = goi, plot_residual = TRUE)
+```
+
+In comparison, show non-variable genes with similar mean
+```{r, out.width='100%', fig.width=10, fig.height=4}
+goi2 <- sapply(goi, function(g) {
+  g_gmean <- filter(ga, gene == g) %>% pull(gmean)
+  (filter(ga, residual_variance < 1.25, residual_variance > 0.75) %>%
+    arrange(abs(gmean - g_gmean)) %>%
+    pull(gene))[1]
+})
+plot_model(x = vst_out, umi = facs$counts, goi = goi2, plot_residual = TRUE)
+```
+
+
+
+## Seurat with SCTransform
+
+### Basic workflow
+```{r, fig.width=10, fig.height=4, out.width='100%'}
+s <- CreateSeuratObject(counts = facs$counts[!is_ercc, ], meta.data = facs$meta_data)
+# run sctransform with less additional clipping of the residuals
+# and all cells
+s <- SCTransform(s, verbose = FALSE, method = 'qpoisson', 
+                 clip.range = sqrt(ncol(s))/5*c(-1,1), ncells = Inf)
+# 'standard' workflow
+s <- RunPCA(s, verbose = FALSE)
+s <- RunUMAP(s, dims = 1:30, verbose = FALSE)
+s <- FindNeighbors(s, dims = 1:30, verbose = FALSE)
+s <- FindClusters(s, verbose = FALSE)
+p1 <- DimPlot(s, label = TRUE) + NoLegend() + ggtitle('Unsupervised clustering') +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(), 
+        axis.ticks = element_blank())
+p2 <- DimPlot(s, label = TRUE, group.by = 'subtissue') + 
+  ggtitle('Meta data subtissue label') +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(), 
+        axis.ticks = element_blank())
+show(p1 + p2)
+```
+
+### Cluster markers
+
+Find the top markers of the unsupervised clusters
+
+```{r, fig.height=8, fig.width=10, out.width='100%'}
+de_res <- diff_mean_test(y = GetAssayData(s, assay = 'SCT', slot = 'counts'), 
+                         group_labels = s$seurat_clusters, 
+                         R = 49, 
+                         mean_th = 10, 
+                         only_pos = TRUE, 
+                         only_top_n = 222,
+                         verbosity = 0)
+top_markers <- group_by(de_res, group1) %>% 
+  filter(rank(-zscore, ties.method = "first") <= 4 | rank(-log2FC, ties.method = "first") <= 4) %>% select(group1, gene, mean1, mean2, log2FC, zscore, emp_pval_adj)
+
+p1 <- ggplot(de_res, aes(pmin(log2FC, 10), pmin(log10(zscore), 4))) + 
+  geom_point(aes(color = emp_pval_adj < 0.05)) + 
+  geom_point(data = top_markers, color = 'deeppink') +
+  geom_text_repel(data = top_markers, mapping = aes(label = gene)) +
+  facet_wrap(~ group1, ncol = 5) + 
+  theme(legend.position = 'bottom')
+show(p1)
+```
+
+Table of top markers per cluster
+
+```{r}
+DT::datatable(top_markers, rownames = FALSE) %>% DT::formatRound(3:7, digits = 2)
+```
+
+Seurat heatmap
+
+```{r, fig.width=14, fig.height=8, out.width='100%'}
+marker_genes <- group_by(de_res, group1) %>% 
+  filter(rank(-log2FC, ties.method = "first") <= 4) %>% 
+  pull(gene)
+# make sure all markers are in the scale.data slot (by default only the highly variable genes are there)
+s <- GetResidual(s, features = marker_genes, verbose = FALSE)
+DoHeatmap(s, features = marker_genes, slot = 'scale.data')
+```
+
+### Correlation of meta data with clusters
+
+```{r, fig.width=10, fig.height=5, out.width='100%'}
+s$log_counts <- log10(s$nCount_RNA)
+FeaturePlot(s, features = c('pct_ercc', 'pct_mito', 'pct_ribo', 'log_counts'))
+```
+
+Contribution of mice to clusters
+
+```{r, fig.width=10, out.width='100%'}
+p1 <- group_by(s@meta.data, seurat_clusters, mouse.id) %>% 
+  summarise(cells = n()) %>%
+  ggplot(aes(seurat_clusters, cells, fill = mouse.id)) + 
+  geom_bar(stat = 'identity')
+p2 <- group_by(s@meta.data, seurat_clusters) %>% mutate(n = n()) %>%
+  group_by(seurat_clusters, mouse.id) %>% summarise(frequency = n()/n[1]) %>%
+  ggplot(aes(seurat_clusters, frequency, fill = mouse.id)) + 
+  geom_bar(stat = 'identity')
+show((p1 + p2) + plot_layout(guides = "collect"))
+```
+
+
+## Seurat with log-normalization
+
+### Basic workflow
+```{r, fig.width=10, fig.height=4, out.width='100%'}
+s <- CreateSeuratObject(counts = facs$counts[!is_ercc, ], meta.data = facs$meta_data)
+s <- NormalizeData(s, normalization.method = "LogNormalize", verbose = FALSE)
+s <- FindVariableFeatures(s, verbose = FALSE)
+s <- ScaleData(s, verbose = FALSE)
+s <- RunPCA(s, verbose = FALSE)
+s <- RunUMAP(s, dims = 1:30, verbose = FALSE)
+s <- FindNeighbors(s, dims = 1:30, verbose = FALSE)
+s <- FindClusters(s, verbose = FALSE)
+p1 <- DimPlot(s, label = TRUE) + NoLegend() + ggtitle('Unsupervised clustering') +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(), 
+        axis.ticks = element_blank())
+p2 <- DimPlot(s, label = TRUE, group.by = 'subtissue') + 
+  ggtitle('Meta data subtissue label') +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(), 
+        axis.ticks = element_blank())
+show(p1 + p2)
+```
+
+### Cluster markers
+
+Find the top markers of the unsupervised clusters
+
+```{r, fig.height=12, fig.width=8, out.width='100%'}
+s_markers <- FindAllMarkers(s, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 1, verbose = FALSE)
+
+top_markers <- group_by(s_markers, cluster) %>% 
+  filter(rank(-avg_log2FC, ties.method = "first") <= 4) %>% 
+  select(cluster, gene, avg_log2FC, pct.1, pct.2, p_val_adj)
+```
+
+Table of top markers per cluster
+
+```{r}
+DT::datatable(top_markers, rownames = FALSE) %>% DT::formatRound(3:6, digits = 2)
+```
+Seurat heatmap
+
+```{r, fig.width=14, fig.height=8, out.width='100%'}
+DoHeatmap(s, features = top_markers$gene) + NoLegend()
+```
+
+### Correlation of meta data with clusters
+
+```{r, fig.width=10, fig.height=5, out.width='100%'}
+s$log_counts <- log10(s$nCount_RNA)
+FeaturePlot(s, features = c('pct_ercc', 'pct_mito', 'pct_ribo', 'log_counts'))
+```
+
+Contribution of mice to clusters
+
+```{r, fig.width=10, out.width='100%'}
+p1 <- group_by(s@meta.data, seurat_clusters, mouse.id) %>% 
+  summarise(cells = n()) %>%
+  ggplot(aes(seurat_clusters, cells, fill = mouse.id)) + 
+  geom_bar(stat = 'identity')
+p2 <- group_by(s@meta.data, seurat_clusters) %>% mutate(n = n()) %>%
+  group_by(seurat_clusters, mouse.id) %>% summarise(frequency = n()/n[1]) %>%
+  ggplot(aes(seurat_clusters, frequency, fill = mouse.id)) + 
+  geom_bar(stat = 'identity')
+show((p1 + p2) + plot_layout(guides = "collect"))
+```
+
+## Discussion
+
+The count distribution for Smart-Seq2 data looks quite different from UMI-based data. Even low counts get are amplified such that there is a clear distinction between drop-outs (gene not detected) and low expression. In contrast, for UMI data this is a continuous gradient.
+The regression with a Negative Binomial model works, but is likely not the appropriate model. It is not cleat what benefits the default sctrasnsform workflow provides compared to the 'standard' log-normalization workflow currently used by Seurat.
+
+## Session info and runtime
+
+Session info
+```{r}
+sessionInfo()
+```
+
+Runtime
+```{r}
+print(proc.time() - tic)
+```
