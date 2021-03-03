@@ -1,0 +1,260 @@
+---
+title: "Using the UMI-fy transformation"
+author: "Christoph Hafemeister"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    highlight: pygments
+    df_print: kable
+link-citations: true
+---
+
+```{r setup, include = FALSE}
+library('Matrix')
+library('ggplot2')
+library('reshape2')
+library('sctransform')
+library('Seurat')
+library('knitr')
+library('dplyr')
+library('ggrepel')
+library('patchwork')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  cache = FALSE,
+  warning = FALSE,
+  digits = 2,
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff=80),
+  optipng = '-o 5 -strip all -quiet',
+  fig.width=6.5, fig.height=4, dpi=100, out.width = '80%'
+)
+options(dplyr.summarise.inform = FALSE)
+options(tibble.width = Inf)
+old_theme <- theme_set(theme_bw(base_size=10))
+set.seed(6646428)
+tic <- proc.time()
+
+base_dir <- '/Users/christoph/Projects/Smart-Seq2-transform'
+facs <- readRDS(file = file.path(base_dir, 'data', 'tabula_muris_facs_raw_Marrow.rds'))
+
+# we are going to ignore the spike-in controls 
+is_ercc <- grepl(pattern = "^ERCC-", x = rownames(facs$counts))
+# and genes detected in very few cells
+cells <- sctransform:::row_nonzero_count_dgcmatrix(facs$counts)
+facs$counts <- facs$counts[!is_ercc & cells > 4, ]
+# remove cells with few genes
+genes <- colSums(facs$counts > 0)
+facs$counts <- facs$counts[, genes >= 200]
+facs$meta_data <- facs$meta_data[colnames(facs$counts), ]
+```
+
+<style>
+.table {
+    width: auto;
+}
+</style>
+
+> **_NOTE:_** This document was generated with `sctransform` version `r packageVersion(pkg = 'sctransform')`
+
+## Introduction
+
+`sctransform::vst` operates under the assumption that gene counts approximately follow a Negative Binomial dristribution. For UMI-based data that seems to be the case, however, non-UMI data does not behave the same way. In some cases it might be better to to apply a transformation to such data to make it look like UMI data. 
+Here we show how to apply such a transformation function to Smart-Seq2 data.
+
+The general idea is very much inspired by [Townes & Irizarry, Genome Biology, 2020](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02078-0). 
+There the authors present a quantile normalization approach that uses the Poisson-lognormal distribution to model UMI data.
+
+We have taken a different approach by taking many publicly available 10x data sets and learning what the counts distribution of an average cell looks like depending on how many genes are detected. This information is stored as part of the sctransform package and can be applied as a quantile-matching transformation.
+
+## Background: Quantile normalization
+
+Quantile normalization is the transformation of one distribution into another such that the values at given quantiles match, i.e. the cumulative distribution functions align.
+
+### UMI vs non-UMI quantile functions
+
+Here we show the quantile function for UMI data when about 1,500 genes are detected (learned from a diverse set of data).
+
+```{r}
+p1 <- filter(umify_data$fit_df, as.numeric(grp) == 11) %>%
+  ggplot(aes(q, log_y)) + geom_line() +
+  xlab('Quantile') + ylab('Count [log10]') +
+  ggtitle('Quantile function for UMI data; ca. 1,500 genes detected')
+show(p1)
+```
+
+As an example for non-UMI data we have loaded bone marrow data from the [Tabula muris project](https://github.com/czbiohub/tabula-muris). We will take cells with about 1,500 genes detected and plot the individual quantile functions and a smooth fit below.
+
+```{r}
+facs$meta_data <- mutate(facs$meta_data, 
+                         genes = colSums(facs$counts > 0),
+                         log_genes = log10(genes), 
+                         grp = cut(log_genes, breaks = umify_data$grp_breaks))
+counts_list <- lapply(which(as.numeric(facs$meta_data$grp) == 11), function(i) {
+    y <- facs$counts[, i]
+    y <- y[y>0]
+    tbl <- data.frame(table(y))
+    colnames(tbl) <- c('y', 'N')
+    tbl$y <- as.numeric(as.character(tbl$y))
+    tbl$cell <- i
+    tbl
+  })
+counts_df <- do.call(rbind, counts_list)
+# add log-counts and quantile
+counts_df <- group_by(counts_df, cell) %>%
+  mutate(log_y = log10(y), q = cumsum(N / sum(N)))
+p2 <- ggplot(filter(umify_data$fit_df, as.numeric(grp) == 11), aes(q, log_y, color = 'UMI')) + geom_line(size = 2) +
+  xlab('Quantile') + ylab('Count [log10]') +
+  geom_line(data = counts_df, aes(group = factor(cell)), color = 'gray50', alpha = 0.1) +
+  geom_smooth(data = counts_df, aes(color = 'non-UMI'), size = 2, se = FALSE) +
+  ggtitle('Quantile function for non-UMI and UMI data; ca. 1,500 genes detected') +
+  scale_color_discrete(name = 'Type')
+show(p2)
+```
+
+### Before and after comparison
+
+Quantile normalization will take each cells individual quantile values and map them to log-counts given the UMI quantile function. Only non-zero counts are considered and quantile values below the lower limit of the UMI quantile function are set to a count of one. Apply the transformation to the cells above and compare to the original counts.
+
+```{r}
+# to keep the example simple take only cells from the ca. 1,500 genes detected bin
+input_counts <- facs$counts[, as.numeric(facs$meta_data$grp) == 11]
+output_counts <- umify(input_counts)
+p3 <- data.frame(facs = input_counts@x, umified = output_counts@x, 
+           cell = rep(1:ncol(input_counts), diff(input_counts@p))) %>%
+  ggplot(aes(log10(facs), log10(umified))) + 
+  geom_line(aes(group = factor(cell)), alpha = 0.1, color = 'gray50') + 
+  geom_smooth(se = FALSE) +
+  xlab('Smart-Seq2 count [log10]') + ylab('Count after transformation [log10]') +
+  ggtitle('Non-UMI data before and after transformation, ca 1,500 genes detected')
+show(p3)
+```
+
+## `sctransform::umify`
+
+The `umify` function is used to apply the transformation. It takes only one input argument, a sparse matrix in `dgCMatrix` format with genes as rows and cells as columns.
+
+Here we apply the function to the Smart-Seq2 bone marrow data (`r nrow(facs$counts)` genes, `r ncol(facs$counts)` cells).
+
+```{r, echo = TRUE}
+bm <- bench::mark(
+  counts_new <- umify(facs$counts),
+  max_iterations = 1, 
+  filter_gc = FALSE
+)
+knitr::kable(data.frame(bm[, 5:9]), caption = "Benchmarking details")
+```
+
+Compare Negative Binomial model parameters for the original data and the transformed data.
+
+```{r, out.width='100%', out.width=13, out.height=5}
+vo1 <- vst(facs$counts, return_cell_attr = TRUE, method = 'qpoisson', verbosity = 0)
+vo2 <- vst(counts_new, return_cell_attr = TRUE, method = 'qpoisson', verbosity = 0)
+p1 <- plot_model_pars(vo1, show_theta = TRUE, show_var = TRUE, verbosity = 0) + ggtitle('Original Smart-Seq2 non-UMI data')
+p2 <- plot_model_pars(vo2, show_theta = TRUE, show_var = TRUE, verbosity = 0) +
+  ggtitle('After UMI-fication')
+show(p1 + p2)
+```
+
+Distribution of residual mean (clipped to -1, 1) and residual variance (clipped to -10, 10)
+
+```{r}
+ga <- 
+  rbind(
+    tibble::rownames_to_column(vo1$gene_attr, var = 'gene') %>% mutate(type = 'original'),
+    tibble::rownames_to_column(vo2$gene_attr, var = 'gene') %>% mutate(type = 'UMI-fied')) %>%
+  group_by(type) %>%
+  mutate(highlight = rank(-residual_variance) <= 11)
+ggplot(ga, aes(pmin(1, pmax(-1, residual_mean)))) + 
+  geom_histogram(binwidth = 0.01) +
+  facet_wrap(~ type) + xlab('Residual mean') +
+  ggtitle('Residual mean after sctransform::vst')
+ggplot(ga, aes(pmin(10, pmax(-10, residual_variance)))) + 
+  geom_histogram(binwidth = 0.1) +
+  facet_wrap(~ type) + xlab('Residual variance') +
+  ggtitle('Residual variance after sctransform::vst')
+```
+
+Gene residual variance as function of mean
+
+```{r}
+xticks <- 10^(-3:4)
+yticks <- seq(from = 1, to = 30, by = 2)^2
+p <- ggplot(ga, aes(log10(gmean), sqrt(residual_variance), label = gene)) +
+  geom_point(size=0.5, alpha=0.5) + 
+  geom_hline(yintercept = 1, color = 'red') +
+  geom_smooth(method = 'gam') +
+  scale_x_continuous(breaks = log10(xticks), labels = xticks) + 
+  scale_y_continuous(breaks = sqrt(yticks), labels = yticks) +
+  xlab('Geometric mean of gene') + ylab('Residual variance') +
+  geom_text_repel(data = filter(ga, highlight), size = 3, color = 'red') +
+  ggtitle('Residual variance as function of gene mean') +
+  facet_wrap(~ type, ncol = 2)
+show(p)
+```
+
+Some individual gene models. The plots below show the counts and the regularized negative binomial model mean and +- one standard deviation.
+
+```{r}
+ga_joined <- full_join(tibble::rownames_to_column(vo1$gene_attr, var = 'gene'),
+                       tibble::rownames_to_column(vo2$gene_attr, var = 'gene'),
+                       by = c('gene', 'detection_rate'))
+var_after <- filter(ga_joined, detection_rate >= 0.1) %>%
+  arrange(rank(-residual_variance.y)-rank(-residual_variance.x)) %>% 
+  head(4) %>% pull(gene)
+var_before <- filter(ga_joined, detection_rate >= 0.1) %>%
+  arrange(rank(-residual_variance.x)-rank(-residual_variance.y)) %>% 
+  head(4) %>% pull(gene)
+```
+
+Genes with higher residual variance in original data (based on rank)
+```{r}
+p1 <- plot_model(vo1, umi = facs$counts, goi = var_before) + 
+  ylab('Gene log10(count + 1)') + ggtitle('Models given original data')
+p2 <- plot_model(vo2, umi = counts_new, goi = var_before) + 
+  ylab('Gene log10(count + 1)') + ggtitle('Models given UMI-fied data')
+show((p1 / p2))
+```
+
+Genes with higher residual variance after UMI-fication (based on rank)
+```{r}
+p1 <- plot_model(vo1, umi = facs$counts, goi = var_after) + 
+  ylab('Gene log10(count + 1)') + ggtitle('Models given original data')
+p2 <- plot_model(vo2, umi = counts_new, goi = var_after) + 
+  ylab('Gene log10(count + 1)') + ggtitle('Models given UMI-fied data')
+show((p1 / p2))
+```
+
+Genes with high mean
+```{r}
+high_before <- arrange(ga_joined, -gmean.x) %>% head(4) %>% pull(gene)
+high_after <- arrange(ga_joined, -gmean.y) %>% head(4) %>% pull(gene)
+p1 <- plot_model(vo1, umi = facs$counts, goi = c(high_before, high_after)) + 
+  ylab('Gene log10(count + 1)') + ggtitle('Models given original data')
+p2 <- plot_model(vo2, umi = counts_new, goi = c(high_before, high_after)) + 
+  ylab('Gene log10(count + 1)') + ggtitle('Models given UMI-fied data')
+show((p1 / p2))
+```
+
+## Discussion
+
+Whether it makes sense to shoehorn non-UMI data into a UMI-like form will depend on the downstream analysis tools used and what assumptions these tools make. UMI-fying data will come with costs (potentially introducing bias and/or noise) and benefits (distributions are closer to negative binomial as assumed by many tools designed for UMI data) and the trade-off between the two will depend on many factors (technology used, software tools used, cells used).
+
+`sctransform` assumes negative binomial data, but is flexible enough to accommodate non-UMI data that might exhibit a slightly different mean-variance relationship. If in doubt, use your data as-is.
+
+## Session info and runtime
+
+Session info
+```{r}
+sessionInfo()
+```
+
+Runtime
+```{r}
+print(proc.time() - tic)
+```
