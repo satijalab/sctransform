@@ -1,0 +1,239 @@
+---
+title: "Train UMI-fy model"
+author: "Christoph Hafemeister"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+    highlight: pygments
+    df_print: kable
+link-citations: true
+---
+
+```{r setup, include = FALSE}
+library('Matrix')
+library('ggplot2')
+library('knitr')
+library('dplyr')
+knit_hooks$set(optipng = hook_optipng)
+knitr::opts_chunk$set(
+  collapse = FALSE,
+  comment = "#>",
+  cache = FALSE,
+  warning = FALSE,
+  digits = 2,
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff=83),
+  optipng = '-o 5 -strip all -quiet',
+  fig.width=6.5, fig.height=3.2, dpi=100, out.width = '80%'
+)
+options(dplyr.summarise.inform = FALSE)
+options(tibble.width = Inf)
+options(DT.options = list(pageLength = 10, editable = FALSE, 
+                          searching = FALSE, lengthChange = FALSE))
+old_theme <- theme_set(theme_bw(base_size=10))
+set.seed(6646428)
+tic <- proc.time()
+```
+
+<style>
+.table {
+    width: auto;
+}
+</style>
+
+## Introduction
+
+`sctransform::vst` operates under the assumption that gene counts approximately follow a Negative Binomial dristribution. For UMI-based data that seems to be the case, however, non-UMI data does not behave the same way. In some cases it might be better to to apply a transformation to such data to make it look like UMI data. Here we learn such a transformation function.
+
+We take publicly available 10x data and learn the relationship between count distribution quantile per cell (cumulative density function) and the observed log-counts. Only non-zero counts are considered and cells are grouped by the number of genes detected.
+The learned relationship can later be used to shoehorn any cell data (e.g. read counts from non-UMI technologies) into a UMI-like distribution (a.k.a. quantile normalization). 
+
+The general idea is very much inspired by [Townes & Irizarry, Genome Biology, 2020](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02078-0). 
+There the authors present a quantile normalization approach that uses the Poisson-lognormal distribution to model UMI data.
+
+## Load training data
+
+We are going to use various data sets from 10x to learn the quantile-to-log-counts relationship. We don't want to use all cells, but cells with a diverse range of total number of genes detected (minimum 200), so we first group by number of genes detected and then sample some cells per group.
+
+```{r}
+set.seed(85848484)
+
+h5_files <- list.files(path = file.path('~/Projects/data_warehouse/raw_public_10x'), 
+                       pattern = '.*\\.h5$', full.names = TRUE)
+
+# constants used for selecting training cells
+G <- 33  # number of groups, see below
+N <- 111  # number of cells per group, also see below
+
+counts_list <- lapply(1:length(h5_files), function(h5i) {
+  message(basename(h5_files[h5i]))
+  counts <- Seurat::Read10X_h5(filename = h5_files[h5i])
+  if (is.list(counts)) {
+    counts <- counts[['Gene Expression']]
+  }
+  # sample cells by genes detected group
+  keep <- data.frame(idx = 1:ncol(counts), genes = colSums(counts > 0)) %>%
+    filter(genes >= 200) %>%
+    mutate(grp = cut(log10(genes), G)) %>% 
+    group_by(grp) %>% 
+    sample_n(size = min(n(), N)) %>%
+    pull(idx)
+  
+  # for each cell we keep a table of counts
+  h5_counts_list <- lapply(keep, function(i) {
+    y <- counts[, i]
+    y <- y[y>0]
+    tbl <- data.frame(table(y))
+    colnames(tbl) <- c('y', 'N')
+    tbl$y <- as.numeric(as.character(tbl$y))
+    tbl$file <- h5i
+    tbl$cell <- i
+    tbl
+  })
+  counts_df <- do.call(rbind, h5_counts_list)
+  counts_df
+})
+counts_df <- do.call(rbind, counts_list)
+```
+
+Show what the training data looks like at this point. First 100 rows. `y` are counts, `N` are the number of observations (number of genes).
+
+```{r}
+DT::datatable(counts_df[1:100, ], rownames = FALSE)
+```
+
+
+## Remove outliers
+
+Outlier cells are those that do not fit the total counts vs genes detected relationship that most cells show. We use loess to fit the general trend and flag the cells that have a high residual.
+
+```{r}
+# cell attributes
+ca <- group_by(counts_df, file, cell) %>% 
+  summarise(total = sum(y*N), genes = sum(N), .groups = 'drop') %>%
+  mutate(log_total = log10(total), log_genes = log10(genes))
+ggplot(ca, aes(log_total, log_genes)) + geom_point(alpha = 0.1, shape = 16) + 
+  geom_smooth()
+ca$is_outlier1 <- abs(scale(residuals(loess(log_genes ~ log_total, data = ca)))) > 2.5
+ca$is_outlier2 <- abs(scale(residuals(loess(log_total ~ log_genes, data = ca)))) > 2.5
+ca$is_outlier <- ca$is_outlier1 & ca$is_outlier2
+ggplot(ca, aes(log_total, log_genes, color = is_outlier)) + geom_point(shape = 16)
+ca <- filter(ca, !is_outlier) %>% select(1:6)
+counts_df <- left_join(ca, counts_df, by = c('file', 'cell'))
+```
+
+The final training data consists of `r nrow(ca)` cells from `r length(unique(ca$file))` files.
+
+## Fit the relationship
+
+First add the log-transformed count - our target variable. Then, per cell, turn the counts into distribution quantiles (`q`).
+
+```{r}
+counts_df <- group_by(counts_df, file, cell) %>%
+  mutate(log_y = log10(y), q = cumsum(N / sum(N)))
+```
+
+Group the cells based on how many genes were detected. For this we log10-transform the number of genes detected and create 20 equally spaced bins. Later, when the fit is used for prediction, a linear interpolation between the prediction from the two closest groups is done.
+
+```{r}
+K <- 20  # number of groups
+w <- diff(range(counts_df$log_genes)) * (1+1e-6) / K
+breaks <- min(counts_df$log_genes) + (0:K) * w
+counts_df$grp = cut(counts_df$log_genes, breaks = breaks, right = FALSE)
+tab <- select(counts_df, file, cell, grp) %>% distinct() %>% pull(grp) %>% table()
+tab <- data.frame(tab)
+colnames(tab) <- c('Genes detected [log10]', 'Cells')
+knitr::kable(tab)
+```
+
+Show first 100 rows of training data
+
+```{r}
+DT::datatable(counts_df[1:100, ], rownames = FALSE) %>% 
+  DT::formatRound(c(5,6,9,10), digits = 2)
+```
+
+Fit trend per group with loess.
+
+```{r}
+models <- mutate(counts_df, log_y = log10(y)) %>%
+  group_by(grp) %>% 
+  do(fit = loess(log_y ~ q, data = ., span = 0.2, degree = 1))
+```
+
+## Show fit per group
+
+```{r}
+gdf <- group_by(models, grp) %>% 
+  do(purrr::map_dfr(.x = .$fit, .f = function(x) 
+    data.frame(q = x$x, fitted_log_y = x$fitted, log_y = x$y)))
+filter(gdf, fitted_log_y >= 0) %>%
+  ggplot(aes(q, fitted_log_y, color = grp)) + geom_line() + 
+  guides(color = guide_legend(ncol=2)) +
+  ggtitle('Expected counts [log10] as function of quantile\nGrouped by number of genes detected [log10]')
+```
+
+Zoom into right part of plot
+
+```{r}
+filter(gdf, fitted_log_y >= 0, q >= 0.93) %>%
+  ggplot(aes(q, fitted_log_y, color = grp)) + geom_line() + 
+  guides(color = guide_legend(ncol=2))
+```
+
+## Create final model and save
+
+We could now use the loess models to apply the transformation function to new data (calculate quantiles for the new data, then use `predict.loess`). However, the loess models are quite large, since all the training data is part of the models. We want to distribute the models with the package, so we boil them down here.
+
+We save the predicted log-counts for 512 evenly spaced quantile values. This is enough information to later use linear interpolation for simple and fast predictions of log-counts given quantile scores and the numnber of genes detected.
+
+```{r}
+q_out <- seq(min(counts_df$q), max(counts_df$q), length = 512)
+fit_df <- group_by(models, grp) %>% 
+  do(purrr::map_dfr(.x = .$fit, .f = function(x) 
+    data.frame(q = q_out, log_y = predict(x, newdata = q_out)))) %>%
+  filter(log_y >= 0)
+umify_data <- list(fit_df = data.frame(fit_df), grp_breaks = breaks)
+save(umify_data, file = '../data/umify_data.rda')
+```
+
+Show first and last 6 rows of final model
+
+```{r}
+DT::datatable(head(fit_df, 6), rownames = FALSE)
+DT::datatable(tail(fit_df, 6), rownames = FALSE)
+```
+
+
+## 3D visualization of final model
+
+```{r, fig.width=10, fig.height=6}
+fit_df <- group_by(models, grp) %>% 
+  do(purrr::map_dfr(.x = .$fit, .f = function(x) 
+    data.frame(q = q_out, log_y = predict(x, newdata = q_out))))
+xo <- q_out
+yo <- head(breaks, -1) + w/2
+plotly::plot_ly(x = xo, y = yo, z = t(matrix(fit_df$log_y, nrow = length(xo))),
+                type = 'surface') %>%
+  plotly::layout(title = 'UMI count as function of quantile and number of genes detected',
+                 scene = list(camera = list(eye = list(x = -1, y = -2.25, z = 1)),
+                   xaxis = list(title = 'Quantile'),
+                   yaxis = list(title = 'Genes [log10]'),
+                   zaxis = list(title = 'UMI count [log10]')))
+```
+
+
+## Session info and runtime
+
+Session info
+```{r}
+sessionInfo()
+```
+
+Runtime
+```{r}
+print(proc.time() - tic)
+```
