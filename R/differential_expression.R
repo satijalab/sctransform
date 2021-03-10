@@ -491,7 +491,8 @@ model_comparison_ttest <- function(y, group) {
 #'
 #' @param y A matrix of counts; must be (or inherit from) class dgCMatrix; genes are row,
 #' cells are columns
-#' @param group_labels A factor giving the group labels; must have exactly two levels
+#' @param group_labels The group labels (e.g. cluster identities); 
+#' will be converted to factor
 #' @param compare Specifies which groups to compare, see details; default is 'each_vs_rest'
 #' @param R The number of random permutations used to derive the p-values; default is 99
 #' @param log2FC_th Threshold to remove genes from testing; absolute log2FC must be at least
@@ -645,6 +646,9 @@ diff_mean_test <- function(y, group_labels,
       message(sprintf('Comparing %s (group1, N = %d) to %s (group2, N = %d)',
                      comp[[1]], sum(sel_columns1), comp[[2]], sum(sel_columns2)))
     }
+    if (sum(sel_columns1) == 0 || sum(sel_columns2) == 0) {
+      return()
+    }
     comp_cells <- do.call(cbind, lapply(comp[3:4], function(x) combine_counts(cells, x)))
     comp_means <- do.call(cbind, lapply(comp[3:4], function(x) combine_means(means, lab_tab, x, mean_type)))
     
@@ -715,11 +719,11 @@ diff_mean_test <- function(y, group_labels,
     return(res)
   })
   res <- Reduce(rbind, res_lst)
-  if (compare == 'each_vs_rest') {
+  if (compare == 'each_vs_rest' && !is.null(res)) {
     res$group1 <- factor(res$group1, levels = group_levels)
     res$group2 <- factor(res$group2)
   } 
-  if (compare == 'all_vs_all') {
+  if (compare == 'all_vs_all' && !is.null(res)) {
     res$group1 <- factor(res$group1, levels = group_levels)
     res$group2 <- factor(res$group2, levels = group_levels)
   }
@@ -756,6 +760,129 @@ combine_means <- function(means, n_items, columns, mean_type) {
     return(as.matrix(expm1(rowSums(tmp) / sum(n_items))))
   }
 }
+
+#' Find differentially expressed genes that are conserved across samples
+#'
+#' @param y A matrix of counts; must be (or inherit from) class dgCMatrix; genes are rows,
+#' cells are columns
+#' @param group_labels The group labels (i.e. clusters or time points); 
+#' will be converted to factor
+#' @param sample_labels The sample labels; will be converted to factor
+#' @param balanced Boolean, see details for explanation; default is TRUE
+#' @param compare Specifies which groups to compare, see details; currently only 'each_vs_rest' 
+#' (the default) is supported
+#' @param pval_th P-value threshold used to call a gene differentially expressed when summarizing 
+#' the tests per gene
+#' @param ... Parameters passed to diff_mean_test
+#' 
+#' @return Data frame of results
+#' 
+#' @section Details:
+#' This function calls diff_mean_test repeatedly and aggregates the results per group and gene.
+#' 
+#' If balanced is TRUE (the default), it is assumed that each sample spans multiple groups, 
+#' as would be the case when merging or integrating samples from the same tissue followed by 
+#' clustering. Here the group labels would be the clusters and cluster markers would have support
+#' in each sample.
+#' 
+#' If balanced is FALSE, an unbalanced design is assumed where each sample contributes to one
+#' group. An example is a time series experiment where some samples are taken from time point 
+#' 1 while other samples are taken from time point 2. The time point would be the group label
+#' and the goal would be to identify differentially expressed genes between time points that
+#' are supported by many between-sample comparisons.
+#' 
+#' Output columns:
+#' \describe{
+#' \item{group1}{Group label of the frist group of cells}
+#' \item{group2}{Group label of the second group of cells; currently fixed to 'rest'}
+#' \item{gene}{Gene name (from rownames of input matrix)}
+#' \item{n_tests}{The number of tests this gene participated in for this group}
+#' \item{log2FC_min,median,max}{Summary statistics for log2FC across the tests}
+#' \item{mean1,2_median}{Median of group mean across the tests}
+#' \item{pval_max}{Maximum of p-values across tests}
+#' \item{de_tests}{Number of tests that showed this gene having a log2FC going in the same
+#' direction as log2FC_median and having a p-value <= pval_th}
+#' }
+#' 
+#' The output is ordered by group1, -de_tests, -abs(log2FC_median), pval_max
+#' 
+#' @import Matrix
+#' @importFrom dplyr n group_by summarise arrange
+#' @importFrom rlang .data
+#' 
+#' @export
+#'
+#' @examples
+#' \donttest{
+#' clustering <- 1:ncol(pbmc) %% 2
+#' sample_id <- 1:ncol(pbmc) %% 3
+#' vst_out <- vst(pbmc, return_corrected_umi = TRUE)
+#' de_res <- diff_mean_test_conserved(y = vst_out$umi_corrected, 
+#' group_labels = clustering, sample_labels = sample_id)
+#' }
+#'
+diff_mean_test_conserved <- function(y, group_labels, sample_labels, balanced = TRUE, 
+                                     compare = 'each_vs_rest', pval_th = 1e-4, ...) {
+  if (!inherits(x = y, what = 'dgCMatrix')) {
+    stop('y must be a dgCMatrix')
+  }
+  group_labels <- droplevels(as.factor(group_labels))
+  sample_labels <- droplevels(as.factor(sample_labels))
+  
+  res <- NULL
+  if (compare[1] == 'each_vs_rest') {
+    if (balanced) {
+      res_lst <- lapply(levels(sample_labels), function(sl) {
+        sel <- sample_labels == sl
+        res <- diff_mean_test(y = y[, sel], group_labels = group_labels[sel], 
+                              compare = compare, ...)
+        if (!is.null(res)) {
+          res$sample <- sl
+        }
+        res
+      })
+    } else {
+      # for each group, compare each sample against all samples that are not in group individually
+      res_lst <- lapply(levels(group_labels), function(gl) {
+        gl_sel <- group_labels == gl
+        samples_in_group <- sample_labels[gl_sel]
+        res_lst <- lapply(unique(samples_in_group), function(sl_in_group) {
+          sl_in_group_sel <- sample_labels == sl_in_group
+          other_samples_not_in_group <- sample_labels[!(gl_sel | sl_in_group_sel)]
+          res_lst <- lapply(unique(other_samples_not_in_group), function(osl_not_in_group) {
+            sel <- (gl_sel & sl_in_group_sel) | (!gl_sel & sample_labels == osl_not_in_group)
+            tmp_group <- c(gl, 'rest')[as.numeric(!gl_sel & sample_labels == osl_not_in_group) + 1]
+            res <- diff_mean_test(y = y[, sel], group_labels = tmp_group[sel], 
+                                  compare = c(gl, 'rest'), ...)
+            if (!is.null(res)) {
+              res$sample1 <- sl_in_group
+              res$sample2 <- osl_not_in_group
+            }
+            res
+          })
+          do.call(rbind, res_lst)
+        })
+        do.call(rbind, res_lst)
+      })
+    }
+    res <- do.call(rbind, res_lst)
+  }
+  if (!is.null(res)) {
+    res <- group_by(res, .data$group1, .data$group2, .data$gene) %>%
+      summarise(n_tests = n(),
+                log2FC_min = min(.data$log2FC), 
+                log2FC_median = median(.data$log2FC),
+                log2FC_max = max(.data$log2FC),
+                mean1_median = median(.data$mean1),
+                mean2_median = median(.data$mean2),
+                pval_max = max(.data$pval),
+                de_tests = sum((sign(.data$log2FC) == sign(.data$log2FC_median)) &
+                                 (.data$pval <= pval_th))) %>%
+      arrange(.data$group1, -.data$de_tests, -abs(.data$log2FC_median), .data$pval_max)
+  }
+  return(res)
+}
+
 
 
 # non-parametric differential expression test

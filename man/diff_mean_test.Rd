@@ -22,7 +22,8 @@ diff_mean_test(
 \item{y}{A matrix of counts; must be (or inherit from) class dgCMatrix; genes are row,
 cells are columns}
 
-\item{group_labels}{A factor giving the group labels; must have exactly two levels}
+\item{group_labels}{The group labels (e.g. cluster identities); 
+will be converted to factor}
 
 \item{compare}{Specifies which groups to compare, see details; default is 'each_vs_rest'}
 

@@ -66,6 +66,10 @@ knitr::opts_chunk$set(
 options(dplyr.summarise.inform = FALSE)
 options(tibble.width = Inf)
 old_theme <- theme_set(theme_bw(base_size=10))
+# We use the Future API for parallel processing; set parameters here
+future::plan(strategy = 'multicore', workers = 1)
+options(future.globals.maxSize = 8 * 1024 ^ 3)
+options(future.fork.enable = FALSE)
 set.seed(6646428)
 tic <- proc.time()
 ```
@@ -519,6 +523,121 @@ marker_genes <- group_by(de_res, group1) %>%
 # make sure all markers are in the scale.data slot (by default only the highly variable genes are there)
 s <- GetResidual(s, features = marker_genes, verbose = FALSE)
 DoHeatmap(s, features = marker_genes, slot = 'scale.data')
+```
+
+## Example 6: Conserved markers after integration
+
+Here we show how to use the test to identify the conserved (or consistent) cluster markers after multi-sample integration. This is different from the examples above because additionally to a cluster label the cells also have a sample label and we run the tests per sample and combine the results.
+
+First, follow the Seurat [integration vignette](https://satijalab.org/seurat/articles/integration_introduction.html) to obtain an integrated object.
+
+```{r}
+library('Seurat')
+library('SeuratData')
+LoadData("ifnb")
+ifnb.list <- SplitObject(ifnb, split.by = "stim")
+ifnb.list <- lapply(X = ifnb.list, FUN = SCTransform, method = 'qpoisson', verbose = FALSE)
+features <- SelectIntegrationFeatures(object.list = ifnb.list, nfeatures = 3000,
+                                      verbose = FALSE)
+ifnb.list <- PrepSCTIntegration(object.list = ifnb.list, anchor.features = features,
+                                verbose = FALSE)
+immune.anchors <- FindIntegrationAnchors(object.list = ifnb.list,
+                                         normalization.method = "SCT",
+                                         anchor.features = features,
+                                         verbose = FALSE)
+immune.combined.sct <- IntegrateData(anchorset = immune.anchors,
+                                     normalization.method = "SCT",
+                                     verbose = FALSE)
+```
+
+Note that in this example both samples have been sequenced to similar depth. When working with data where there is a stark discrepancy between sequencing depth, one should make sure that the corrected counts used for differential expression testing were generated using the same 'target' depth. Since this is not supported by `Seurat::SCTransform` it requires running `sctransform::correct()` with identical cell meta data for all samples and setting the `as_is` parameter to TRUE. However, in this example we can proceed without any extra steps.
+
+In an unsupervised analysis one would now perform dimensionality reduction and clustering. To keep it simple, we skip these steps and directly use the cell type labels that are provided with the original seurat object.
+
+Now we identify cluster marker genes (each vs rest) that are conserved, i.e. consistent across conditions.
+
+```{r}
+bm <- bench::mark(
+  de_res <- diff_mean_test_conserved(
+    y = GetAssayData(immune.combined.sct, assay = 'SCT', slot = 'counts'), 
+    group_labels = immune.combined.sct$seurat_annotations, 
+    sample_labels = immune.combined.sct$stim, 
+    only_pos = TRUE, 
+    verbosity = 0)
+)
+knitr::kable(data.frame(bm[, 5:9]), caption = "Benchmarking details")
+```
+
+The function we used calls `diff_mean_test` repeatedly (once per sample given this balanced design) and aggregates the results per group and gene.
+The output table has the following columns
+
+* **group1** Cell type label of the frist group of cells
+* **group2** Label of the second group of cells; currently fixed to 'rest'
+* **gene** Gene name (from rownames of input matrix)
+* **n_tests** Number of tests this gene participated in for this group (max 2 in this example)
+* **log2FC_min,median,max** Summary statistics for log2FC across the tests
+* **mean1,2_median** Median of group mean across the tests
+* **pval_max** Maximum of p-values across tests
+* **de_tests** Number of tests that showed this gene having a log2FC going in the same direction as log2FC_median and having a p-value <= pval_th
+
+The output is ordered by group1, -de_tests, -abs(log2FC_median), pval_max
+
+Show the top marker genes
+
+```{r}
+top_markers <- filter(de_res, de_tests == 2, p.adjust(pval_max) <= 1e-3) %>%
+  group_by(group1) %>% 
+  filter(rank(-log2FC_median, ties.method = "first") <= 6)
+DT::datatable(top_markers, rownames = FALSE, caption = 'Conserved cell type specific markers') %>% 
+  DT::formatRound(5:9, digits = 2) %>% DT::formatSignif(10)
+```
+
+Show a heatmap of the marker genes. The mean expression per gene is scaled separately for each sample (CTRL and STIM) but they are shown interleaved to highlight that the differential expression is conserved across samples.
+
+```{r, fig.width=12, fig.height=4, out.width='100%'}
+celltypes <- immune.combined.sct$seurat_annotations
+samples <- immune.combined.sct$stim
+immune.combined.sct$type_by_stim <- factor(x = paste(celltypes, samples, sep = ' '),
+                                           levels = paste(rep(levels(top_markers$group1), each = length(unique(samples))), unique(samples)))
+mat <- sctransform:::row_gmean_grouped_dgcmatrix(
+  matrix = GetAssayData(immune.combined.sct, assay = 'SCT', slot = 'counts')[top_markers$gene, ], 
+  group = factor(immune.combined.sct$type_by_stim), 
+  eps = 1, 
+  shuffle = FALSE)
+# scale samples separately
+sel <- grepl(' CTRL$', colnames(mat))
+mat[, sel] <- t(scale(t(mat[, sel])))
+sel <- grepl(' STIM$', colnames(mat))
+mat[, sel] <- t(scale(t(mat[, sel])))
+mat <- mat[order(apply(mat, 1, which.max)), ]
+
+p1 <- melt(mat, varnames = c('gene', 'celltype')) %>% 
+  mutate(celltype = factor(celltype, levels = rev(colnames(mat)))) %>%
+  ggplot(aes(gene, celltype, fill = value)) +
+  geom_tile(colour = "gray66") +
+  scale_fill_gradient2(low = 'white', mid = 'white', high = 'black', 
+                       name = 'Geometric mean of each gene per cell type and sample, scaled per gene and sample') +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(x = NULL, y = NULL) +
+  scale_x_discrete(expand = c(0, 0)) + 
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(legend.position = 'top', axis.ticks = element_blank()) 
+show(p1)
+```
+
+To identify differences between stimulated and control conditions within a celltype, use the test as shown in the examples above. For example, below we look for genes differentially expressed between conditions within B cells.
+
+```{r}
+de_res <- diff_mean_test(
+    y = GetAssayData(immune.combined.sct, assay = 'SCT', slot = 'counts'), 
+    group_labels = immune.combined.sct$type_by_stim, 
+    compare = c('B CTRL', 'B STIM'),
+    verbosity = 0)
+top_markers1 <- arrange(de_res, zscore) %>% head(10)
+top_markers2 <- arrange(de_res, -zscore) %>% head(10)
+rbind(top_markers1, top_markers2) %>% select(gene, mean1, mean2, log2FC, pval_adj) %>%
+  DT::datatable(rownames = FALSE, caption = 'Top 20 B cell DE genes between control (group 1) and stimulated (group 2)') %>% 
+  DT::formatRound(2:4, digits = 2) %>% DT::formatSignif(5)
 ```
 
 
