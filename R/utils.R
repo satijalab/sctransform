@@ -47,7 +47,7 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
       new_attr$log_umi_per_gene <- log10(new_attr$umi_per_gene)
     }
     new_attr <- do.call(cbind, new_attr)
-    cell_attr <- cbind(cell_attr, new_attr[, setdiff(colnames(new_attr), colnames(cell_attr)), drop = TRUE])
+    cell_attr <- cbind(cell_attr, new_attr[, setdiff(colnames(new_attr), colnames(cell_attr)), drop = FALSE])
   }
   
   # make sure no NA, NaN, Inf values are in cell attributes - they would cause
