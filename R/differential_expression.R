@@ -866,6 +866,7 @@ diff_mean_test_conserved <- function(y, group_labels, sample_labels, balanced = 
       })
     }
     res <- do.call(rbind, res_lst)
+    levels(res$group1) <- levels(group_labels)
   }
   if (!is.null(res)) {
     res <- group_by(res, .data$group1, .data$group2, .data$gene) %>%
