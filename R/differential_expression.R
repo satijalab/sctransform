@@ -892,7 +892,8 @@ diff_mean_test_conserved <- function(y, group_labels, sample_labels, balanced = 
                 mean2_median = median(.data$mean2),
                 pval_max = max(.data$pval),
                 de_tests = sum((sign(.data$log2FC) == sign(.data$log2FC_median)) &
-                                 (.data$pval <= pval_th))) %>%
+                               (.data$pval <= pval_th)),
+                .groups = 'drop') %>%
       arrange(.data$group1, -.data$de_tests, -abs(.data$log2FC_median), .data$pval_max)
   }
   return(res)
