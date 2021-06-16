@@ -593,6 +593,12 @@ diff_mean_test <- function(y, group_labels,
   
   # Set up the comparisons we want to do; each comparison is a list
   # name1, name2, labels grp1, labels grp2
+  if (compare[1] == 'each_vs_rest' && length(group_levels) == 2) {
+    compare <- group_levels
+    if (verbosity > 0) {
+      message('There are only two groups in the data. Changing compare argument from "each_vs_rest" to group levels')
+    }
+  }
   if (compare[1] == 'each_vs_rest') {
     comparisons <- lapply(group_levels, function(x) list(x, 'rest', x, setdiff(group_levels, x)))
   } else if (compare[1] == 'all_vs_all') {
@@ -842,8 +848,16 @@ diff_mean_test_conserved <- function(y, group_labels, sample_labels, balanced = 
         res
       })
     } else {
+      # fix special case when there are only two groups
+      if (length(levels(group_labels)) == 2) {
+        group_labels_to_do <- levels(group_labels)[1]
+        gl_rest <- levels(group_labels)[2]
+      } else {
+        group_labels_to_do <- levels(group_labels)
+        gl_rest <- 'rest'
+      }
       # for each group, compare each sample against all samples that are not in group individually
-      res_lst <- lapply(levels(group_labels), function(gl) {
+      res_lst <- lapply(group_labels_to_do, function(gl) {
         gl_sel <- group_labels == gl
         samples_in_group <- sample_labels[gl_sel]
         res_lst <- lapply(unique(samples_in_group), function(sl_in_group) {
@@ -851,9 +865,9 @@ diff_mean_test_conserved <- function(y, group_labels, sample_labels, balanced = 
           other_samples_not_in_group <- sample_labels[!(gl_sel | sl_in_group_sel)]
           res_lst <- lapply(unique(other_samples_not_in_group), function(osl_not_in_group) {
             sel <- (gl_sel & sl_in_group_sel) | (!gl_sel & sample_labels == osl_not_in_group)
-            tmp_group <- c(gl, 'rest')[as.numeric(!gl_sel & sample_labels == osl_not_in_group) + 1]
+            tmp_group <- c(gl, gl_rest)[as.numeric(!gl_sel & sample_labels == osl_not_in_group) + 1]
             res <- diff_mean_test(y = y[, sel], group_labels = tmp_group[sel], 
-                                  compare = c(gl, 'rest'), ...)
+                                  compare = c(gl, gl_rest), ...)
             if (!is.null(res)) {
               res$sample1 <- sl_in_group
               res$sample2 <- osl_not_in_group
