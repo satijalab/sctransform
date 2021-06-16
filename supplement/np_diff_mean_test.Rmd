@@ -114,30 +114,24 @@ The current implementation only supports sparse matrices of class `dgCMatrix` fr
 We use the publicly available "10k PBMCs from a Healthy Donor (v3 chemistry)" data (11,769 cells) from 10x Genomics available at 
 https://support.10xgenomics.com/single-cell-gene-expression/datasets/3.0.0/pbmc_10k_v3 
 
-We apply the following filters:
+The data is the same as the demo dataset used in [Azimuth](https://app.azimuth.hubmapconsortium.org/app/human-pbmc). 
+We load the results obtained from Azimuth (Azimuth version: 0.3.2; Seurat version: 4.0.0; Reference version: 1.0.0; default parameters in web-app).
 
-* max nCount_RNA = 25,000
-* min nFeature_RNA = 300
-* max nFeature_RNA = 5,000
-* max percent.mt = 20
-
-10,939 cells remain and are mapped to cell types using [Azimuth](https://satijalab.org/azimuth/)
-
-We then keep only those cell types that have at least 5 cells with mapping score > 0.66 and further remove all genes that have not been detected in at least 5 cells.
+We then keep only those cell types that have at least 5 cells with a prediction and mapping score > 0.66 and further remove all genes that have not been detected in at least 5 cells.
 
 ```{r}
 counts <- Seurat::Read10X_h5('~/Projects/data_warehouse/raw_public_10x/pbmc_10k_v3_filtered_feature_bc_matrix.h5')
 predictions <- read.delim('~/Projects/data_warehouse/raw_public_10x/pbmc_10k_v3_azimuth_pred.tsv', row.names = 1)
 
-tab <- table(predictions$predicted.id, predictions$predicted.score > 0.66)
+tab <- table(predictions$predicted.celltype.l2, predictions$predicted.celltype.l2.score > 0.66 & predictions$mapping.score > 0.66)
 keep_types <- rownames(tab)[tab[, 2] >= 5]
-keep_cells <- rownames(predictions)[predictions$predicted.id %in% keep_types]
+keep_cells <- rownames(predictions)[predictions$predicted.celltype.l2 %in% keep_types]
 
 counts <- counts[, keep_cells]
 counts <- counts[rowSums(counts > 0) >= 5, ]
 predictions <- predictions[keep_cells, ]
 
-cell_types <- factor(predictions$predicted.id, levels = names(sort(table(predictions$predicted.id), decreasing = TRUE)))
+cell_types <- factor(predictions$predicted.celltype.l2, levels = names(sort(table(predictions$predicted.celltype.l2), decreasing = TRUE)))
 ```
 
 We now have a count matrix of `r nrow(counts)` genes and `r ncol(counts)` cells with the following cell type labels:
@@ -148,10 +142,10 @@ data.frame(table(cell_types))
 
 ## Motivation
 
-Here we illustrate the concept of the test using CD14 Monocytes as group 1 and all remaining cells as group 2. We will show two example genes: MYL12A (not differentially expressed), and CD14.
+Here we illustrate the concept of the test using CD14 Monocytes as group 1 and all remaining cells as group 2. We will show two example genes: HINT1 (not differentially expressed), and CD14.
 
 ```{r}
-goi <- c('MYL12A', 'CD14')
+goi <- c('HINT1', 'CD14')
 df <- melt(t(as.matrix(counts[goi, , drop = FALSE])), varnames = c('cell', 'gene'), value.name = 'counts')
 df$cell_type <- factor(c('rest', 'CD14 Mono')[(cell_types == 'CD14 Mono') + 1])
 # calculate the (geometric) mean per group
