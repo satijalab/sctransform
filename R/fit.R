@@ -73,12 +73,33 @@ fit_nb <- function(umi, model_str, data) {
   return(t(par_mat))
 }
 
-fit_glmGamPoi <- function(umi, model_str, data) {
+# allow_inf_theta: if FALSE, replace theta by min(theta, rowmeans(mu)/1e-4)
+#                  else allow theta = Inf (poisson)
+fit_glmGamPoi <- function(umi, model_str, data, allow_inf_theta=FALSE) {
   fit <- glmGamPoi::glm_gp(data = umi,
                            design = as.formula(gsub("y", "", model_str)),
                            col_data = data,
                            size_factors = FALSE)
-  fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-4)
+
+  fit$theta <- 1 / fit$overdispersions
+  if (!allow_inf_theta){
+    fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-4)
+  }
   colnames(fit$Beta)[match(x = 'Intercept', colnames(fit$Beta))] <- "(Intercept)"
   return(cbind(fit$theta, fit$Beta))
+}
+
+fit_overdisp_mle <- function(umi, mu, intercept, slope){
+  fit <- glmGamPoi::overdispersion_mle(umi,
+                                       mu,
+                                       model_matrix = NULL,
+                                       do_cox_reid_adjustment = TRUE, #!is.null(model_matrix),
+                                       global_estimate = FALSE,
+                                       subsample = FALSE,
+                                       max_iter = 200,
+                                       verbose = FALSE)
+  theta <- 1 / fit$estimate
+  model_pars <- cbind(theta, intercept, slope)
+  colnames(model_pars) <- c("theta", "(Intercept)", "log_umi")
+  return (model_pars)
 }

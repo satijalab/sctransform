@@ -64,6 +64,8 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' manually control the values of the latent factors; default is FALSE
 #' @param do_round Round the result to integers
 #' @param do_pos Set negative values in the result to zero
+#' @param scale_factor Replace all values of UMI in the regression model by this value. Default is NA 
+#' which uses median of total UMI as the latent factor.
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #' @param verbose Deprecated; use verbosity instead
 #' @param show_progress Deprecated; use verbosity instead
@@ -79,7 +81,7 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' }
 #'
 correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
-                    do_round = TRUE, do_pos = TRUE, verbosity = 2, 
+                    do_round = TRUE, do_pos = TRUE, scale_factor=NA, verbosity = 2, 
                     verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
   if (!is.null(verbose)) {
@@ -101,6 +103,15 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
   # when correcting, set all latent variables to median values
   if (!as_is) {
     cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
+  }
+  if (!is.na(scale_factor) && !is.numeric(scale_factor)){
+    stop("`scale_factor` should be numeric")
+  }
+  if (!is.na(scale_factor)){
+    if (verbosity>0){
+      message(paste("Setting log_umi for correcting counts to", scale_factor))
+    }
+    cell_attr[, "log_umi"] <- log10(scale_factor)
   }
   regressor_data <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
 
