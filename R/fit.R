@@ -103,3 +103,33 @@ fit_overdisp_mle <- function(umi, mu, intercept, slope){
   colnames(model_pars) <- c("theta", "(Intercept)", "log_umi")
   return (model_pars)
 }
+
+# Use log_umi as offset using glmGamPoi
+fit_glmGamPoi_offset <- function(umi, model_str, data,  allow_inf_theta=FALSE) {
+  # only intercept varies
+  new_formula <- gsub("y", "", model_str)
+  # remove log_umi from model formula if it is with batch variables
+  new_formula <- gsub("\\+ log_umi", "", new_formula)
+  # replace log_umi with 1 if it is the only formula
+  new_formula <- gsub("log_umi", "1", new_formula)
+
+  log10_umi <- data$log_umi
+  stopifnot(!is.null(log10_umi))
+  log_umi <- log(10^log10_umi)
+
+
+  fit <- glmGamPoi::glm_gp(data = umi,
+                           design = as.formula(new_formula),
+                           col_data = data,
+                           offset = log_umi,
+                           size_factors = FALSE)
+  fit$theta <- 1 / fit$overdispersions
+  if (!allow_inf_theta){
+    fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-4)
+  }
+  model_pars <- cbind(fit$theta,
+                      fit$Beta[, "Intercept"],
+                      rep(log(10), nrow(umi)))
+  dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
+  return(model_pars)
+}
