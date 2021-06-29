@@ -37,6 +37,7 @@ NULL
 #' @param fix_intercept Fix intercept as defined in the offset model; default is FALSE
 #' @param fix_slope Fix slope to log(10) (eqivalent to using library size as an offset); default is FALSE
 #' @param scale_factor Replace all values of UMI in the regression model by this value instead of the median UMI; default is NA
+#' @param vst.flavor When set to `v2` sets method = glmGamPoi_offset and exclude_poisson = TRUE which causes the model to learn theta and intercept only besides excluding poisson genes from learning and regularization; default is NULL which uses the original sctransform model
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #' @param verbose Deprecated; use verbosity instead
 #' @param show_progress Deprecated; use verbosity instead
@@ -130,9 +131,19 @@ vst <- function(umi,
                 fix_intercept = FALSE,
                 fix_slope = FALSE,
                 scale_factor = NA,
+                vst.flavor = NULL,
                 verbosity = 2,
                 verbose = NULL,
                 show_progress = NULL) {
+  if (!is.null(vst.flavor)){
+    if (vst.flavor == "v2"){
+      if (verbosity>0){
+        message("vst.flavor='v2' set, setting model to use fixed slope and exclude poisson genes.")
+      }
+      method <- "glmGamPoi_offset"
+      exclude_poisson <- TRUE
+    }
+  }
   arguments <- as.list(environment())
   arguments <- arguments[!names(arguments) %in% c("umi", "cell_attr")]
 

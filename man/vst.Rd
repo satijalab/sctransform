@@ -33,6 +33,7 @@ vst(
   fix_intercept = FALSE,
   fix_slope = FALSE,
   scale_factor = NA,
+  vst.flavor = NULL,
   verbosity = 2,
   verbose = NULL,
   show_progress = NULL
@@ -53,7 +54,7 @@ vst(
 
 \item{n_cells}{Number of cells to use when estimating parameters (default uses all cells)}
 
-\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'qpoisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'offset', 'offset_shared_theta_estimate'; default is 'poisson'}
+\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'qpoisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'offset', 'offset_shared_theta_estimate', 'glmGamPoi_offset'; default is 'poisson'}
 
 \item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes); default is FALSE}
 
@@ -92,6 +93,8 @@ vst(
 \item{fix_slope}{Fix slope to log(10) (eqivalent to using library size as an offset); default is FALSE}
 
 \item{scale_factor}{Replace all values of UMI in the regression model by this value instead of the median UMI; default is NA}
+
+\item{vst.flavor}{When set to `v2` sets method = glmGamPoi_offset and exclude_poisson = TRUE which causes the model to learn theta and intercept only besides excluding poisson genes from learning and regularization; default is NULL which uses the original sctransform model}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
 
