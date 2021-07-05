@@ -226,9 +226,9 @@ vst <- function(umi,
     genes_cell_count_step1 <- rowSums(umi[, cells_step1] > 0)
     genes_step1 <- rownames(umi)[genes_cell_count_step1 >= min_cells]
     if (use_geometric_mean){
-      genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
+      genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, ], eps = gmean_eps))
     } else {
-      genes_log_gmean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
+      genes_log_gmean_step1 <- log10(rowMeans(umi[genes_step1, ]))
     }
   } else {
     cells_step1 <- colnames(umi)
@@ -267,9 +267,9 @@ vst <- function(umi,
     genes_step1 <- sample(x = genes_step1, size = n_genes, prob = sampling_prob)
 
     if (use_geometric_mean){
-      genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
+      genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, ], eps = gmean_eps))
     } else {
-      genes_log_gmean_step1 <- log10(rowMeans(umi[genes_step1, cells_step1]))
+      genes_log_gmean_step1 <- log10(rowMeans(umi[genes_step1, ]))
     }
   }
 
@@ -693,20 +693,26 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
     overdispersion_factor_step1 <- overdispersion_factor[genes_step1]
 
     all_poisson_genes <- genes[overdispersion_factor<=0]
+
+    # also set genes with mean < 1e-3 as poisson
+    low_mean_genes <- genes[genes_amean<1e-3]
+    all_poisson_genes <- union(all_poisson_genes, low_mean_genes)
+
+
     poisson_genes_step1 <- genes_step1[overdispersion_factor_step1<=0]
+
     if (verbosity>0){
       message(paste("# of step1 poisson genes (variance < mean):",
                     length(poisson_genes_step1)))
+      message(paste("# of low mean genes (mean < 0.001):", length(low_mean_genes)))
     }
 
     poisson_genes2 <- rownames(model_pars[!is.finite(model_pars[, 'theta']),])
-    poisson_genes_step1 <- union(poisson_genes_step1, poisson_genes2)
+    poisson_genes3 <- intersect(low_mean_genes, genes_step1)
+    poisson_genes_step1 <- union(union(poisson_genes_step1, poisson_genes2),poisson_genes3)
 
     overdispersed_genes_step1 <- setdiff(genes_step1, poisson_genes_step1)
 
-    #genes_step1 <- overdispersed_genes_step1
-    #model_pars <- model_pars[overdispersed_genes_step1,]
-    #genes_log_gmean_step1 <- genes_log_gmean_step1[overdispersed_genes_step1]
 
     if (verbosity>0){
       message(paste("Total # of Step1 poisson genes (theta=Inf; variance < mean):",
