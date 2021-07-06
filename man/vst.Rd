@@ -94,7 +94,7 @@ vst(
 
 \item{scale_factor}{Replace all values of UMI in the regression model by this value instead of the median UMI; default is NA}
 
-\item{vst.flavor}{When set to `v2` sets method = glmGamPoi_offset and exclude_poisson = TRUE which causes the model to learn theta and intercept only besides excluding poisson genes from learning and regularization; default is NULL which uses the original sctransform model}
+\item{vst.flavor}{When set to `v2` sets method = glmGamPoi_offset, n_cells=2000, and exclude_poisson = TRUE which causes the model to learn theta and intercept only besides excluding poisson genes from learning and regularization; default is NULL which uses the original sctransform model}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
 
