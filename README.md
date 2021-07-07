@@ -19,7 +19,12 @@ Available vignettes:
 
 ## Known Issues
 
-None so far - please use [the issue tracker](https://github.com/ChristophH/sctransform/issues) if you encounter a problem
+* `Error in is.nan` when a batch variable is used. Fixed in the develop branch. ([issue #88](https://github.com/ChristophH/sctransform/issues/88))
+* `node stack overflow` error when Rfast package is loaded. The Rfast package does not play nicely with the future.apply package. Try to avoid loading the Rfast package. See discussions: https://github.com/RfastOfficial/Rfast/issues/5 https://github.com/ChristophH/sctransform/issues/108
+
+To install from the develop branch run `remotes::install_github("ChristophH/sctransform@develop")`
+
+Please use [the issue tracker](https://github.com/ChristophH/sctransform/issues) if you encounter a problem
 
 ## News
 For a detailed change log have a look at the file [NEWS.md](https://github.com/ChristophH/sctransform/blob/master/NEWS.md)
