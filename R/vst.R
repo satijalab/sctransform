@@ -411,7 +411,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
         theta <- theta[is.finite(theta)]
       } else {
         theta <- sapply(1:nrow(y), function(i) {
-          as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
+          as.numeric(suppressWarnings(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100)))
         })
       }
       model_pars[, 'theta'] <- mean(theta)
