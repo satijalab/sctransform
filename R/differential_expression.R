@@ -594,12 +594,12 @@ diff_mean_test <- function(y, group_labels,
   if (verbosity > 0) {
     message('Non-parametric DE test for count data')
     message(sprintf('Using %s mean and %d random permutations', mean_type, R))
-    message('Input: ', nrow(y), ' genes, ', ncol(y), ' cells; ', length(group_levels), ' groups')
+    message('Input: ', nrow(y), ' genes, ', ncol(y), ' cells; ', G, ' groups')
   }
   
   # Set up the comparisons we want to do; each comparison is a list
   # name1, name2, labels grp1, labels grp2
-  if (compare[1] == 'each_vs_rest' && length(group_levels) == 2) {
+  if (compare[1] == 'each_vs_rest' && G == 2) {
     compare <- group_levels
     if (verbosity > 0) {
       message('There are only two groups in the data. Changing compare argument from "each_vs_rest" to group levels')
@@ -731,11 +731,11 @@ diff_mean_test <- function(y, group_labels,
     return(res)
   })
   res <- Reduce(rbind, res_lst)
-  if (compare == 'each_vs_rest' && !is.null(res)) {
+  if (length(compare) == 1 && compare == 'each_vs_rest' && !is.null(res)) {
     res$group1 <- factor(res$group1, levels = group_levels)
     res$group2 <- factor(res$group2)
   } 
-  if (compare == 'all_vs_all' && !is.null(res)) {
+  if (length(compare) == 1 && compare == 'all_vs_all' && !is.null(res)) {
     res$group1 <- factor(res$group1, levels = group_levels)
     res$group2 <- factor(res$group2, levels = group_levels)
   }
