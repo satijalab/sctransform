@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // row_mean_dgcmatrix
 NumericVector row_mean_dgcmatrix(S4 matrix);
 RcppExport SEXP _sctransform_row_mean_dgcmatrix(SEXP matrixSEXP) {

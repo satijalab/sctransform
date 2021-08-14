@@ -142,7 +142,7 @@ vst <- function(umi,
       }
       method <- "glmGamPoi_offset"
       exclude_poisson <- TRUE
-      n_cells <- 2000
+      if (is.null(n_cells)) n_cells <- 2000
     }
   }
   arguments <- as.list(environment())
