@@ -512,7 +512,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
         theta <- theta[is.finite(theta)]
       } else {
         theta <- sapply(1:nrow(y), function(i) {
-          as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
+          as.numeric(suppressWarnings(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100)))
         })
       }
       model_pars[, 'theta'] <- mean(theta)
@@ -597,13 +597,12 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
           return(fit_glmGamPoi(umi = umi_bin_worker, model_str = model_str,
                                data = data_step1, allow_inf_theta = exclude_poisson))
         }
-
-        if (method == "glmGamPoi_offset") {
+       if (method == "glmGamPoi_offset") {
           return(fit_glmGamPoi_offset(umi = umi_bin_worker, model_str = model_str,
                                       data = data_step1, allow_inf_theta = exclude_poisson))
         }
-
-      }
+      },
+      future.seed = TRUE
     )
     model_pars[[i]] <- do.call(rbind, par_lst)
 
@@ -655,14 +654,16 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
     genes_bin <- genes[bin_ind == i]
     mu <- tcrossprod(model_pars_fit[genes_bin, -1, drop=FALSE], regressor_data)
     umi_bin <- as.matrix(umi[genes_bin, ])
-    model_pars_nonreg[[i]] <- do.call(rbind,
-                                      future_lapply(genes_bin, function(gene) {
-                                        fam <- negative.binomial(theta = model_pars_fit[gene, 'theta'], link = 'log')
-                                        y <- umi_bin[gene, ]
-                                        offs <- mu[gene, ]
-                                        fit <- glm(as.formula(model_str_nonreg), data = cell_attr, family = fam, offset=offs)
-                                        return(fit$coefficients)
-                                      }))
+    model_pars_nonreg[[i]] <- do.call(
+      rbind,
+      future_lapply(X = genes_bin, 
+                    FUN = function(gene) {
+                      fam <- negative.binomial(theta = model_pars_fit[gene, 'theta'], link = 'log')
+                      y <- umi_bin[gene, ]
+                      offs <- mu[gene, ]
+                      fit <- glm(as.formula(model_str_nonreg), data = cell_attr, family = fam, offset=offs)
+                      return(fit$coefficients)},
+                    future.seed = TRUE))
     if (verbosity > 1) {
       setTxtProgressBar(pb, i)
     }

@@ -11,6 +11,22 @@ test_that('vst runs and returns expected output', {
   expect_equal(c(27.8, 26.9, 18.7, 18.2, 16.8), ga$residual_variance[1:5], tolerance = 1e-01)
 })
 
+test_that('vst runs with multicore futures', {
+  skip_on_cran()
+  suppressWarnings(RNGversion(vstr = "3.5.0"))
+  set.seed(42)
+  
+  options(future.fork.enable = TRUE)
+  options(future.globals.maxSize = 10 * 1024 ^ 3)
+  future::plan(strategy = 'multicore', workers = 2)
+  
+  vst_out <- vst(pbmc, return_gene_attr = TRUE, return_cell_attr = TRUE)
+  expect_equal(c(910, 283), dim(vst_out$y))
+  ga <- vst_out$gene_attr[order(-vst_out$gene_attr$residual_variance), ]
+  expect_equal(c("GNLY", "NKG7", "GZMB", "LYZ", "S100A9"), rownames(ga)[1:5])
+  expect_equal(c(27.8, 26.9, 18.7, 18.2, 16.8), ga$residual_variance[1:5], tolerance = 1e-01)
+})
+
 test_that('vst with batch variable works', {
   skip_on_cran()
   suppressWarnings(RNGversion(vstr = "3.5.0"))

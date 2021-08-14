@@ -93,16 +93,19 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     if (method == 't_test') {
-      bin_res <- future_lapply(genes_bin, function(gene) {
-        model_comparison_ttest(y[gene, use_cells], group)
-      })
+      bin_res <- future_lapply(
+        X = genes_bin, 
+        FUN = function(gene) {model_comparison_ttest(y[gene, use_cells], group)},
+        future.seed = TRUE)
     }
     if (method == 'LRT') {
       mu <- x$model_pars_fit[genes_bin, -1, drop=FALSE] %*% t(regressor_data)  # in log space
       y <- as.matrix(umi[genes_bin, use_cells])
-      bin_res <- future_lapply(genes_bin, function(gene) {
-        model_comparison_lrt(y[gene, ], mu[gene, ], x$model_pars_fit[gene, 'theta'], group, weights)
-      })
+      bin_res <- future_lapply(
+        X = genes_bin, 
+        FUN = function(gene) {
+          model_comparison_lrt(y[gene, ], mu[gene, ], x$model_pars_fit[gene, 'theta'], group, weights)},
+        future.seed = TRUE)
     }
     if (method == 'LRT_reg') {
       LB <- min(x$genes_log_mean_step1)
@@ -172,9 +175,12 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_theta[o] <- 10 ^ ksmooth(x = x$genes_log_mean_step1, y = log10(x$model_pars[, 'theta']),
                                  x.points = y_log_mean, bandwidth = bw, kernel='normal')$y
       names(y_theta) <- genes_bin
-      bin_res <- future_lapply(genes_bin, function(gene) {
-        return(model_comparison_lrt_free3(gene, y[gene, ], y_theta[gene], x$model_str, cell_attr, group, weights, randomize))
-      })
+      bin_res <- future_lapply(
+        X = genes_bin, 
+        FUN = function(gene) {
+          return(model_comparison_lrt_free3(gene, y[gene, ], y_theta[gene], x$model_str, cell_attr, group, weights, randomize))
+        }, 
+        future.seed = TRUE)
     }
     res[[i]] <- do.call(rbind, bin_res)
     if (verbosity > 1) {
@@ -588,12 +594,12 @@ diff_mean_test <- function(y, group_labels,
   if (verbosity > 0) {
     message('Non-parametric DE test for count data')
     message(sprintf('Using %s mean and %d random permutations', mean_type, R))
-    message('Input: ', nrow(y), ' genes, ', ncol(y), ' cells; ', length(group_levels), ' groups')
+    message('Input: ', nrow(y), ' genes, ', ncol(y), ' cells; ', G, ' groups')
   }
   
   # Set up the comparisons we want to do; each comparison is a list
   # name1, name2, labels grp1, labels grp2
-  if (compare[1] == 'each_vs_rest' && length(group_levels) == 2) {
+  if (compare[1] == 'each_vs_rest' && G == 2) {
     compare <- group_levels
     if (verbosity > 0) {
       message('There are only two groups in the data. Changing compare argument from "each_vs_rest" to group levels')
@@ -725,11 +731,11 @@ diff_mean_test <- function(y, group_labels,
     return(res)
   })
   res <- Reduce(rbind, res_lst)
-  if (compare == 'each_vs_rest' && !is.null(res)) {
+  if (length(compare) == 1 && compare == 'each_vs_rest' && !is.null(res)) {
     res$group1 <- factor(res$group1, levels = group_levels)
     res$group2 <- factor(res$group2)
   } 
-  if (compare == 'all_vs_all' && !is.null(res)) {
+  if (length(compare) == 1 && compare == 'all_vs_all' && !is.null(res)) {
     res$group1 <- factor(res$group1, levels = group_levels)
     res$group2 <- factor(res$group2, levels = group_levels)
   }
