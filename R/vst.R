@@ -27,7 +27,9 @@ NULL
 #' @param return_cell_attr Make cell attributes part of the output; default is FALSE
 #' @param return_gene_attr Calculate gene attributes and make part of output; default is TRUE
 #' @param return_corrected_umi If set to TRUE output will contain corrected UMI matrix; see \code{correct} function
-#' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is -Inf
+#' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; one of 'umi_median', 'model_median', 'model_mean' or a
+#' numeric. default is -Inf.  When set to 'umi_median' uses (median of non-zero UMIs / 5)^2 as the minimum variance so that a median UMI (often 1)
+#' results in a maximum pearson residual of 5. When set to 'model_median' or 'model_mean' uses the mean/median of the model estimated mu per gene as the minimum_variance.#'
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_estimation_fun Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative
@@ -142,6 +144,7 @@ vst <- function(umi,
       }
       method <- "glmGamPoi_offset"
       exclude_poisson <- TRUE
+      min_variance <- "umi_median"
       if (is.null(n_cells)) n_cells <- 2000
     }
   }
@@ -345,8 +348,20 @@ vst <- function(umi,
     regressor_data_final <- regressor_data
   }
 
+
   times$get_residuals = Sys.time()
   if (!residual_type == 'none') {
+    # min_variance estimated using median umi
+    if (min_variance == "umi_median"){
+      # Maximum pearson residual for non-zero median UMI is 5
+      min_var <- (get_nz_median(umi) / 5)^2
+      if (verbosity > 0) {
+        message(paste("Setting min_variance based on median UMI: ", min_var))
+      }
+      arguments$set_min_var <- min_var
+    } else {
+      min_var <- min_variance
+    }
     if (verbosity > 0) {
       message('Second step: Get residuals using fitted parameters for ', length(x = genes), ' genes')
     }
@@ -360,11 +375,26 @@ vst <- function(umi,
       genes_bin <- genes[bin_ind == i]
       mu <- exp(tcrossprod(model_pars_final[genes_bin, -1, drop=FALSE], regressor_data_final))
       y <- as.matrix(umi[genes_bin, , drop=FALSE])
-      res[genes_bin, ] <- switch(residual_type,
-                                 'pearson' = pearson_residual(y, mu, model_pars_final[genes_bin, 'theta'], min_var = min_variance),
-                                 'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta']),
-                                 stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment')
-      )
+      if (min_variance == "model_mean") {
+        mu_mean_var <- matrixStats::rowMeans2(mu)
+        res[genes_bin, ] <- switch(residual_type,
+                                   'pearson' = pearson_residual2(y, mu, model_pars_final[genes_bin, 'theta'], min_vars = mu_mean_var),
+                                   'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta']),
+                                   stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment')
+                                   )
+      } else if (min_variance == "model_median") {
+        mu_median_var <- matrixStats::rowMedians(mu)
+        res[genes_bin, ] <- switch(residual_type,
+                                   'pearson' = pearson_residual2(y, mu, model_pars_final[genes_bin, 'theta'], min_vars = mu_median_var),
+                                   'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta']),
+                                   stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
+      } else {
+        res[genes_bin, ] <- switch(residual_type,
+                                   'pearson' = pearson_residual(y, mu, model_pars_final[genes_bin, 'theta'], min_var = min_var),
+                                   'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta']),
+                                   stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment')
+        )
+        }
       if (verbosity > 1) {
         setTxtProgressBar(pb, i)
       }
@@ -656,7 +686,7 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
     umi_bin <- as.matrix(umi[genes_bin, ])
     model_pars_nonreg[[i]] <- do.call(
       rbind,
-      future_lapply(X = genes_bin, 
+      future_lapply(X = genes_bin,
                     FUN = function(gene) {
                       fam <- negative.binomial(theta = model_pars_fit[gene, 'theta'], link = 'log')
                       y <- umi_bin[gene, ]

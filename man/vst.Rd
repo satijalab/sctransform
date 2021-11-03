@@ -74,7 +74,9 @@ vst(
 
 \item{return_corrected_umi}{If set to TRUE output will contain corrected UMI matrix; see \code{correct} function}
 
-\item{min_variance}{Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is -Inf}
+\item{min_variance}{Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; one of 'umi_median', 'model_median', 'model_mean' or a
+numeric. default is -Inf.  When set to 'umi_median' uses (median of non-zero UMIs / 5)^2 as the minimum variance so that a median UMI (often 1)
+results in a maximum pearson residual of 5. When set to 'model_median' or 'model_mean' uses the mean/median of the model estimated mu per gene as the minimum_variance.#'}
 
 \item{bw_adjust}{Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3}
 
