@@ -493,7 +493,7 @@ get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = F
 }
 
 
-#' Get median of non zero UMIs from a count matrix
+#' Get median of non zero UMIs from a count matrix using a subset of genes (slow)
 #'
 #' @param cm Count matrix
 #' @param genes List of genes to calculate statistics. Default is NULL which returns the non-zero median using all genes
@@ -514,3 +514,13 @@ get_nz_median <- function(umi, genes = NULL){
   }
   return (median(allnonzero, na.rm = TRUE))
 }
+
+#' Get median of non zero UMIs from a count matrix
+#'
+#' @param cm Count matrix
+#'
+#' @return A numeric value representing the median of non-zero entries from the UMI matrix
+get_nz_median2 <- function(umi, genes = NULL){
+  return (median(umi@x))
+}
+

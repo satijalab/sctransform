@@ -144,7 +144,7 @@ vst <- function(umi,
       }
       method <- "glmGamPoi_offset"
       exclude_poisson <- TRUE
-      min_variance <- "umi_median"
+      if (min_variance == -Inf) min_variance <- 'umi_median'
       if (is.null(n_cells)) n_cells <- 2000
     }
   }
@@ -354,7 +354,7 @@ vst <- function(umi,
     # min_variance estimated using median umi
     if (min_variance == "umi_median"){
       # Maximum pearson residual for non-zero median UMI is 5
-      min_var <- (get_nz_median(umi) / 5)^2
+      min_var <- (get_nz_median2(umi) / 5)^2
       if (verbosity > 0) {
         message(paste("Setting min_variance based on median UMI: ", min_var))
       }
