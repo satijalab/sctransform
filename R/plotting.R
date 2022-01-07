@@ -1,6 +1,7 @@
 #' Plot estimated and fitted model parameters
 #'
 #' @param vst_out The output of a vst run
+#' @param xaxis Variable to plot on X axis; default is "gmean"
 #' @param show_theta Whether to show the theta parameter; default is FALSE (only the overdispersion factor is shown)
 #' @param show_var Whether to show the average model variance; default is FALSE
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
@@ -20,7 +21,7 @@
 #' plot_model_pars(vst_out)
 #' }
 #'
-plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
+plot_model_pars <- function(vst_out, xaxis="gmean", show_theta = FALSE, show_var = FALSE,
                             verbosity = 2, verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
   if (!is.null(verbose)) {
@@ -66,8 +67,8 @@ plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
   df$type <- 'single gene estimate'
   df_fit$type <- 'regularized'
   df_fit$is_outl <- FALSE
-  
-  if (startsWith(x = vst_out$arguments$method, prefix = 'offset')) {
+
+  if (startsWith(x = vst_out$arguments$method, prefix = 'offset') | (xaxis=="amean")) {
     df$x <- vst_out$gene_attr[df$gene, 'amean']
     df_fit$x <- vst_out$gene_attr[df_fit$gene, 'amean']
     xlab <- 'Arithmetic mean of gene [log10]'
@@ -76,17 +77,17 @@ plot_model_pars <- function(vst_out, show_theta = FALSE, show_var = FALSE,
     df_fit$x <- vst_out$gene_attr[df_fit$gene, 'gmean']
     xlab <- 'Geometric mean of gene [log10]'
   }
-  
+
   df_plot <- rbind(df, df_fit)
   df_plot$parameter <- factor(df_plot$parameter, levels = ordered_par_names)
-  
+
   if (!vst_out$arguments$do_regularize || startsWith(x = vst_out$arguments$method, prefix = 'offset')) {
     df_plot <- df_plot[df_plot$type == 'single gene estimate', ]
     legend_pos <- 'none'
   } else {
     legend_pos <- 'bottom'
   }
-  
+
   g <- ggplot(df_plot, aes_(x=~log10(x), y=~value, color=~type)) +
     geom_point(data=df, aes_(shape=~is_outl), size=0.5, alpha=0.5) +
     scale_shape_manual(values=c(16, 4), guide = FALSE) +
@@ -107,7 +108,7 @@ get_model_par_mat <- function(vst_out, model_pars, use_nonreg, show_theta = FALS
   } else {
     mp[, 1] <- log10(1 + vst_out$gene_attr[rownames(mp), 'gmean'] / mp[, 'theta'])
   }
-  
+
   colnames(mp)[1] <- 'log10(od_factor)'
   ordered_par_names <- colnames(mp)[c(2:ncol(mp), 1)]
   if (show_theta) {
@@ -192,7 +193,7 @@ get_nb_fit <- function(x, umi, gene, cell_attr, as_poisson = FALSE) {
 #'
 plot_model <- function(x, umi, goi, x_var = x$arguments$latent_var[1], cell_attr = x$cell_attr,
                        do_log = TRUE, show_fit = TRUE, show_nr = FALSE, plot_residual = FALSE,
-                       batches = NULL, as_poisson = FALSE, arrange_vertical = TRUE, 
+                       batches = NULL, as_poisson = FALSE, arrange_vertical = TRUE,
                        show_density = FALSE, gg_cmds = NULL) {
   if (is.null(batches)) {
     if (!is.null(x$arguments$batch_var)) {

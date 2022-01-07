@@ -6,6 +6,7 @@
 \usage{
 plot_model_pars(
   vst_out,
+  xaxis = "gmean",
   show_theta = FALSE,
   show_var = FALSE,
   verbosity = 2,
@@ -15,6 +16,8 @@ plot_model_pars(
 }
 \arguments{
 \item{vst_out}{The output of a vst run}
+
+\item{xaxis}{Variable to plot on X axis; default is "gmean"}
 
 \item{show_theta}{Whether to show the theta parameter; default is FALSE (only the overdispersion factor is shown)}
 

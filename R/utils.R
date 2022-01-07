@@ -4,17 +4,17 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
   if (is.null(cell_attr)) {
     cell_attr <- data.frame(row.names = colnames(umi))
   }
-  
+
   # Make sure count matrix has row and column names
   if (is.null(rownames(umi)) || is.null(colnames(umi))) {
     stop('count matrix must have row and column names')
   }
-  
+
   # Make sure rownames of cell attributes match cell names in count matrix
   if (!identical(rownames(cell_attr), colnames(umi))) {
     stop('cell attribute row names must match column names of count matrix')
   }
-  
+
   # Do not allow certain variable names
   no_good <- c('(Intercept)', 'Intercept')
   if (any(no_good %in% c(latent_var, batch_var, latent_var_nonreg))) {
@@ -49,18 +49,18 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
     new_attr <- do.call(cbind, new_attr)
     cell_attr <- cbind(cell_attr, new_attr[, setdiff(colnames(new_attr), colnames(cell_attr)), drop = FALSE])
   }
-  
+
   # make sure no NA, NaN, Inf values are in cell attributes - they would cause
   # problems later on
   for (ca in c(latent_var, batch_var, latent_var_nonreg)) {
     ca_values <- cell_attr[, ca]
-    if (any(is.na(ca_values)) || 
-        any(is.nan(ca_values)) || 
+    if (any(is.na(ca_values)) ||
+        any(is.nan(ca_values)) ||
         any(is.infinite(ca_values))) {
       stop('cell attribute "', ca, '" contains NA, NaN, or infinite value')
     }
   }
-  
+
   return(cell_attr)
 }
 
@@ -89,7 +89,7 @@ row_gmean <- function(x, eps = 1) {
 #' @param x matrix of class \code{matrix} or \code{dgCMatrix}
 #'
 #' @return variances
-#' 
+#'
 #' @importFrom matrixStats rowVars
 row_var <- function(x) {
   if (inherits(x = x, what = 'matrix')) {
@@ -169,6 +169,18 @@ pearson_residual <- function(y, mu, theta, min_var = -Inf) {
   return((y - mu) / sqrt(model_var))
 }
 
+
+pearson_residual2 <- function(y, mu, theta, min_vars) {
+  model_var <- mu + mu^2 / theta
+  for (row in 1:nrow(model_var)){
+    var_row <- model_var[row,]
+    min_var <- min_vars[row]
+    var_row[var_row < min_var] <- min_var
+    model_var[row,] <- var_row
+  }
+  return((y - mu) / sqrt(model_var))
+}
+
 sq_deviance_residual <- function(y, mu, theta, wt=1) {
   2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta)))
 }
@@ -206,7 +218,7 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
                           res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                           min_variance = vst_out$arguments$min_variance,
                           cell_attr = vst_out$cell_attr, bin_size = 256,
-                          verbosity = vst_out$arguments$verbosity, 
+                          verbosity = vst_out$arguments$verbosity,
                           verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
   if (!is.null(verbose)) {
@@ -220,6 +232,20 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
     } else {
       verbosity <- min(verbosity, 1)
     }
+  }
+
+  # min_variance estimated using median umi
+  if (min_variance == "umi_median"){
+    # Maximum pearson residual for non-zero median UMI is 5
+    min_var <- (get_nz_median(umi) / 5)^2
+    if (verbosity > 0) {
+      message(paste("Setting min_variance based on median UMI: ", min_var))
+    }
+  } else {
+    if (verbosity > 0) {
+      message(paste("Setting min_variance to: ", min_variance))
+    }
+    min_var <- min_variance
   }
   regressor_data <- model.matrix(as.formula(gsub('^y', '', vst_out$model_str)), cell_attr)
   model_pars <- vst_out$model_pars_fit
@@ -242,12 +268,28 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     mu <- exp(tcrossprod(model_pars[genes_bin, -1, drop=FALSE], regressor_data))
+
     y <- as.matrix(umi[genes_bin, , drop=FALSE])
-    res[genes_bin, ] <- switch(residual_type,
-      'pearson' = pearson_residual(y, mu, model_pars[genes_bin, 'theta'], min_var = min_variance),
-      'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
-      stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment')
-    )
+    if (min_variance == "model_mean") {
+      mu_mean_var <- matrixStats::rowMeans2(mu)
+      res[genes_bin, ] <- switch(residual_type,
+                                 'pearson' = pearson_residual2(y, mu, model_pars[genes_bin, 'theta'], min_vars = mu_mean_var),
+                                 'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
+                                 stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
+    } else if (min_variance == "model_median") {
+        mu_median_var <- matrixStats::rowMedians(mu)
+        res[genes_bin, ] <- switch(residual_type,
+                                   'pearson' = pearson_residual2(y, mu, model_pars[genes_bin, 'theta'], min_vars = mu_median_var),
+                                   'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
+                                   stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
+
+      } else {
+        res[genes_bin, ] <- switch(residual_type,
+                                   'pearson' = pearson_residual(y, mu, model_pars[genes_bin, 'theta'], min_var = min_var),
+                                   'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
+                                   stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
+    }
+
     if (verbosity > 1) {
       setTxtProgressBar(pb, i)
     }
@@ -289,7 +331,7 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
                              res_clip_range = c(-sqrt(ncol(umi)), sqrt(ncol(umi))),
                              min_variance = vst_out$arguments$min_variance,
                              cell_attr = vst_out$cell_attr, bin_size = 256,
-                             verbosity = vst_out$arguments$verbosity, 
+                             verbosity = vst_out$arguments$verbosity,
                              verbose = NULL, show_progress = NULL) {
   # Take care of deprecated arguments
   if (!is.null(verbose)) {
@@ -314,6 +356,19 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
   }
 
   genes <- rownames(umi)[rownames(umi) %in% rownames(model_pars)]
+  # min_variance estimated using median umi
+  if (min_variance == "umi_median"){
+    # Maximum pearson residual for non-zero median UMI is 5
+    min_var <- (get_nz_median(umi, genes) / 5)^2
+    if (verbosity > 0) {
+      message(paste("Setting min_variance based on median UMI: ", min_var))
+    }
+  } else {
+    if (verbosity > 0) {
+      message(paste("Setting min_variance to: ", min_variance))
+    }
+    min_var <- min_variance
+  }
   if (verbosity > 0) {
     message('Calculating variance for residuals of type ', residual_type, ' for ', length(genes), ' genes')
   }
@@ -328,10 +383,25 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
     genes_bin <- genes[bin_ind == i]
     mu <- exp(tcrossprod(model_pars[genes_bin, -1, drop=FALSE], regressor_data))
     y <- as.matrix(umi[genes_bin, , drop=FALSE])
-    res_mat <- switch(residual_type,
-                      'pearson' = pearson_residual(y, mu, model_pars[genes_bin, 'theta'], min_var = min_variance),
-                      'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
-                      stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
+    if (min_variance == "model_mean") {
+      mu_mean_var <- matrixStats::rowMeans2(mu)
+      res_mat <- switch(residual_type,
+                        'pearson' = pearson_residual2(y, mu, model_pars[genes_bin, 'theta'], min_vars = mu_mean_var),
+                        'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
+                        stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
+    } else if (min_variance == "model_median") {
+      mu_median_var <- matrixStats::rowMedians(mu)
+      res_mat <- switch(residual_type,
+                        'pearson' = pearson_residual2(y, mu, model_pars[genes_bin, 'theta'], min_vars = mu_median_var),
+                        'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
+                        stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
+
+    } else {
+      res_mat <- switch(residual_type,
+                        'pearson' = pearson_residual(y, mu, model_pars[genes_bin, 'theta'], min_var = min_var),
+                        'deviance' = deviance_residual(y, mu, model_pars[genes_bin, 'theta']),
+                        stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
+      }
     res_mat[res_mat < res_clip_range[1]] <- res_clip_range[1]
     res_mat[res_mat > res_clip_range[2]] <- res_clip_range[2]
     res[genes_bin] <- row_var(res_mat)
@@ -421,3 +491,36 @@ get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = F
   }
   return(res)
 }
+
+
+#' Get median of non zero UMIs from a count matrix using a subset of genes (slow)
+#'
+#' @param cm Count matrix
+#' @param genes List of genes to calculate statistics. Default is NULL which returns the non-zero median using all genes
+#'
+#' @return A numeric value representing the median of non-zero entries from the UMI matrix
+get_nz_median <- function(umi, genes = NULL){
+  cm.T <- Matrix::t(umi)
+  n_g <- dim(cm)[1]
+  allnonzero <- c()
+  if (is.null(genes)) {
+    gene_index <- seq(1, nrow(umi))
+  } else {
+    gene_index <- which(genes %in% rownames(umi))
+  }
+  for (g in gene_index) {
+    m_i <- cm.T@x[(cm.T@p[g] + 1):cm.T@p[g + 1]]
+    allnonzero <- c(allnonzero, m_i)
+  }
+  return (median(allnonzero, na.rm = TRUE))
+}
+
+#' Get median of non zero UMIs from a count matrix
+#'
+#' @param cm Count matrix
+#'
+#' @return A numeric value representing the median of non-zero entries from the UMI matrix
+get_nz_median2 <- function(umi, genes = NULL){
+  return (median(umi@x))
+}
+

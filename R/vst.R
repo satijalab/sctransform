@@ -17,7 +17,7 @@ NULL
 #' @param latent_var_nonreg The non-regularized dependent variables to regress out as a character vector; must match column names in cell_attr; default is NULL
 #' @param n_genes Number of genes to use when estimating parameters (default uses 2000 genes, set to NULL to use all genes)
 #' @param n_cells Number of cells to use when estimating parameters (default uses all cells)
-#' @param method Method to use for initial parameter estimation; one of 'poisson', 'qpoisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'offset', 'offset_shared_theta_estimate'; default is 'poisson'
+#' @param method Method to use for initial parameter estimation; one of 'poisson', 'qpoisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'offset', 'offset_shared_theta_estimate', 'glmGamPoi_offset'; default is 'poisson'
 #' @param do_regularize Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes); default is FALSE
 #' @param theta_regularization Method to use to regularize theta; use 'log_theta' for the behavior prior to version 0.3; default is 'od_factor'
 #' @param res_clip_range Numeric of length two specifying the min and max values the results will be clipped to; default is c(-sqrt(ncol(umi)), sqrt(ncol(umi)))
@@ -27,11 +27,19 @@ NULL
 #' @param return_cell_attr Make cell attributes part of the output; default is FALSE
 #' @param return_gene_attr Calculate gene attributes and make part of output; default is TRUE
 #' @param return_corrected_umi If set to TRUE output will contain corrected UMI matrix; see \code{correct} function
-#' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is -Inf
+#' @param min_variance Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; one of 'umi_median', 'model_median', 'model_mean' or a
+#' numeric. default is -Inf.  When set to 'umi_median' uses (median of non-zero UMIs / 5)^2 as the minimum variance so that a median UMI (often 1)
+#' results in a maximum pearson residual of 5. When set to 'model_median' or 'model_mean' uses the mean/median of the model estimated mu per gene as the minimum_variance.#'
 #' @param bw_adjust Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_estimation_fun Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative
 #' @param theta_given If method is set to nb_theta_given, this should be a named numeric vector of fixed theta values for the genes; if method is offset, this should be a single value; default is NULL
+#' @param use_geometric_mean Use geometric mean instead of arithmetic mean for all calculations ; default is TRUE
+#' @param use_geometric_mean_offset Use geoemtric mean insteaf of arithmetic mean in the offset model; default is FALSE
+#' @param fix_intercept Fix intercept as defined in the offset model; default is FALSE
+#' @param fix_slope Fix slope to log(10) (eqivalent to using library size as an offset); default is FALSE
+#' @param scale_factor Replace all values of UMI in the regression model by this value instead of the median UMI; default is NA
+#' @param vst.flavor When set to `v2` sets method = glmGamPoi_offset, n_cells=2000, and exclude_poisson = TRUE which causes the model to learn theta and intercept only besides excluding poisson genes from learning and regularization; default is NULL which uses the original sctransform model
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #' @param verbose Deprecated; use verbosity instead
 #' @param show_progress Deprecated; use verbosity instead
@@ -58,8 +66,8 @@ NULL
 #' If \code{method} is set to 'poisson', a poisson regression is done and
 #' the negative binomial theta parameter is estimated using the response residuals in
 #' \code{theta_estimation_fun}.
-#' If \code{method} is set to 'qpoisson', coefficients and overdispersion (phi) are estimated by quasi 
-#' poisson regression and theta is estimated based on phi and the mean fitted value - this is currently 
+#' If \code{method} is set to 'qpoisson', coefficients and overdispersion (phi) are estimated by quasi
+#' poisson regression and theta is estimated based on phi and the mean fitted value - this is currently
 #' the fastest method with results very similar to 'glmGamPoi'
 #' If \code{method} is set to 'nb_fast', coefficients and theta are estimated as in the
 #' 'poisson' method, but coefficients are then re-estimated using a proper negative binomial
@@ -68,10 +76,10 @@ NULL
 #' \code{MASS::glm.nb}.
 #' If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by a single call to
 #' \code{glmGamPoi::glm_gp}.
-#' 
+#'
 #' A special case is \code{method = 'offset'}. Here no regression parameters are learned, but
-#' instead an offset model is assumed. The latent variable is set to log_umi and a fixed 
-#' slope of log(10) is used (offset). The intercept is given by log(gene_mean) - log(avg_cell_umi). 
+#' instead an offset model is assumed. The latent variable is set to log_umi and a fixed
+#' slope of log(10) is used (offset). The intercept is given by log(gene_mean) - log(avg_cell_umi).
 #' See Lause et al. (\href{https://doi.org/10.1101/2020.12.01.405886}{bioRxiv 2020.12.01.405886}) for details.
 #' Theta is set
 #' to 100 by default, but can be changed using the \code{theta_given} parameter (single numeric value).
@@ -81,7 +89,7 @@ NULL
 #' exists where the 250 most highly expressed genes with detection rate of at least 0.5 are used
 #' to estimate a theta that is then shared across all genes. Thetas are estimated per individual gene
 #' using 5000 randomly selected cells. The final theta used for all genes is then the average.
-#' 
+#'
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
@@ -119,9 +127,27 @@ vst <- function(umi,
                 gmean_eps = 1,
                 theta_estimation_fun = 'theta.ml',
                 theta_given = NULL,
+                exclude_poisson = FALSE,
+                use_geometric_mean = TRUE,
+                use_geometric_mean_offset = FALSE,
+                fix_intercept = FALSE,
+                fix_slope = FALSE,
+                scale_factor = NA,
+                vst.flavor = NULL,
                 verbosity = 2,
                 verbose = NULL,
                 show_progress = NULL) {
+  if (!is.null(vst.flavor)){
+    if (vst.flavor == "v2"){
+      if (verbosity>0){
+        message("vst.flavor='v2' set, setting model to use fixed slope and exclude poisson genes.")
+      }
+      method <- "glmGamPoi_offset"
+      exclude_poisson <- TRUE
+      if (min_variance == -Inf) min_variance <- 'umi_median'
+      if (is.null(n_cells)) n_cells <- 2000
+    }
+  }
   arguments <- as.list(environment())
   arguments <- arguments[!names(arguments) %in% c("umi", "cell_attr")]
 
@@ -140,13 +166,14 @@ vst <- function(umi,
   }
 
   # Check for suggested package
-  if (method == "glmGamPoi") {
+  if (method %in% c("glmGamPoi", "glmGamPoi_offset")) {
     glmGamPoi_check <- requireNamespace("glmGamPoi", quietly = TRUE)
     if (!glmGamPoi_check){
       stop('Please install the glmGamPoi package. See https://github.com/const-ae/glmGamPoi for details.')
     }
   }
-  
+
+
   # Special case offset model - override most parameters
   if (startsWith(x = method, prefix = 'offset')) {
     cell_attr <- NULL
@@ -162,7 +189,7 @@ vst <- function(umi,
       theta_given <- theta_given[1]
     }
   }
-  
+
 
   times <- list(start_time = Sys.time())
 
@@ -177,8 +204,13 @@ vst <- function(umi,
   genes_cell_count <- rowSums(umi >= 0.01)
   genes <- rownames(umi)[genes_cell_count >= min_cells]
   umi <- umi[genes, ]
-  genes_log_gmean <- log10(row_gmean(umi, eps = gmean_eps))
-  
+  if (use_geometric_mean){
+    genes_log_gmean <- log10(row_gmean(umi, eps = gmean_eps))
+
+  } else {
+    genes_log_gmean <- log10(rowMeans(umi))
+  }
+
   if (!do_regularize && !is.null(n_genes)) {
     if (verbosity > 0) {
       message('do_regularize is set to FALSE, will use all genes')
@@ -197,11 +229,37 @@ vst <- function(umi,
     }
     genes_cell_count_step1 <- rowSums(umi[, cells_step1] > 0)
     genes_step1 <- rownames(umi)[genes_cell_count_step1 >= min_cells]
-    genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
+    if (use_geometric_mean){
+      genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, ], eps = gmean_eps))
+    } else {
+      genes_log_gmean_step1 <- log10(rowMeans(umi[genes_step1, ]))
+    }
   } else {
     cells_step1 <- colnames(umi)
     genes_step1 <- genes
     genes_log_gmean_step1 <- genes_log_gmean
+  }
+
+  genes_amean <- NULL
+  genes_var <- NULL
+
+  # Exclude known poisson genes from the learning step
+  if (do_regularize && exclude_poisson){
+    genes_amean <- rowMeans(umi)
+    genes_var <- row_var(umi)
+    overdispersion_factor <- genes_var - genes_amean
+    overdispersion_factor_step1 <- overdispersion_factor[genes_step1]
+    is_overdispersed <- (overdispersion_factor_step1 > 0)
+    if (verbosity > 0) {
+      message(paste("Total Step 1 genes:",
+                    length(genes_step1)))
+      message(paste("Total overdispersed genes:", sum(is_overdispersed)))
+      message(paste("Excluding", length(genes_step1) - sum(is_overdispersed),
+                    "genes from Step 1 because they are not overdispersed."))
+    }
+
+    genes_step1 <-  genes_step1[is_overdispersed]
+    genes_log_gmean_step1 <-  genes_log_gmean[genes_step1]
   }
 
   data_step1 <- cell_attr[cells_step1, , drop = FALSE]
@@ -211,7 +269,12 @@ vst <- function(umi,
     log_gmean_dens <- density(x = genes_log_gmean_step1, bw = 'nrd', adjust = 1)
     sampling_prob <- 1 / (approx(x = log_gmean_dens$x, y = log_gmean_dens$y, xout = genes_log_gmean_step1)$y + .Machine$double.eps)
     genes_step1 <- sample(x = genes_step1, size = n_genes, prob = sampling_prob)
-    genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, cells_step1], eps = gmean_eps))
+
+    if (use_geometric_mean){
+      genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, ], eps = gmean_eps))
+    } else {
+      genes_log_gmean_step1 <- log10(rowMeans(umi[genes_step1, ]))
+    }
   }
 
   if (!is.null(batch_var)) {
@@ -230,7 +293,9 @@ vst <- function(umi,
   times$get_model_pars = Sys.time()
   model_pars <- get_model_pars(genes_step1, bin_size, umi, model_str, cells_step1,
                                method, data_step1, theta_given, theta_estimation_fun,
-                               verbosity)
+                               exclude_poisson, fix_intercept, fix_slope,
+                               use_geometric_mean, use_geometric_mean_offset, verbosity)
+
   # make sure theta is not too small
   min_theta <- 1e-7
   if (any(model_pars[, 'theta'] < min_theta)) {
@@ -246,7 +311,8 @@ vst <- function(umi,
   if (do_regularize) {
     model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                                      batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
-                                     theta_regularization, verbosity)
+                                     theta_regularization, genes_amean, genes_var,
+                                     exclude_poisson, fix_intercept, fix_slope, use_geometric_mean_offset, verbosity)
     model_pars_outliers <- attr(model_pars_fit, 'outliers')
   } else {
     model_pars_fit <- model_pars
@@ -282,8 +348,20 @@ vst <- function(umi,
     regressor_data_final <- regressor_data
   }
 
+
   times$get_residuals = Sys.time()
   if (!residual_type == 'none') {
+    # min_variance estimated using median umi
+    if (min_variance == "umi_median"){
+      # Maximum pearson residual for non-zero median UMI is 5
+      min_var <- (get_nz_median2(umi) / 5)^2
+      if (verbosity > 0) {
+        message(paste("Setting min_variance based on median UMI: ", min_var))
+      }
+      arguments$set_min_var <- min_var
+    } else {
+      min_var <- min_variance
+    }
     if (verbosity > 0) {
       message('Second step: Get residuals using fitted parameters for ', length(x = genes), ' genes')
     }
@@ -297,11 +375,26 @@ vst <- function(umi,
       genes_bin <- genes[bin_ind == i]
       mu <- exp(tcrossprod(model_pars_final[genes_bin, -1, drop=FALSE], regressor_data_final))
       y <- as.matrix(umi[genes_bin, , drop=FALSE])
-      res[genes_bin, ] <- switch(residual_type,
-        'pearson' = pearson_residual(y, mu, model_pars_final[genes_bin, 'theta'], min_var = min_variance),
-        'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta']),
-        stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment')
-      )
+      if (min_variance == "model_mean") {
+        mu_mean_var <- matrixStats::rowMeans2(mu)
+        res[genes_bin, ] <- switch(residual_type,
+                                   'pearson' = pearson_residual2(y, mu, model_pars_final[genes_bin, 'theta'], min_vars = mu_mean_var),
+                                   'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta']),
+                                   stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment')
+                                   )
+      } else if (min_variance == "model_median") {
+        mu_median_var <- matrixStats::rowMedians(mu)
+        res[genes_bin, ] <- switch(residual_type,
+                                   'pearson' = pearson_residual2(y, mu, model_pars_final[genes_bin, 'theta'], min_vars = mu_median_var),
+                                   'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta']),
+                                   stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment'))
+      } else {
+        res[genes_bin, ] <- switch(residual_type,
+                                   'pearson' = pearson_residual(y, mu, model_pars_final[genes_bin, 'theta'], min_var = min_var),
+                                   'deviance' = deviance_residual(y, mu, model_pars_final[genes_bin, 'theta']),
+                                   stop('residual_type ', residual_type, ' unknown - only pearson and deviance supported at the moment')
+        )
+        }
       if (verbosity > 1) {
         setTxtProgressBar(pb, i)
       }
@@ -335,7 +428,7 @@ vst <- function(umi,
     if (residual_type != 'pearson') {
       message("Will not return corrected UMI because residual type is not set to 'pearson'")
     } else {
-      rv$umi_corrected <- sctransform::correct(rv, do_round = TRUE, do_pos = TRUE,
+      rv$umi_corrected <- sctransform::correct(rv, do_round = TRUE, do_pos = TRUE, scale_factor = scale_factor,
                                                verbosity = verbosity)
       rv$umi_corrected <- as(object = rv$umi_corrected, Class = 'dgCMatrix')
     }
@@ -356,16 +449,13 @@ vst <- function(umi,
     gene_attr <- data.frame(
       detection_rate = genes_cell_count[genes] / ncol(umi),
       gmean = 10 ^ genes_log_gmean,
+      amean = rowMeans(umi),
       variance = row_var(umi))
     if (ncol(rv$y) > 0) {
       gene_attr$residual_mean = rowMeans(rv$y)
       gene_attr$residual_variance = row_var(rv$y)
     }
-    # Special case offset model - also calculate arithmetic mean
-    if (startsWith(x = method, prefix = 'offset')) {
-      gene_attr$amean <- rowMeans(umi)
-    }
-    
+
     rv[['gene_attr']] <- gene_attr
   }
 
@@ -380,7 +470,26 @@ vst <- function(umi,
 
 get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
                            method, data_step1, theta_given, theta_estimation_fun,
-                           verbosity) {
+                           exclude_poisson = FALSE, fix_intercept = FALSE,
+                           fix_slope = FALSE, use_geometric_mean = TRUE,
+                           use_geometric_mean_offset = FALSE, verbosity = 0) {
+  if (fix_slope | fix_intercept) {
+    gene_mean <- rowMeans(umi)
+    mean_cell_sum <- mean(colSums(umi))
+    model_pars_fixed <- cbind(rep(NA, length(genes_step1)),
+                              log(gene_mean)[genes_step1] - log(mean_cell_sum),
+                              rep(log(10), length(genes_step1)))
+    if (use_geometric_mean_offset){
+      gene_gmean <- row_gmean(umi)
+      model_pars_fixed <- cbind(rep(NA, length(genes_step1)),
+                                log(gene_gmean)[genes_step1] - log(mean_cell_sum),
+                                rep(log(10), length(genes_step1)))
+    }
+    dimnames(model_pars_fixed) <- list(genes_step1, c('theta', '(Intercept)', 'log_umi'))
+    regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[cells_step1, ])
+    y_fixed <- as.matrix(umi[genes_step1, cells_step1])
+    mu_fixed <- exp(tcrossprod(model_pars_fixed[genes_step1, -1, drop=FALSE], regressor_data))
+  }
   # Special case offset model with one theta for all genes
   if (startsWith(x = method, prefix = 'offset')) {
     gene_mean <- rowMeans(umi)
@@ -400,7 +509,29 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
       }
       use_cells <- sample(x = ncol(umi), size = min(ncol(umi), 5000), replace = FALSE)
       if (verbosity > 0) {
-        message(sprintf('Estimate shared theta for offset model using %d genes, %d cells', 
+        message(sprintf('Estimate shared theta for offset model using %d genes, %d cells',
+                        length(x = use_genes), length(x = use_cells)))
+      }
+      y <- as.matrix(umi[use_genes, use_cells])
+      regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[use_cells, ])
+      mu <- exp(tcrossprod(model_pars[use_genes, -1, drop=FALSE], regressor_data))
+      if (requireNamespace("glmGamPoi", quietly = TRUE) && getNamespaceVersion('glmGamPoi') >= '1.2') {
+        theta <- 1 / glmGamPoi::overdispersion_mle(y = y, mean = mu)$estimate
+        theta <- theta[is.finite(theta)]
+      } else {
+        theta <- sapply(1:nrow(y), function(i) {
+          as.numeric(MASS::theta.ml(y = y[i, ], mu = mu[i, ], limit = 100))
+        })
+      }
+      model_pars[, 'theta'] <- mean(theta)
+    } else if (method == 'offset_allshared_theta_estimate') {
+      # use all genes with detection rate > 0.5 to estimate theta
+
+      use_genes <- rowMeans(umi > 0) > 0.5
+
+      use_cells <- sample(x = ncol(umi), size = min(ncol(umi), 5000), replace = FALSE)
+      if (verbosity > 0) {
+        message(sprintf('Estimate shared theta for offset model using %d genes, %d cells',
                         length(x = use_genes), length(x = use_cells)))
       }
       y <- as.matrix(umi[use_genes, use_cells])
@@ -416,9 +547,11 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
       }
       model_pars[, 'theta'] <- mean(theta)
     }
+
+
     return(model_pars)
   }
-  
+
   bin_ind <- ceiling(x = 1:length(x = genes_step1) / bin_size)
   max_bin <- max(bin_ind)
   if (verbosity > 0) {
@@ -433,6 +566,12 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
   for (i in 1:max_bin) {
     genes_bin_regress <- genes_step1[bin_ind == i]
     umi_bin <- as.matrix(umi[genes_bin_regress, cells_step1, drop=FALSE])
+    if (fix_slope | fix_intercept) {
+      mu_bin <-  as.matrix(mu_fixed[genes_bin_regress, cells_step1, drop=FALSE])
+      model_pars_bin <-  model_pars_fixed[genes_bin_regress, ]
+      intercept_bin <- model_pars_bin[, "(Intercept)"]
+      slope_bin <- model_pars_bin[, "log_umi"]
+    }
     if (!is.null(theta_given)) {
       theta_given_bin <- theta_given[genes_bin_regress]
     }
@@ -453,6 +592,12 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
       X = index_lst,
       FUN = function(indices) {
         umi_bin_worker <- umi_bin[indices, , drop = FALSE]
+        if (fix_intercept | fix_slope){
+          mu_bin_worker <- mu_bin[indices, , drop = FALSE]
+          model_pars_bin_worker <- model_pars_bin[indices, , drop = FALSE]
+          intercept_bin_worker <- model_pars_bin_worker[, "(Intercept)"]
+          slope_bin_worker <- model_pars_bin_worker[, "log_umi"]
+        }
         if (method == 'poisson') {
           return(fit_poisson(umi = umi_bin_worker, model_str = model_str, data = data_step1, theta_estimation_fun = theta_estimation_fun))
         }
@@ -470,7 +615,21 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
           return(fit_nb(umi = umi_bin_worker, model_str = model_str, data = data_step1))
         }
         if (method == "glmGamPoi") {
-          return(fit_glmGamPoi(umi = umi_bin_worker, model_str = model_str, data = data_step1))
+          if (fix_slope | fix_intercept){
+            if (packageVersion("glmGamPoi")<"1.5.1"){
+              stop('Please install glmGamPoi >= 1.5.1 from https://github.com/const-ae/glmGamPoi')
+            }
+            return(fit_overdisp_mle(umi = umi_bin_worker,
+                                    mu = mu_bin_worker,
+                                    intercept = intercept_bin_worker,
+                                    slope = slope_bin_worker))
+          }
+          return(fit_glmGamPoi(umi = umi_bin_worker, model_str = model_str,
+                               data = data_step1, allow_inf_theta = exclude_poisson))
+        }
+       if (method == "glmGamPoi_offset") {
+          return(fit_glmGamPoi_offset(umi = umi_bin_worker, model_str = model_str,
+                                      data = data_step1, allow_inf_theta = exclude_poisson))
         }
       },
       future.seed = TRUE
@@ -487,6 +646,30 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
   }
   rownames(model_pars) <- genes_step1
   colnames(model_pars)[1] <- 'theta'
+
+  if (exclude_poisson){
+    genes_amean <- rowMeans(umi)
+    genes_var <- row_var(umi)
+
+    genes_amean_step1 <- genes_amean[genes_step1]
+    genes_var_step1 <- genes_var[genes_step1]
+
+    predicted_theta <- genes_amean_step1^2/(genes_var_step1-genes_amean_step1)
+    actual_theta <- model_pars[genes_step1, "theta"]
+    diff_theta <- predicted_theta/actual_theta
+    model_pars <- cbind(model_pars, diff_theta)
+
+    # if the naive and estimated MLE are 1000x apart, set theta estimate to Inf
+    diff_theta_index <- rownames(model_pars[model_pars[genes_step1, "diff_theta"]< 1e-3,])
+    if (verbosity>0){
+      message(paste("Setting estimate of ", length(diff_theta_index), "genes to inf as theta_mm/theta_mle < 1e-3"))
+    }
+    # Replace theta by infinity
+    model_pars[diff_theta_index, 1] <- Inf
+    # drop diff_theta column
+    model_pars <- model_pars[, -dim(model_pars)[2]]
+  }
+
   return(model_pars)
 }
 
@@ -503,7 +686,7 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
     umi_bin <- as.matrix(umi[genes_bin, ])
     model_pars_nonreg[[i]] <- do.call(
       rbind,
-      future_lapply(X = genes_bin, 
+      future_lapply(X = genes_bin,
                     FUN = function(gene) {
                       fam <- negative.binomial(theta = model_pars_fit[gene, 'theta'], link = 'log')
                       y <- umi_bin[gene, ]
@@ -525,8 +708,65 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
 
 reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                            batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
-                           theta_regularization, verbosity) {
+                           theta_regularization,
+                           genes_amean = NULL, genes_var = NULL, exclude_poisson = FALSE,
+                           fix_intercept = FALSE, fix_slope = FALSE, use_geometric_mean_offset = FALSE, verbosity = 0) {
   genes <- names(genes_log_gmean)
+  if (exclude_poisson | fix_slope | fix_intercept){
+    # exclude this from the fitting procedure entirely
+    # at the regularization step
+    if (is.null(genes_amean)) gene_amean <- rowMeans(umi)
+    if (is.null(genes_var)) genes_var <- row_var(umi)
+
+    genes_amean_step1 <- genes_amean[genes_step1]
+    genes_var_step1 <- genes_var[genes_step1]
+
+    overdispersion_factor <- genes_var - genes_amean
+    overdispersion_factor_step1 <- overdispersion_factor[genes_step1]
+
+    all_poisson_genes <- genes[overdispersion_factor<=0]
+
+    # also set genes with mean < 1e-3 as poisson
+    low_mean_genes <- genes[genes_amean<1e-3]
+    all_poisson_genes <- union(all_poisson_genes, low_mean_genes)
+
+
+    poisson_genes_step1 <- genes_step1[overdispersion_factor_step1<=0]
+
+    if (verbosity>0){
+      message(paste("# of step1 poisson genes (variance < mean):",
+                    length(poisson_genes_step1)))
+      message(paste("# of low mean genes (mean < 0.001):", length(low_mean_genes)))
+    }
+
+    poisson_genes2 <- rownames(model_pars[!is.finite(model_pars[, 'theta']),])
+    poisson_genes3 <- intersect(low_mean_genes, genes_step1)
+    poisson_genes_step1 <- union(union(poisson_genes_step1, poisson_genes2),poisson_genes3)
+
+    overdispersed_genes_step1 <- setdiff(genes_step1, poisson_genes_step1)
+
+
+    if (verbosity>0){
+      message(paste("Total # of Step1 poisson genes (theta=Inf; variance < mean):",
+                    length(poisson_genes_step1)))
+      message(paste("Total # of poisson genes (theta=Inf; variance < mean):",
+                    length(all_poisson_genes)))
+
+      # call offset model
+      message(paste("Calling offset model for all", length(all_poisson_genes), "poisson genes"))
+    }
+
+    # Call offset model with theta=inf
+    # only the slope and intercept are used downstream
+    mean_cell_sum <- mean(colSums(umi))
+    vst_out_offset <- cbind(rep(Inf, length(all_poisson_genes)),
+                            log(genes_amean[all_poisson_genes]) - log(mean_cell_sum),
+                            rep(log(10), length(all_poisson_genes) ))
+    dimnames(vst_out_offset) <- list(all_poisson_genes, c('theta', '(Intercept)', 'log_umi'))
+    dispersion_par <- rep(0, dim(vst_out_offset)[1])
+    vst_out_offset <- cbind(vst_out_offset, dispersion_par)
+  }
+
 
   # we don't regularize theta directly
   # prior to v0.3 we regularized log10(theta)
@@ -534,10 +774,12 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
   # variance of NB is mu * (1 + mu / theta)
   # (1 + mu / theta) is what we call overdispersion factor here
   dispersion_par <- switch(theta_regularization,
-    'log_theta' = log10(model_pars[, 'theta']),
-    'od_factor' = log10(1 + 10^genes_log_gmean_step1 / model_pars[, 'theta']),
-    stop('theta_regularization ', theta_regularization, ' unknown - only log_theta and od_factor supported at the moment')
+                           'log_theta' = log10(model_pars[, 'theta']),
+                           'od_factor' = log10(1 + 10^genes_log_gmean_step1 / model_pars[, 'theta']),
+                           stop('theta_regularization ', theta_regularization, ' unknown - only log_theta and od_factor supported at the moment')
   )
+
+  model_pars_all <- model_pars
 
   model_pars <- model_pars[, colnames(model_pars) != 'theta']
   model_pars <- cbind(dispersion_par, model_pars)
@@ -546,6 +788,13 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
   # outliers are those that do not fit the overall relationship with the mean at all
   outliers <- apply(model_pars, 2, function(y) is_outlier(y, genes_log_gmean_step1))
   outliers <- apply(outliers, 1, any)
+
+  # also call theta=inf as outliers
+  if (exclude_poisson){
+    is_theta_inf <- !is.finite(model_pars_all[, "theta"])
+    outliers <- outliers | is_theta_inf
+  }
+
   if (sum(outliers) > 0) {
     if (verbosity > 0) {
       message('Found ', sum(outliers), ' outliers - those will be ignored in fitting/regularization step\n')
@@ -553,6 +802,17 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
     model_pars <- model_pars[!outliers, ]
     genes_step1 <- rownames(model_pars)
     genes_log_gmean_step1 <- genes_log_gmean_step1[!outliers]
+  }
+
+
+  if (exclude_poisson){
+    if (verbosity > 0) {
+      message('Ignoring theta inf genes')
+    }
+    overdispersed_genes <- setdiff(rownames(model_pars), all_poisson_genes)
+    model_pars <- model_pars[overdispersed_genes, ]
+    genes_step1 <- rownames(model_pars)
+    genes_log_gmean_step1 <- genes_log_gmean_step1[overdispersed_genes]
   }
 
   # select bandwidth to be used for smoothing
@@ -583,7 +843,12 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
     for (b in batches) {
       sel <- cell_attr[, batch_var] == b & rownames(cell_attr) %in% cells_step1
       #batch_genes_log_gmean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
-      batch_genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, sel], eps = gmean_eps))
+      if (use_geometric_mean){
+        batch_genes_log_gmean_step1 <- log10(row_gmean(umi[genes_step1, sel], eps = gmean_eps))
+      } else {
+        batch_genes_log_gmean_step1 <- log10(rowMeans(umi[genes_step1, sel]))
+      }
+
       if (any(is.infinite(batch_genes_log_gmean_step1))) {
         if (verbosity > 0) {
           message('Some genes not detected in batch ', b, ' -- assuming a low mean.')
@@ -592,7 +857,12 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
       }
       sel <- cell_attr[, batch_var] == b
       #batch_genes_log_gmean <- log10(rowMeans(umi[, sel]))
-      batch_genes_log_gmean <- log10(row_gmean(umi[, sel], eps = gmean_eps))
+      if (use_geometric_mean){
+        batch_genes_log_gmean <- log10(row_gmean(umi[, sel], eps = gmean_eps))
+      } else {
+        batch_genes_log_gmean <- log10(rowMeans(umi[, sel]))
+      }
+
       # in case some genes have not been observed in this batch
       batch_genes_log_gmean <- pmax(batch_genes_log_gmean, min(batch_genes_log_gmean_step1))
       batch_o <- order(batch_genes_log_gmean)
@@ -603,13 +873,58 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
     }
   }
 
+  if (exclude_poisson){
+    dispersion_par <- switch(theta_regularization,
+                             'log_theta' = rep(Inf, length(all_poisson_genes)),
+                             'od_factor' = rep(0, length(all_poisson_genes)),
+                             stop('theta_regularization ', theta_regularization, ' unknown - only log_theta and od_factor supported at the moment')
+    )
+    model_pars_fit[all_poisson_genes, "dispersion_par"] <- dispersion_par
+  }
+
   # back-transform dispersion parameter to theta
   theta <- switch(theta_regularization,
-    'log_theta' = 10^model_pars_fit[, 'dispersion_par'],
-    'od_factor' = 10^genes_log_gmean / (10^model_pars_fit[, 'dispersion_par'] - 1)
+                  'log_theta' = 10^model_pars_fit[, 'dispersion_par'],
+                  'od_factor' = 10^genes_log_gmean / (10^model_pars_fit[, 'dispersion_par'] - 1)
   )
   model_pars_fit <- model_pars_fit[, colnames(model_pars_fit) != 'dispersion_par']
   model_pars_fit <- cbind(theta, model_pars_fit)
+  all_genes <- rownames(model_pars_fit)
+  if (exclude_poisson){
+    if (verbosity > 0) {
+      message(paste('Replacing fit params for', length(all_poisson_genes),  'poisson genes by theta=Inf'))
+    }
+    for (col in colnames(model_pars_fit)){
+      stopifnot(col %in% colnames(vst_out_offset))
+      model_pars_fit[all_poisson_genes, col] <- vst_out_offset[all_poisson_genes, col]
+    }
+  }
+
+  if (fix_intercept){
+    # Replace the fitted intercepts by those calculated from offset model
+    col <- "(Intercept)"
+    if (verbosity > 0) {
+      message(paste0('Replacing regularized parameter ', col, ' by offset'))
+    }
+    gene_mean <- rowMeans(umi)
+    mean_cell_sum <- mean(colSums(umi))
+    intercept_fixed <- log(gene_mean)[all_genes] - log(mean_cell_sum)
+    if (use_geometric_mean_offset){
+      gene_gmean <- row_gmean(umi)
+      intercept_fixed <- log(gene_gmean)[all_genes] - log(mean_cell_sum)
+    }
+    model_pars_fit[all_genes, col] <- intercept_fixed
+
+  }
+
+  if (fix_slope){
+    # Replace the fitted slope by those calculated from offset model
+    col <- "log_umi"
+    if (verbosity > 0) {
+      message(paste0('Replacing regularized parameter ', col, ' by offset'))
+    }
+    model_pars_fit[all_genes, col] <- rep(log(10), length(all_genes))
+  }
 
   attr(model_pars_fit, 'outliers') <- outliers
   return(model_pars_fit)

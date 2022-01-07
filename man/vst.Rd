@@ -27,6 +27,13 @@ vst(
   gmean_eps = 1,
   theta_estimation_fun = "theta.ml",
   theta_given = NULL,
+  exclude_poisson = FALSE,
+  use_geometric_mean = TRUE,
+  use_geometric_mean_offset = FALSE,
+  fix_intercept = FALSE,
+  fix_slope = FALSE,
+  scale_factor = NA,
+  vst.flavor = NULL,
   verbosity = 2,
   verbose = NULL,
   show_progress = NULL
@@ -47,7 +54,7 @@ vst(
 
 \item{n_cells}{Number of cells to use when estimating parameters (default uses all cells)}
 
-\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'qpoisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'offset', 'offset_shared_theta_estimate'; default is 'poisson'}
+\item{method}{Method to use for initial parameter estimation; one of 'poisson', 'qpoisson', 'nb_fast', 'nb', 'nb_theta_given', 'glmGamPoi', 'offset', 'offset_shared_theta_estimate', 'glmGamPoi_offset'; default is 'poisson'}
 
 \item{do_regularize}{Boolean that, if set to FALSE, will bypass parameter regularization and use all genes in first step (ignoring n_genes); default is FALSE}
 
@@ -67,7 +74,9 @@ vst(
 
 \item{return_corrected_umi}{If set to TRUE output will contain corrected UMI matrix; see \code{correct} function}
 
-\item{min_variance}{Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; default is -Inf}
+\item{min_variance}{Lower bound for the estimated variance for any gene in any cell when calculating pearson residual; one of 'umi_median', 'model_median', 'model_mean' or a
+numeric. default is -Inf.  When set to 'umi_median' uses (median of non-zero UMIs / 5)^2 as the minimum variance so that a median UMI (often 1)
+results in a maximum pearson residual of 5. When set to 'model_median' or 'model_mean' uses the mean/median of the model estimated mu per gene as the minimum_variance.#'}
 
 \item{bw_adjust}{Kernel bandwidth adjustment factor used during regurlarization; factor will be applied to output of bw.SJ; default is 3}
 
@@ -76,6 +85,18 @@ vst(
 \item{theta_estimation_fun}{Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative}
 
 \item{theta_given}{If method is set to nb_theta_given, this should be a named numeric vector of fixed theta values for the genes; if method is offset, this should be a single value; default is NULL}
+
+\item{use_geometric_mean}{Use geometric mean instead of arithmetic mean for all calculations ; default is TRUE}
+
+\item{use_geometric_mean_offset}{Use geoemtric mean insteaf of arithmetic mean in the offset model; default is FALSE}
+
+\item{fix_intercept}{Fix intercept as defined in the offset model; default is FALSE}
+
+\item{fix_slope}{Fix slope to log(10) (eqivalent to using library size as an offset); default is FALSE}
+
+\item{scale_factor}{Replace all values of UMI in the regression model by this value instead of the median UMI; default is NA}
+
+\item{vst.flavor}{When set to `v2` sets method = glmGamPoi_offset, n_cells=2000, and exclude_poisson = TRUE which causes the model to learn theta and intercept only besides excluding poisson genes from learning and regularization; default is NULL which uses the original sctransform model}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
 
@@ -114,8 +135,8 @@ on a subset of genes and/or cells to speed things up.
 If \code{method} is set to 'poisson', a poisson regression is done and
 the negative binomial theta parameter is estimated using the response residuals in
 \code{theta_estimation_fun}.
-If \code{method} is set to 'qpoisson', coefficients and overdispersion (phi) are estimated by quasi 
-poisson regression and theta is estimated based on phi and the mean fitted value - this is currently 
+If \code{method} is set to 'qpoisson', coefficients and overdispersion (phi) are estimated by quasi
+poisson regression and theta is estimated based on phi and the mean fitted value - this is currently
 the fastest method with results very similar to 'glmGamPoi'
 If \code{method} is set to 'nb_fast', coefficients and theta are estimated as in the
 'poisson' method, but coefficients are then re-estimated using a proper negative binomial
@@ -126,8 +147,8 @@ If \code{method} is set to 'glmGamPoi', coefficients and theta are estimated by 
 \code{glmGamPoi::glm_gp}.
 
 A special case is \code{method = 'offset'}. Here no regression parameters are learned, but
-instead an offset model is assumed. The latent variable is set to log_umi and a fixed 
-slope of log(10) is used (offset). The intercept is given by log(gene_mean) - log(avg_cell_umi). 
+instead an offset model is assumed. The latent variable is set to log_umi and a fixed
+slope of log(10) is used (offset). The intercept is given by log(gene_mean) - log(avg_cell_umi).
 See Lause et al. (\href{https://doi.org/10.1101/2020.12.01.405886}{bioRxiv 2020.12.01.405886}) for details.
 Theta is set
 to 100 by default, but can be changed using the \code{theta_given} parameter (single numeric value).
