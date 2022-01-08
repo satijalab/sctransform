@@ -8,6 +8,7 @@ correct_counts(
   x,
   umi,
   cell_attr = x$cell_attr,
+  scale_factor = NA,
   verbosity = 2,
   verbose = NULL,
   show_progress = NULL
@@ -19,6 +20,9 @@ correct_counts(
 \item{umi}{The count matrix}
 
 \item{cell_attr}{Provide cell meta data holding latent data info}
+
+\item{scale_factor}{Replace all values of UMI in the regression model by this value. Default is NA
+which uses median of total UMI as the latent factor.}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
 

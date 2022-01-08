@@ -1,6 +1,23 @@
 # News
 All notable changes will be documented in this file.
 
+## [0.3.3] - UNRELEASED
+
+### Added
+- `vst.flavor` argument to  `vst()` to allow for invoking running updated regularization (sctransform v2, proposed in [Satija and Choudhary, 2021](https://doi.org/10.1101/2021.07.07.451498). See paper for details.
+- `scale_factor` to `correct()` to allow for a custom library size when correcting counts
+
+
+## [0.3.2.9008] - 2021-07-28
+### Added
+- Add future.seed = TRUE to all `future_lapply()` calls
+
+### Changed
+- Wrap MASS::theta.ml() in suppressWarnings()
+
+### Fixed
+- Fix logical comparison of vectors of length one in `diff_mean_test()`
+
 ## [0.3.2.9003] - 2020-02-11
 ### Added
 - `compare` argument to the nonparametric differential expression test `diff_mean_test()` to allow for multiple comparisons and various ways to specify which groups to compare
@@ -39,7 +56,7 @@ All notable changes will be documented in this file.
 - Remove `poisson_fast` method (replaced by `qpoisson`)
 - Use `matrixStats` package and remove `RcppEigen` dependency
 - Use quasi poisson regression where possible
-- Define cell detection event as counts >= 0.01 (instead of > 0) - this only matters to people playing around with fractional counts (see [issue #65](https://github.com/ChristophH/sctransform/issues/65))
+- Define cell detection event as counts >= 0.01 (instead of > 0) - this only matters to people playing around with fractional counts (see [issue #65](https://github.com/satijalab/sctransform/issues/65))
 - Internal code restructuring and improvements
 
 ### Fixed
