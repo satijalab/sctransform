@@ -86,13 +86,15 @@ results in a maximum pearson residual of 5. When set to 'model_median' or 'model
 
 \item{theta_given}{If method is set to nb_theta_given, this should be a named numeric vector of fixed theta values for the genes; if method is offset, this should be a single value; default is NULL}
 
+\item{exclude_poisson}{Exclude poisson genes (i.e. mu < 0.001 or mu > variance) from regularization; default is FALSE}
+
 \item{use_geometric_mean}{Use geometric mean instead of arithmetic mean for all calculations ; default is TRUE}
 
-\item{use_geometric_mean_offset}{Use geoemtric mean insteaf of arithmetic mean in the offset model; default is FALSE}
+\item{use_geometric_mean_offset}{Use geometric mean instead of arithmetic mean in the offset model; default is FALSE}
 
 \item{fix_intercept}{Fix intercept as defined in the offset model; default is FALSE}
 
-\item{fix_slope}{Fix slope to log(10) (eqivalent to using library size as an offset); default is FALSE}
+\item{fix_slope}{Fix slope to log(10) (equivalent to using library size as an offset); default is FALSE}
 
 \item{scale_factor}{Replace all values of UMI in the regression model by this value instead of the median UMI; default is NA}
 

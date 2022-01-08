@@ -160,6 +160,8 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
 #' @param x A list that provides model parameters and optionally meta data; use output of vst function
 #' @param umi The count matrix
 #' @param cell_attr Provide cell meta data holding latent data info
+#' @param scale_factor Replace all values of UMI in the regression model by this value. Default is NA
+#' which uses median of total UMI as the latent factor.
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
 #' @param verbose Deprecated; use verbosity instead
 #' @param show_progress Deprecated; use verbosity instead

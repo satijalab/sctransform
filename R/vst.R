@@ -34,10 +34,11 @@ NULL
 #' @param gmean_eps Small value added when calculating geometric mean of a gene to avoid log(0); default is 1
 #' @param theta_estimation_fun Character string indicating which method to use to estimate theta (when method = poisson); default is 'theta.ml', but 'theta.mm' seems to be a good and fast alternative
 #' @param theta_given If method is set to nb_theta_given, this should be a named numeric vector of fixed theta values for the genes; if method is offset, this should be a single value; default is NULL
+#' @param exclude_poisson Exclude poisson genes (i.e. mu < 0.001 or mu > variance) from regularization; default is FALSE
 #' @param use_geometric_mean Use geometric mean instead of arithmetic mean for all calculations ; default is TRUE
-#' @param use_geometric_mean_offset Use geoemtric mean insteaf of arithmetic mean in the offset model; default is FALSE
+#' @param use_geometric_mean_offset Use geometric mean instead of arithmetic mean in the offset model; default is FALSE
 #' @param fix_intercept Fix intercept as defined in the offset model; default is FALSE
-#' @param fix_slope Fix slope to log(10) (eqivalent to using library size as an offset); default is FALSE
+#' @param fix_slope Fix slope to log(10) (equivalent to using library size as an offset); default is FALSE
 #' @param scale_factor Replace all values of UMI in the regression model by this value instead of the median UMI; default is NA
 #' @param vst.flavor When set to `v2` sets method = glmGamPoi_offset, n_cells=2000, and exclude_poisson = TRUE which causes the model to learn theta and intercept only besides excluding poisson genes from learning and regularization; default is NULL which uses the original sctransform model
 #' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
@@ -97,6 +98,7 @@ NULL
 #' @importFrom stats glm glm.fit df.residual ksmooth model.matrix as.formula approx density poisson var bw.SJ
 #' @importFrom utils txtProgressBar setTxtProgressBar capture.output
 #' @importFrom methods as
+#' @importFrom utils packageVersion
 #'
 #' @export
 #'
@@ -206,7 +208,6 @@ vst <- function(umi,
   umi <- umi[genes, ]
   if (use_geometric_mean){
     genes_log_gmean <- log10(row_gmean(umi, eps = gmean_eps))
-
   } else {
     genes_log_gmean <- log10(rowMeans(umi))
   }
@@ -312,7 +313,8 @@ vst <- function(umi,
     model_pars_fit <- reg_model_pars(model_pars, genes_log_gmean_step1, genes_log_gmean, cell_attr,
                                      batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
                                      theta_regularization, genes_amean, genes_var,
-                                     exclude_poisson, fix_intercept, fix_slope, use_geometric_mean_offset, verbosity)
+                                     exclude_poisson, fix_intercept, fix_slope,
+                                     use_geometric_mean, use_geometric_mean_offset, verbosity)
     model_pars_outliers <- attr(model_pars_fit, 'outliers')
   } else {
     model_pars_fit <- model_pars
@@ -710,7 +712,8 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
                            batch_var, cells_step1, genes_step1, umi, bw_adjust, gmean_eps,
                            theta_regularization,
                            genes_amean = NULL, genes_var = NULL, exclude_poisson = FALSE,
-                           fix_intercept = FALSE, fix_slope = FALSE, use_geometric_mean_offset = FALSE, verbosity = 0) {
+                           fix_intercept = FALSE, fix_slope = FALSE, use_geometric_mean = TRUE,
+                           use_geometric_mean_offset = FALSE, verbosity = 0) {
   genes <- names(genes_log_gmean)
   if (exclude_poisson | fix_slope | fix_intercept){
     # exclude this from the fitting procedure entirely
