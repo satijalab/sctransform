@@ -39,8 +39,8 @@ For usage examples see vignettes in inst/doc or use the built-in help after inst
 
 Available vignettes:  
 
-- [Variance stabilizing transformation](https://rawgit.com/satijalab/sctransform/supp_html/supplement/variance_stabilizing_transformation.html)  
-- [Using sctransform in Seurat](https://rawgit.com/satijalab/sctransform/supp_html/supplement/seurat.html)  
+- [Variance stabilizing transformation](https://htmlpreview.github.io/?https://github.com/satijalab/sctransform/blob/supp_html/supplement/variance_stabilizing_transformation.html)  
+- [Using sctransform in Seurat](https://htmlpreview.github.io/?https://github.com/satijalab/sctransform/blob/supp_html/supplement/seurat.html)  
 
 ## Known Issues
 
