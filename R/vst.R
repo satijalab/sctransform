@@ -8,7 +8,7 @@ NULL
 #' This will remove unwanted effects from UMI data and return Pearson residuals.
 #' Uses future_lapply; you can set the number of cores it will use to n with plan(strategy = "multicore", workers = n).
 #' If n_genes is set, only a (somewhat-random) subset of genes is used for estimating the
-#' initial model parameters. For details see \href{http://dx.doi.org/10.1186/s13059-019-1874-1}{doi: 10.1186/s13059-019-1874-1}.
+#' initial model parameters. For details see \doi{10.1186/s13059-019-1874-1}.
 #'
 #' @param umi A matrix of UMI counts with genes as rows and cells as columns
 #' @param cell_attr A data frame containing the dependent variables; if omitted a data frame with umi and gene will be generated
@@ -81,7 +81,7 @@ NULL
 #' A special case is \code{method = 'offset'}. Here no regression parameters are learned, but
 #' instead an offset model is assumed. The latent variable is set to log_umi and a fixed
 #' slope of log(10) is used (offset). The intercept is given by log(gene_mean) - log(avg_cell_umi).
-#' See Lause et al. (\href{https://doi.org/10.1101/2020.12.01.405886}{bioRxiv 2020.12.01.405886}) for details.
+#' See Lause et al. \doi{10.1186/s13059-021-02451-7} for details.
 #' Theta is set
 #' to 100 by default, but can be changed using the \code{theta_given} parameter (single numeric value).
 #' If the offset method is used, the following parameters are overwritten:
