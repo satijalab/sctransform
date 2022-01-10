@@ -1,11 +1,11 @@
 Package: sctransform
 Type: Package
 Title: Variance Stabilizing Transformations for Single Cell UMI Data
-Version: 0.3.2.9010
-Date: 2022-01-08
+Version: 0.3.2.9011
+Date: 2022-01-10
 Authors@R: c(
-  person(given = "Christoph", family = "Hafemeister", email = "christoph.hafemeister@nyu.edu", role = c("aut", "cre"), comment = c(ORCID = "0000-0001-6365-8254")),
-  person(given = "Saket", family = "Choudhary", email = "schoudhary@nygenome.org", role = "ctb", comment = c(ORCID = "0000-0001-5202-7633")),
+  person(given = "Christoph", family = "Hafemeister", email = "christoph.hafemeister@nyu.edu", role = "aut", comment = c(ORCID = "0000-0001-6365-8254")),
+  person(given = "Saket", family = "Choudhary", email = "schoudhary@nygenome.org", role = c("aut", "cre"), comment = c(ORCID = "0000-0001-5202-7633")),
   person(given = "Rahul", family = "Satija", email = "rsatija@nygenome.org", role = "ctb", comment = c(ORCID = "0000-0001-9448-8833"))
   )
 Description: A normalization method for single-cell UMI count data using a 

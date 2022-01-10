@@ -5,7 +5,8 @@ The sctransform package was developed by Christoph Hafemeister in [Rahul Satija'
 
 ## Quick start
 
-Installation
+Installation:
+
 ```r
 # Install sctransform from CRAN
 install.packages("sctransform")
@@ -17,19 +18,18 @@ install.packages("sctransform")
 remotes::install_github("satijalab/sctransform", ref="develop")
 ```
 
-Running sctransform
+Running sctransform:
+
 ```r
 # Runnning sctransform on a UMI matrix
 normalized_data <- sctransform::vst(umi_count_matrix)$y
-#v2 regularization
+# v2 regularization
 normalized_data <- sctransform::vst(umi_count_matrix, vst.flavor="v2")$y
 
 # Runnning sctransform on a Seurat object
 seurat_object <- Seurat::SCTransform(seurat_object)
 #v2 regularization
 seurat_object <- Seurat::SCTransform(seurat_object, vst.flavor="v2")
-
-
 ```
 
 ## Help
