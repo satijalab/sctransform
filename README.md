@@ -1,7 +1,7 @@
 # sctransform
 ## R package for normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression
 
-This package was developed by Christoph Hafemeister in [Rahul Satija's lab](https://satijalab.org/) at the New York Genome Center. Core functionality of this package has been integrated into [Seurat](https://satijalab.org/seurat/), an R package designed for QC, analysis, and exploration of single cell RNA-seq data.
+The sctransform package was developed by Christoph Hafemeister in [Rahul Satija's lab](https://satijalab.org/) at the New York Genome Center and described in [Hafemeister and Satija, Genome Biology 2019](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1874-1). Recent updates are described in (Choudhary and Satija, Genome Biology, in press)[https://doi.org/10.1101/2021.07.07.451498]. Core functionality of this package has been integrated into [Seurat](https://satijalab.org/seurat/), an R package designed for QC, analysis, and exploration of single cell RNA-seq data.
 
 ## Quick start
 
