@@ -40,7 +40,8 @@ For usage examples see vignettes in inst/doc or use the built-in help after inst
 Available vignettes:  
 
 - [Variance stabilizing transformation](https://htmlpreview.github.io/?https://github.com/satijalab/sctransform/blob/supp_html/supplement/variance_stabilizing_transformation.html)  
-- [Using sctransform in Seurat](https://htmlpreview.github.io/?https://github.com/satijalab/sctransform/blob/supp_html/supplement/seurat.html)  
+- [Using sctransform in Seurat](https://htmlpreview.github.io/?https://github.com/satijalab/sctransform/blob/supp_html/supplement/seurat.html)
+- [Examples of how to perform normalization, feature selection, integration, and differential expression with sctransform v2 regularization](https://satijalab.org/seurat/articles/sctransform_v2_vignette.html)
 
 ## Known Issues
 
