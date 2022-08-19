@@ -40,6 +40,6 @@ generate <- function(vst_out, genes = rownames(vst_out$model_pars_fit),
     x <- MASS::rnegbin(n = length(gene.mu), mu = gene.mu, theta = theta[gene])
     return(x)
   }))
-  x.sim <- as(x.sim, Class = 'dgCMatrix')
+  x.sim <- as(as(as(x.sim, "dMatrix"), "generalMatrix"), "CsparseMatrix")
   return(x.sim)
 }
