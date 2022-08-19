@@ -1,7 +1,7 @@
 Package: sctransform
 Type: Package
 Title: Variance Stabilizing Transformations for Single Cell UMI Data
-Version: 0.3.3.9000
+Version: 0.3.3.9001
 Date: 2022-01-10
 Authors@R: c(
   person(given = "Christoph", family = "Hafemeister", email = "christoph.hafemeister@nyu.edu", role = "aut", comment = c(ORCID = "0000-0001-6365-8254")),
@@ -13,7 +13,7 @@ Description: A normalization method for single-cell UMI count data using a
   negative binomial regression model with regularized parameters. As part of the
   same regression framework, this package also provides functions for
   batch correction, and data correction. See Hafemeister and Satija (2019)
-  <doi:10.1186/s13059-019-1874-1>, and Choudhary and Satija (2021) <doi:10.1101/2021.07.07.451498>
+  <doi:10.1186/s13059-019-1874-1>, and Choudhary and Satija (2022) <doi:10.1186/s13059-021-02584-9>
   for more details.
 URL: https://github.com/satijalab/sctransform
 BugReports: https://github.com/satijalab/sctransform/issues

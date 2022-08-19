@@ -432,7 +432,7 @@ vst <- function(umi,
     } else {
       rv$umi_corrected <- sctransform::correct(rv, do_round = TRUE, do_pos = TRUE, scale_factor = scale_factor,
                                                verbosity = verbosity)
-      rv$umi_corrected <- as(as(as(rv$umi_corrected, "dMatrix"), "generalMatrix"), "CsparseMatrix")
+      rv$umi_corrected <- make.sparse(mat = rv$umi_corrected)
     }
   }
 

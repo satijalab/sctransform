@@ -1,7 +1,8 @@
 # sctransform
 ## R package for normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression
 
-The sctransform package was developed by Christoph Hafemeister in [Rahul Satija's lab](https://satijalab.org/) at the New York Genome Center and described in [Hafemeister and Satija, Genome Biology 2019](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1874-1). Recent updates are described in [(Choudhary and Satija, Genome Biology, in press)](https://doi.org/10.1101/2021.07.07.451498). Core functionality of this package has been integrated into [Seurat](https://satijalab.org/seurat/), an R package designed for QC, analysis, and exploration of single cell RNA-seq data.
+The sctransform package was developed by Christoph Hafemeister in [Rahul Satija's lab](https://satijalab.org/) at the New York Genome Center and described in [Hafemeister and Satija, Genome Biology 2019](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1874-1). Recent updates are described in [(Choudhary and Satija, Genome Biology, 2022)](https://doi.org/10.1186/s13059-021-02584-9).
+Core functionality of this package has been integrated into [Seurat](https://satijalab.org/seurat/), an R package designed for QC, analysis, and exploration of single cell RNA-seq data.
 
 ## Quick start
 
@@ -43,15 +44,12 @@ Available vignettes:
 - [Using sctransform in Seurat](https://htmlpreview.github.io/?https://github.com/satijalab/sctransform/blob/supp_html/supplement/seurat.html)
 - [Examples of how to perform normalization, feature selection, integration, and differential expression with sctransform v2 regularization](https://satijalab.org/seurat/articles/sctransform_v2_vignette.html)
 
-## Known Issues
-
-* `node stack overflow` error when Rfast package is loaded. The Rfast package does not play nicely with the future.apply package. Try to avoid loading the Rfast package. See discussions: https://github.com/RfastOfficial/Rfast/issues/5 https://github.com/satijalab/sctransform/issues/108
 
 Please use [the issue tracker](https://github.com/satijalab/sctransform/issues) if you encounter a problem
 
 ## References
 
-- Hafemeister, C. & Satija, R. Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression. Genome Biol 20, 296 (December 23, 2019).  [https://doi.org/10.1186/s13059-019-1874-1](https://doi.org/10.1186/s13059-019-1874-1). An early version of this work was used in the paper [Developmental diversification of cortical inhibitory interneurons, Nature 555, 2018](https://github.com/ChristophH/in-lineage).
+- Hafemeister, C. & Satija, R. Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression. Genome Biology 20, 296 (2019).  [https://doi.org/10.1186/s13059-019-1874-1](https://doi.org/10.1186/s13059-019-1874-1). An early version of this work was used in the paper [Developmental diversification of cortical inhibitory interneurons, Nature 555, 2018](https://github.com/ChristophH/in-lineage).
 
-- Choudhary, S. & Satija, R. Comparison and evaluation of statistical error models for scRNA-seq. bioRxiv (2021). [https://doi.org/10.1101/2021.07.07.451498](https://doi.org/10.1101/2021.07.07.451498)
+- Choudhary, S. & Satija, R. Comparison and evaluation of statistical error models for scRNA-seq. Genome Biology 23.1 (2022). [https://doi.org/10.1186/s13059-021-02584-9](https://doi.org/10.1186/s13059-021-02584-9)
 
