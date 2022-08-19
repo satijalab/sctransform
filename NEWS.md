@@ -6,6 +6,9 @@ All notable changes will be documented in this file.
 ### Added
 - Add `make.sparse` to handle `dgCMatrix` coercsions 
 
+### Fixed
+- Convert bitwise operators to boolean operators in utils.cpp
+
 ## [0.3.3] - 2022-01-13
 
 ### Added

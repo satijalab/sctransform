@@ -17,7 +17,7 @@ NumericVector row_mean_dgcmatrix(S4 matrix) {
   IntegerVector dim = matrix.slot("Dim");
   int rows = dim[0];
   int cols = dim[1];
-  
+
   NumericVector ret(rows, 0.0);
   int x_length = x.length();
   for (int k=0; k<x_length; ++k) {
@@ -34,7 +34,7 @@ NumericVector row_mean_dgcmatrix(S4 matrix) {
 }
 
 // [[Rcpp::export]]
-NumericMatrix row_mean_grouped_dgcmatrix(S4 matrix, IntegerVector group, 
+NumericMatrix row_mean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
                                          bool shuffle) {
   NumericVector x = matrix.slot("x");
   IntegerVector i = matrix.slot("i");
@@ -47,12 +47,12 @@ NumericMatrix row_mean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
   NumericMatrix ret(rows, groups);
   IntegerVector groupsize(groups, 0);
   int x_length = x.length();
-  
+
   if (shuffle) {
     group = clone(group);
     std::random_shuffle(group.begin(), group.end(), randWrapper);
   }
-  
+
   int col = 0;
   for (int k=0; k<x_length; ++k) {
     while (k>=p[col]) {
@@ -65,7 +65,7 @@ NumericMatrix row_mean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
     ++col;
     ++groupsize[group[col-1]-1];
   }
-  
+
   for (int j=0; j<groups; ++j) {
     if (groupsize[j] == 0) {
       ret(_, j) = rep(NumericVector::get_na(), rows);
@@ -88,12 +88,12 @@ NumericVector row_gmean_dgcmatrix(S4 matrix, double eps) {
   IntegerVector dim = matrix.slot("Dim");
   int rows = dim[0];
   int cols = dim[1];
-  
+
   NumericVector ret(rows, 0.0);
   IntegerVector nzero(rows, cols);
   int x_length = x.length();
   double log_eps = log(eps);
-  
+
   for (int k=0; k<x_length; ++k) {
     ret[i[k]] += log(x[k] + eps);
     nzero[i[k]] -= 1;
@@ -109,7 +109,7 @@ NumericVector row_gmean_dgcmatrix(S4 matrix, double eps) {
 }
 
 // [[Rcpp::export]]
-NumericMatrix row_gmean_grouped_dgcmatrix(S4 matrix, IntegerVector group, 
+NumericMatrix row_gmean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
                                           double eps, bool shuffle) {
   NumericVector x = matrix.slot("x");
   IntegerVector i = matrix.slot("i");
@@ -124,7 +124,7 @@ NumericMatrix row_gmean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
   int x_length = x.length();
   IntegerMatrix nonzero(rows, groups);
   double log_eps = log(eps);
-  
+
   if (shuffle) {
     group = clone(group);
     std::random_shuffle(group.begin(), group.end(), randWrapper);
@@ -162,13 +162,13 @@ IntegerVector row_nonzero_count_dgcmatrix(S4 matrix) {
   IntegerVector i = matrix.slot("i");
   IntegerVector dim = matrix.slot("Dim");
   int rows = dim[0];
-  
+
   IntegerVector ret(rows, 0);
   int i_len = i.length();
   for(int k = 0; k < i_len; ++k) {
     ret[i[k]]++;
   }
-  
+
   List dn = matrix.slot("Dimnames");
   if (dn[0] != R_NilValue) {
     ret.attr("names") = as<CharacterVector>(dn[0]);
@@ -186,7 +186,7 @@ IntegerMatrix row_nonzero_count_grouped_dgcmatrix(S4 matrix, IntegerVector group
   CharacterVector levs = group.attr("levels");
   int groups = levs.length();
   IntegerMatrix ret(rows, groups);
-  
+
   int col = 0;
   for (int k=0; k<i_length; ++k) {
     while (k>=p[col]) {
@@ -194,7 +194,7 @@ IntegerMatrix row_nonzero_count_grouped_dgcmatrix(S4 matrix, IntegerVector group
     }
     ret(i[k], group[col-1]-1)++;
   }
-  
+
   colnames(ret) = levs;
   List dn = matrix.slot("Dimnames");
   if (dn[0] != R_NilValue) {
@@ -234,12 +234,12 @@ NumericVector grouped_mean_diff_per_row(NumericMatrix x, IntegerVector group, bo
   NumericMatrix tmp(2, nrows);
   IntegerVector groupsize(2);
   NumericVector ret(nrows, 0.0);
-  
+
   if (shuffle) {
     group = clone(group);
     std::random_shuffle(group.begin(), group.end(), randWrapper);
   }
-  
+
   for (int i = 0; i < ncols; i++) {
     ++groupsize(group(i));
     for (int j = 0; j < nrows; j++) {
@@ -252,7 +252,7 @@ NumericVector grouped_mean_diff_per_row(NumericMatrix x, IntegerVector group, bo
   return ret;
 }
 
-// Bootstrapped mean 
+// Bootstrapped mean
 // [[Rcpp::export]]
 NumericVector mean_boot(NumericVector x, int N, int S) {
   NumericVector ret(N);
@@ -270,7 +270,7 @@ NumericMatrix mean_boot_grouped(NumericVector x, IntegerVector group, int N, int
   int groups = max(group) + 1;
   // we need as many columns
   NumericMatrix ret(N, groups);
-  
+
   for (int g = 0; g < groups; g++) {
     NumericVector xg = x[group == g];
     ret(_, g) = mean_boot(xg, N, S);
@@ -344,33 +344,33 @@ NumericVector distribution_shift(NumericMatrix x) {
 // with kind permission from the authors.
 // It has been slightly adopted for our use case here.
 // [[Rcpp::export]]
-List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int maxiters, 
+List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int maxiters,
                const double minphi, const bool returnfit){
   const unsigned int n=X.nrow(), pcols=X.ncol(), d=pcols;
-  
+
   arma::colvec b_old(d, arma::fill::zeros), b_new(d), L1(d), yhat(n), y(Y.begin(), n, false), m(n), phi(n);
   arma::vec unique_vals;
   arma::mat L2, x(X.begin(), n, pcols, false), x_tr(n, pcols);
   double dif;
-  
+
   // Identify the intercept term(s) and initialize the coefficients
   for(int i=0;i<pcols;++i){
     unique_vals = arma::unique(x.unsafe_col(i));
-    
+
     if(unique_vals.n_elem==1){
       b_old(i)=log(mean(y));
       break;
     }
-    if((unique_vals.n_elem==2) & ((unique_vals[0] == 0) | (unique_vals[1] == 0))){
+    if((unique_vals.n_elem==2) && ((unique_vals[0] == 0) || (unique_vals[1] == 0))){
       b_old(i)=arma::as_scalar(y.t()*x.unsafe_col(i));
       b_old(i)=b_old(i)/sum(x.unsafe_col(i));
       b_old(i)=log(std::max(1e-9, b_old(i)));
     }
   }
-  
+
   x_tr=x.t();
   int ij=2;
-  
+
   for(dif=1.0;dif>tol;){
     yhat=x*b_old;
     m=(exp(yhat));
@@ -387,7 +387,7 @@ List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int max
   double p=sum(arma::square(phi)/m)/(n-pcols);
   NumericVector coefs = NumericVector(b_new.begin(), b_new.end());
   coefs.names() = colnames(X);
-  
+
   List l;
   l["coefficients"]=coefs;
   l["phi"]=p;
@@ -395,6 +395,6 @@ List qpois_reg(NumericMatrix X, NumericVector Y, const double tol, const int max
   if(returnfit){
     l["fitted"]=NumericVector(m.begin(), m.end());
   }
-  
+
   return l;
 }
