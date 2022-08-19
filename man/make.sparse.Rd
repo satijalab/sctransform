@@ -7,7 +7,7 @@
 make.sparse(mat)
 }
 \arguments{
-\item{matrix}{Input matrix}
+\item{mat}{Input matrix}
 }
 \value{
 A dgCMatrix

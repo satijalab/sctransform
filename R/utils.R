@@ -526,7 +526,7 @@ get_nz_median2 <- function(umi){
 
 #' Convert a given matrix to dgCMatrix
 #'
-#' @param matrix Input matrix
+#' @param mat Input matrix
 #'
 #' @return A dgCMatrix
 make.sparse <- function(mat){
