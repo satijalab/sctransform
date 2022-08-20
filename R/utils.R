@@ -524,3 +524,12 @@ get_nz_median2 <- function(umi){
   return (median(umi@x))
 }
 
+#' Convert a given matrix to dgCMatrix
+#'
+#' @param mat Input matrix
+#'
+#' @return A dgCMatrix
+make.sparse <- function(mat){
+  mat <- as(object = mat, Class = "Matrix")
+  return (as(object = as(object = as(object = mat, Class = "dMatrix"), Class = "generalMatrix"), Class = "CsparseMatrix"))
+}

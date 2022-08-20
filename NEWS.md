@@ -1,14 +1,22 @@
 # News
 All notable changes will be documented in this file.
 
-## [0.3.3] - UNRELEASED
+## [0.3.4] - 2022-08-19
+
+### Added
+- Add `make.sparse` to handle `dgCMatrix` coercsions 
+
+### Fixed
+- Convert bitwise operators to boolean operators in utils.cpp
+
+## [0.3.3] - 2022-01-13
 
 ### Added
 - `vst.flavor` argument to  `vst()` to allow for invoking running updated regularization (sctransform v2, proposed in [Satija and Choudhary, 2021](https://doi.org/10.1101/2021.07.07.451498). See paper for details.
 - `scale_factor` to `correct()` to allow for a custom library size when correcting counts
 
 
-## [0.3.2.9008] - 2021-07-28
+## [0.3.2] - 2021-07-28
 ### Added
 - Add future.seed = TRUE to all `future_lapply()` calls
 
@@ -18,7 +26,7 @@ All notable changes will be documented in this file.
 ### Fixed
 - Fix logical comparison of vectors of length one in `diff_mean_test()`
 
-## [0.3.2.9003] - 2020-02-11
+## [0.3.2] - 2020-02-11
 ### Added
 - `compare` argument to the nonparametric differential expression test `diff_mean_test()` to allow for multiple comparisons and various ways to specify which groups to compare
 - Input checking at various places in `vst()` and `diff_mean_test()`

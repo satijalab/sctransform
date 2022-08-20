@@ -11,29 +11,5 @@
 
 ## R CMD check results
 
-0 errors | 0 warnings | 2 notes
+0 errors | 0 warnings | 0 notes
 
-```
-* checking CRAN incoming feasibility ... NOTE
-```
-
-There is change in maintaine status:
-New maintainer:
-  Saket Choudhary <schoudhary@nygenome.org>
-Old maintainer(s):
-  Christoph Hafemeister <christoph.hafemeister@nyu.edu>
-
-```
-* checking package dependencies ... NOTE
-Package which this enhances but not available for checking: ‘glmGamPoi’
-S
-```
-`glmGamPoi` is an entirely optional package that is not required for core functionality, but only needed for alternative/faster implementations of the methods in this package. It is only available on Bioconductor.
-
-## Reverse dependencies
-
-Tested using `revdepcheck::revdep_check`:
-We checked 4 reverse dependencies (1 from CRAN + 3 from Bioconductor), comparing R CMD check results across CRAN and dev versions of this package.
-
- * We saw 0 new problems
- * We failed to check 0 packages

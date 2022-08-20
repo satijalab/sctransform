@@ -236,7 +236,7 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, scale_factor = NA, v
     y.res <- mu + pearson_residual * sqrt(variance)
     y.res <- round(y.res, 0)
     y.res[y.res < 0] <- 0
-    corrected_data[[length(corrected_data) + 1]] <- as(y.res, Class = 'dgCMatrix')
+    corrected_data[[length(corrected_data) + 1]] <- make.sparse(mat = y.res)
     if (verbosity > 1) {
       setTxtProgressBar(pb, i)
     }
