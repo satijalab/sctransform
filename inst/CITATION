@@ -12,3 +12,16 @@ citEntry(entry = "article",
   url = "https://doi.org/10.1186/s13059-019-1874-1",
   textVersion = "Hafemeister, C. & Satija, R. Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression. Genome Biol 20, 296 (2019)."
 )
+
+citEntry(entry = "article",
+  author = personList(as.person("Saket Choudhary"),
+                      as.person("Rahul Satija")),
+  title = "Comparison and evaluation of statistical error models for scRNA-seq",
+  journal = "Genome Biology",
+  year = "2022",
+  volume = "23",
+  pages = "20",
+  doi = "10.1186/s13059-021-02584-9",
+  url = "https://doi.org/10.1186/s13059-021-02584-9",
+  textVersion = "Choudhary, S. & Satija, R. Comparison and evaluation of statistical error models for scRNA-seq. Genome Biology 23, 1-20 (2022)."
+)
