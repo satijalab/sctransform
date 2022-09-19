@@ -1,6 +1,9 @@
 # News
 All notable changes will be documented in this file.
 
+## [ ] - Unreleased
+- Specify minimum version of `Matrix`
+
 ## [0.3.4] - 2022-08-19
 
 ### Added

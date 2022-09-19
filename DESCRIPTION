@@ -27,7 +27,7 @@ Imports:
   dplyr,
   magrittr,
   MASS,
-  Matrix,
+  Matrix >= 1.5-0,
   methods,
   future.apply,
   future,
