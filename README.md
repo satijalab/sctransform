@@ -13,9 +13,6 @@ Installation:
 install.packages("sctransform")
 
 # Or the development version from GitHub:
-# the development version currently support v2 regularization
-# v2 regularization will be available on CRAN soon
-# install.packages("remotes")
 remotes::install_github("satijalab/sctransform", ref="develop")
 ```
 
