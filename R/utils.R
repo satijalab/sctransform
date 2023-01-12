@@ -237,7 +237,7 @@ get_residuals <- function(vst_out, umi, residual_type = 'pearson',
   # min_variance estimated using median umi
   if (min_variance == "umi_median"){
     # Maximum pearson residual for non-zero median UMI is 5
-    min_var <- (get_nz_median(umi) / 5)^2
+    min_var <- (get_nz_median2(umi) / 5)^2
     if (verbosity > 0) {
       message(paste("Setting min_variance based on median UMI: ", min_var))
     }
@@ -359,7 +359,7 @@ get_residual_var <- function(vst_out, umi, residual_type = 'pearson',
   # min_variance estimated using median umi
   if (min_variance == "umi_median"){
     # Maximum pearson residual for non-zero median UMI is 5
-    min_var <- (get_nz_median(umi, genes) / 5)^2
+    min_var <- (get_nz_median2(umi, genes) / 5)^2
     if (verbosity > 0) {
       message(paste("Setting min_variance based on median UMI: ", min_var))
     }

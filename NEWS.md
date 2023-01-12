@@ -1,6 +1,11 @@
 # News
 All notable changes will be documented in this file.
 
+## Unreleased
+
+### Fixed 
+- Replaced `get_nz_median` with faster alternative `get_nz_median2'
+
 ## [0.3.5] - 2022-09-21
 
 ### Fixed
