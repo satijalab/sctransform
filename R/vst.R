@@ -144,7 +144,13 @@ vst <- function(umi,
       if (verbosity>0){
         message("vst.flavor='v2' set, setting model to use fixed slope and exclude poisson genes.")
       }
+      glmGamPoi_check <- requireNamespace("glmGamPoi", quietly = TRUE)
       method <- "glmGamPoi_offset"
+      if (!glmGamPoi_check){
+        message('`vst.flavor` is set to "v2" but could not find glmGamPoi installed.
+                Please install the glmGamPoi package. See https://github.com/const-ae/glmGamPoi for details.')
+        method <- "nb_offset"
+      }
       exclude_poisson <- TRUE
       if (min_variance == -Inf) min_variance <- 'umi_median'
       if (is.null(n_cells)) n_cells <- 2000
@@ -603,20 +609,20 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
         if (method == 'poisson') {
           return(fit_poisson(umi = umi_bin_worker, model_str = model_str, data = data_step1, theta_estimation_fun = theta_estimation_fun))
         }
-        if (method == 'qpoisson') {
+        else if (method == 'qpoisson') {
           return(fit_qpoisson(umi = umi_bin_worker, model_str = model_str, data = data_step1))
         }
-        if (method == 'nb_theta_given') {
+        else if (method == 'nb_theta_given') {
           theta_given_bin_worker <- theta_given_bin[indices]
           return(fit_nb_theta_given(umi = umi_bin_worker, model_str = model_str, data = data_step1, theta_given = theta_given_bin_worker))
         }
-        if (method == 'nb_fast') {
+        else if (method == 'nb_fast') {
           return(fit_nb_fast(umi = umi_bin_worker, model_str = model_str, data = data_step1, theta_estimation_fun = theta_estimation_fun))
         }
-        if (method == 'nb') {
+        else if (method == 'nb') {
           return(fit_nb(umi = umi_bin_worker, model_str = model_str, data = data_step1))
         }
-        if (method == "glmGamPoi") {
+        else if (method == "glmGamPoi") {
           if (fix_slope | fix_intercept){
             if (packageVersion("glmGamPoi")<"1.5.1"){
               stop('Please install glmGamPoi >= 1.5.1 from https://github.com/const-ae/glmGamPoi')
@@ -629,10 +635,14 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
           return(fit_glmGamPoi(umi = umi_bin_worker, model_str = model_str,
                                data = data_step1, allow_inf_theta = exclude_poisson))
         }
-       if (method == "glmGamPoi_offset") {
+       else if (method == "glmGamPoi_offset") {
           return(fit_glmGamPoi_offset(umi = umi_bin_worker, model_str = model_str,
                                       data = data_step1, allow_inf_theta = exclude_poisson))
+       }
+        else if (method == "nb_offset") {
+          return(fit_nb_offset(umi = umi_bin_worker, model_str = model_str, data = data_step1, allow_inf_theta = exclude_poisson))
         }
+
       },
       future.seed = TRUE
     )

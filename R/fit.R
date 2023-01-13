@@ -1,4 +1,4 @@
-# Fir NB regression models using different approaches
+# Fit NB regression models using different approaches
 
 fit_poisson <- function(umi, model_str, data, theta_estimation_fun) {
   regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data)
@@ -130,6 +130,67 @@ fit_glmGamPoi_offset <- function(umi, model_str, data,  allow_inf_theta=FALSE) {
   model_pars <- cbind(fit$theta,
                       fit$Beta[, "Intercept"],
                       rep(log(10), nrow(umi)))
+  dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
+  return(model_pars)
+}
+
+
+# Use log_umi as offset using glmGamPoi
+fit_glmGamPoi_offset <- function(umi, model_str, data,  allow_inf_theta=FALSE) {
+  # only intercept varies
+  new_formula <- gsub("y", "", model_str)
+  # remove log_umi from model formula if it is with batch variables
+  new_formula <- gsub("\\+ log_umi", "", new_formula)
+  # replace log_umi with 1 if it is the only formula
+  new_formula <- gsub("log_umi", "1", new_formula)
+
+  log10_umi <- data$log_umi
+  stopifnot(!is.null(log10_umi))
+  log_umi <- log(10^log10_umi)
+
+
+  fit <- glmGamPoi::glm_gp(data = umi,
+                           design = as.formula(new_formula),
+                           col_data = data,
+                           offset = log_umi,
+                           size_factors = FALSE)
+  fit$theta <- 1 / fit$overdispersions
+  if (!allow_inf_theta){
+    fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-4)
+  }
+  model_pars <- cbind(fit$theta,
+                      fit$Beta[, "Intercept"],
+                      rep(log(10), nrow(umi)))
+  dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
+  return(model_pars)
+}
+
+fit_nb_offset <- function(umi, model_str, data, allow_inf_theta=FALSE) {
+  # remove log_umi from model formula if it is with batch variables
+  new_formula <- gsub("\\+ log_umi", "", model_str)
+  # replace log_umi with 1 if it is the only formula
+  new_formula <- gsub("log_umi", "1 + offset(log_umi)", new_formula)
+
+  log10_umi <- data$log_umi
+  stopifnot(!is.null(log10_umi))
+  log_umi <- log(10^log10_umi)
+  data$log_umi <- log_umi
+
+  par_mat <- apply(umi, 1, function(y) {
+    fit <- 0
+    try(fit <- glm.nb(as.formula(new_formula), data = data), silent=TRUE)
+    if (inherits(x = fit, what = 'numeric')) {
+      fit <- glm(as.formula(new_formula), data = data, family = poisson)
+      fit$theta <- Inf
+      #fit$theta <- as.numeric(x = suppressWarnings(theta.ml(y = y, mu = fit$fitted)))
+    }
+    if (!allow_inf_theta){
+      fit$theta <- pmin(fit$theta, mean(y) / 1e-4)
+    }
+    return(c(fit$theta, fit$coefficients))
+  })
+  model_pars <- t(par_mat)
+  model_pars <- cbind(model_pars, rep(log(10), nrow(umi)))
   dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
   return(model_pars)
 }
