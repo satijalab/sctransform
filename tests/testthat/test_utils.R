@@ -65,3 +65,36 @@ test_that('row_nonzero_count runs and returns expected output', {
   nzc2 <- f2(pbmc, grouping)
   expect_equal(nzc, nzc2)
 })
+
+test_that('get_nz_median2 runs and returns expected output', {
+  skip_on_cran()
+
+  m <- Matrix(nrow = 3, ncol = 3, data = 0, sparse = TRUE)
+
+  m[1,1] <- 1
+  m[2,2] <- 2
+  m[3,3] <- 3
+
+  mo <- sctransform:::get_nz_median2(m)
+  expect_equal(mo, 2)
+})
+
+test_that('get_nz_median2 runs as expected with genes', {
+  skip_on_cran()
+
+  m <- Matrix(nrow = 4, ncol = 4, data = 0, sparse = TRUE)
+
+  m[1,1] <- 1
+  m[2,2] <- 2
+  m[3,3] <- 3
+  m[4,3] <- 2
+  m[4,4] <- 4
+
+  rownames(m) <- c("gene1", "gene2", "gene3", "gene4")
+
+  mo <- sctransform:::get_nz_median2(m, c("gene4"))
+  expect_equal(mo, 3)
+
+  mo2 <- sctransform:::get_nz_median2(m, c("gene1","gene3"))
+  expect_equal(mo2, 2)
+})
