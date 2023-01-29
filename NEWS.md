@@ -6,6 +6,9 @@ All notable changes will be documented in this file.
 ### Added
 - Add `fit_nb_offset` to support vst.flavor='v2' by default
 
+### Fixed 
+- Updated cpp utilities to adhere to C++14 standards (`std::random_shuffle` -> `std::shuffle`)
+
 ### Changed
 - Changed `get_nz_median2` to support `genes` argument; thanks @boomanaiden154 and @ScreachingFire. [#155](https://github.com/satijalab/sctransform/pull/155)
 - Replaced `get_nz_median` with faster alternative `get_nz_median2` across all calls

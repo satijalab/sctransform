@@ -4,7 +4,7 @@
 \alias{get_nz_median2}
 \title{Get median of non zero UMIs from a count matrix}
 \usage{
-get_nz_median2(umi)
+get_nz_median2(umi, genes = NULL)
 }
 \arguments{
 \item{umi}{Count matrix}

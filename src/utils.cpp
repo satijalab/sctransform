@@ -8,7 +8,10 @@ using namespace Rcpp;
 // from Rcpp gallery https://gallery.rcpp.org/articles/stl-random-shuffle/
 // wrapper around R's RNG such that we get a uniform distribution over
 // [0,n) as required by the STL algorithm
-inline int randWrapper(const int n) { return floor(unif_rand()*n); }
+// inline int randWrapper(const int n) { return floor(unif_rand()*n); }
+std::random_device rd;
+std::mt19937 randWrapper(rd());
+
 
 // [[Rcpp::export]]
 NumericVector row_mean_dgcmatrix(S4 matrix) {
@@ -50,7 +53,7 @@ NumericMatrix row_mean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
 
   if (shuffle) {
     group = clone(group);
-    std::random_shuffle(group.begin(), group.end(), randWrapper);
+    std::shuffle(group.begin(), group.end(), randWrapper);
   }
 
   int col = 0;
@@ -127,7 +130,7 @@ NumericMatrix row_gmean_grouped_dgcmatrix(S4 matrix, IntegerVector group,
 
   if (shuffle) {
     group = clone(group);
-    std::random_shuffle(group.begin(), group.end(), randWrapper);
+    std::shuffle(group.begin(), group.end(), randWrapper);
   }
 
   int col = 0;
@@ -237,7 +240,7 @@ NumericVector grouped_mean_diff_per_row(NumericMatrix x, IntegerVector group, bo
 
   if (shuffle) {
     group = clone(group);
-    std::random_shuffle(group.begin(), group.end(), randWrapper);
+    std::shuffle(group.begin(), group.end(), randWrapper);
   }
 
   for (int i = 0; i < ncols; i++) {
