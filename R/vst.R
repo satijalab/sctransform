@@ -378,6 +378,7 @@ vst <- function(umi,
     if (verbosity > 1) {
       pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
     }
+    # browser()
     res <- matrix(NA_real_, length(genes), nrow(regressor_data_final), dimnames = list(genes, rownames(regressor_data_final)))
     for (i in 1:max_bin) {
       genes_bin <- genes[bin_ind == i]
@@ -776,6 +777,18 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
                             log(genes_amean[all_poisson_genes]) - log(mean_cell_sum),
                             rep(log(10), length(all_poisson_genes) ))
     dimnames(vst_out_offset) <- list(all_poisson_genes, c('theta', '(Intercept)', 'log_umi'))
+    n_coefficients <- ncol(x = model_pars)
+    if (n_coefficients > ncol(x = vst_out_offset)) {
+      # set all other parameters to zero
+      n_existing <- ncol(x = vst_out_offset)
+      n_diff <- n_coefficients - ncol(x = vst_out_offset)
+
+      vst_out_offset_remaining <- matrix(data = 0, nrow = nrow(x = vst_out_offset),
+                                         ncol = n_diff,
+                                         dimnames = list(all_poisson_genes,
+                                                         colnames(x = model_pars)[(n_existing+1):n_coefficients]))
+      vst_out_offset <- cbind(vst_out_offset, vst_out_offset_remaining)
+    }
     dispersion_par <- rep(0, dim(vst_out_offset)[1])
     vst_out_offset <- cbind(vst_out_offset, dispersion_par)
   }

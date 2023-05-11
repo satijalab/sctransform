@@ -162,6 +162,10 @@ fit_glmGamPoi_offset <- function(umi, model_str, data,  allow_inf_theta=FALSE) {
                       fit$Beta[, "Intercept"],
                       rep(log(10), nrow(umi)))
   dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
+  n_coefficients <- ncol(fit$Beta)
+  if (n_coefficients>1){
+    model_pars <- cbind(model_pars, fit$Beta[, 2:n_coefficients])
+  }
   return(model_pars)
 }
 

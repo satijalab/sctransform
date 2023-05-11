@@ -8,6 +8,7 @@ All notable changes will be documented in this file.
 
 ### Fixed 
 - Updated cpp utilities to adhere to C++17 standards (`std::random_shuffle` -> `std::shuffle`)
+- Handling of extra variables in `latent_var` when `vst.flavor="v2"`
 
 ### Changed
 - Changed `get_nz_median2` to support `genes` argument; thanks @boomanaiden154 and @ScreachingFire. [#155](https://github.com/satijalab/sctransform/pull/155)
