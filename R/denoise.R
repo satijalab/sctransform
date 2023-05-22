@@ -101,8 +101,16 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
     data <- x[[data]]
   }
   # when correcting, set all latent variables to median values
+
+
   if (!as_is) {
-    cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
+    latent_var <- x$arguments$latent_var
+    column_types <- sapply(X = cell_attr[, latent_var, drop=FALSE], FUN = class)
+    non_numeric <- names(x = column_types[column_types!="numeric"])
+    if (any(column_types != "numeric")) {
+      stop(paste0( "Some columns in metadata are not numeric, cannot calculate median while correcting: ", paste0(non_numeric, collapse = ",")))
+    }
+    cell_attr[, latent_var] <- apply(cell_attr[, latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
   }
   if (!is.na(scale_factor) && !is.numeric(scale_factor)){
     stop("`scale_factor` should be numeric")
@@ -129,7 +137,7 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     pearson_residual <- data[genes_bin, ]
-    coefs <- x$model_pars_fit[genes_bin, -1]
+    coefs <- x$model_pars_fit[genes_bin, -1, drop=FALSE]
     theta <- x$model_pars_fit[genes_bin, 1]
     mu <- exp(tcrossprod(coefs, regressor_data))
     variance <- mu + mu^2 / theta

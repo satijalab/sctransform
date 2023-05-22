@@ -378,7 +378,7 @@ vst <- function(umi,
     if (verbosity > 1) {
       pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
     }
-    # browser()
+    #browser()
     res <- matrix(NA_real_, length(genes), nrow(regressor_data_final), dimnames = list(genes, rownames(regressor_data_final)))
     for (i in 1:max_bin) {
       genes_bin <- genes[bin_ind == i]
@@ -726,6 +726,11 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
                            fix_intercept = FALSE, fix_slope = FALSE, use_geometric_mean = TRUE,
                            use_geometric_mean_offset = FALSE, verbosity = 0) {
   genes <- names(genes_log_gmean)
+  ## if a batch variable is set switch off excluding poisson genes
+  if (!is.na(x = batch_var)) {
+    exclude_poisson <- FALSE
+    fix_slope <- FALSE
+  }
   if (exclude_poisson | fix_slope | fix_intercept){
     # exclude this from the fitting procedure entirely
     # at the regularization step
@@ -916,6 +921,7 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
   model_pars_fit <- model_pars_fit[, colnames(model_pars_fit) != 'dispersion_par']
   model_pars_fit <- cbind(theta, model_pars_fit)
   all_genes <- rownames(model_pars_fit)
+  #browser()
   if (exclude_poisson){
     if (verbosity > 0) {
       message(paste('Replacing fit params for', length(all_poisson_genes),  'poisson genes by theta=Inf'))

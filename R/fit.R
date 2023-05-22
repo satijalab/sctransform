@@ -107,17 +107,27 @@ fit_overdisp_mle <- function(umi, mu, intercept, slope){
 # Use log_umi as offset using glmGamPoi
 fit_glmGamPoi_offset <- function(umi, model_str, data,  allow_inf_theta=FALSE) {
   # only intercept varies
+  includes.batch_var <- FALSE
+  if (grepl(pattern = "\\(log_umi\\) :", x = model_str)) {
+    includes.batch_var <- TRUE
+  }
   new_formula <- gsub("y", "", model_str)
-  # remove log_umi from model formula if it is with batch variables
-  new_formula <- gsub("\\+ log_umi", "", new_formula)
-  # replace log_umi with 1 if it is the only formula
-  new_formula <- gsub("log_umi", "1", new_formula)
+
+  if (!includes.batch_var) {
+    # if therse is no batch variable - remove log_umi and fix it
+    # remove log_umi from model formula if it is with batch variables
+    new_formula <- gsub("\\+ log_umi", "", new_formula)
+    # replace log_umi with 1 if it is the only formula
+    new_formula <- gsub("log_umi", "1", new_formula)
+
+    # log_umi <- 0
+  }
 
   log10_umi <- data$log_umi
   stopifnot(!is.null(log10_umi))
   log_umi <- log(10^log10_umi)
 
-
+  #browser()
   fit <- glmGamPoi::glm_gp(data = umi,
                            design = as.formula(new_formula),
                            col_data = data,
@@ -127,14 +137,31 @@ fit_glmGamPoi_offset <- function(umi, model_str, data,  allow_inf_theta=FALSE) {
   if (!allow_inf_theta){
     fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-4)
   }
-  model_pars <- cbind(fit$theta,
-                      fit$Beta[, "Intercept"],
-                      rep(log(10), nrow(umi)))
-  dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
-  n_coefficients <- ncol(fit$Beta)
-  if (n_coefficients>1){
-    model_pars <- cbind(model_pars, fit$Beta[, 2:n_coefficients])
+  if ("Intercept" %in% colnames(x = fit$Beta)) {
+    model_pars <- cbind(fit$theta,
+                        fit$Beta[, "Intercept"],
+                        rep(log(10), nrow(umi)))
+    dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
+    n_coefficients <- ncol(fit$Beta)
+    if (n_coefficients>1){
+      model_pars <- cbind(model_pars, fit$Beta[, 2:n_coefficients])
+      colnames(x = model_pars)[4:ncol(x = model_pars)] <- colnames(x = fit$Beta)[2:n_coefficients]
+    }
+  } else {
+    if (!includes.batch_var){
+      model_pars <- cbind(fit$theta,
+                          rep(log(10), nrow(umi)),
+                          fit$Beta)
+      dimnames(model_pars) <- list(rownames(umi), c('theta', 'log_umi', colnames(x = fit$Beta)))
+    } else {
+      model_pars <- cbind(fit$theta,
+                          fit$Beta)
+      dimnames(model_pars) <- list(rownames(umi), c('theta', colnames(x = fit$Beta)))
+    }
+
+
   }
+
   return(model_pars)
 }
 
@@ -165,7 +192,5 @@ fit_nb_offset <- function(umi, model_str, data, allow_inf_theta=FALSE) {
   model_pars <- t(par_mat)
   model_pars <- cbind(model_pars, rep(log(10), nrow(umi)))
   rownames(x = model_pars) <- rownames(x = umi)
-
-  #dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
   return(model_pars)
 }
