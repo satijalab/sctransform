@@ -93,7 +93,7 @@ fit_overdisp_mle <- function(umi, mu, intercept, slope){
   fit <- glmGamPoi::overdispersion_mle(umi,
                                        mu,
                                        model_matrix = NULL,
-                                       do_cox_reid_adjustment = TRUE, #!is.null(model_matrix),
+                                       do_cox_reid_adjustment = TRUE,
                                        global_estimate = FALSE,
                                        subsample = FALSE,
                                        max_iter = 200,
@@ -103,37 +103,6 @@ fit_overdisp_mle <- function(umi, mu, intercept, slope){
   colnames(model_pars) <- c("theta", "(Intercept)", "log_umi")
   return (model_pars)
 }
-
-# Use log_umi as offset using glmGamPoi
-fit_glmGamPoi_offset <- function(umi, model_str, data,  allow_inf_theta=FALSE) {
-  # only intercept varies
-  new_formula <- gsub("y", "", model_str)
-  # remove log_umi from model formula if it is with batch variables
-  new_formula <- gsub("\\+ log_umi", "", new_formula)
-  # replace log_umi with 1 if it is the only formula
-  new_formula <- gsub("log_umi", "1", new_formula)
-
-  log10_umi <- data$log_umi
-  stopifnot(!is.null(log10_umi))
-  log_umi <- log(10^log10_umi)
-
-
-  fit <- glmGamPoi::glm_gp(data = umi,
-                           design = as.formula(new_formula),
-                           col_data = data,
-                           offset = log_umi,
-                           size_factors = FALSE)
-  fit$theta <- 1 / fit$overdispersions
-  if (!allow_inf_theta){
-    fit$theta <- pmin(1 / fit$overdispersions, rowMeans(fit$Mu) / 1e-4)
-  }
-  model_pars <- cbind(fit$theta,
-                      fit$Beta[, "Intercept"],
-                      rep(log(10), nrow(umi)))
-  dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
-  return(model_pars)
-}
-
 
 # Use log_umi as offset using glmGamPoi
 fit_glmGamPoi_offset <- function(umi, model_str, data,  allow_inf_theta=FALSE) {
@@ -182,9 +151,9 @@ fit_nb_offset <- function(umi, model_str, data, allow_inf_theta=FALSE) {
 
   par_mat <- apply(umi, 1, function(y) {
     fit <- 0
-    try(fit <- glm.nb(as.formula(new_formula), data = data), silent=TRUE)
+    try(fit <- glm.nb(formula = as.formula(new_formula), data = data), silent=TRUE)
     if (inherits(x = fit, what = 'numeric')) {
-      fit <- glm(as.formula(new_formula), data = data, family = poisson)
+      fit <- glm(formula = as.formula(new_formula), data = data, family = poisson)
       fit$theta <- Inf
       #fit$theta <- as.numeric(x = suppressWarnings(theta.ml(y = y, mu = fit$fitted)))
     }
@@ -195,6 +164,8 @@ fit_nb_offset <- function(umi, model_str, data, allow_inf_theta=FALSE) {
   })
   model_pars <- t(par_mat)
   model_pars <- cbind(model_pars, rep(log(10), nrow(umi)))
-  dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
+  rownames(x = model_pars) <- rownames(x = umi)
+
+  #dimnames(model_pars) <- list(rownames(umi), c('theta', '(Intercept)', 'log_umi'))
   return(model_pars)
 }
