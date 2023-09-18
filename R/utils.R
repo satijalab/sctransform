@@ -496,7 +496,8 @@ get_model_var <- function(vst_out, cell_attr = vst_out$cell_attr, use_nonreg = F
 #' Get median of non zero UMIs from a count matrix
 #'
 #' @param umi Count matrix
-#'
+#' @param genes A vector of genes to consider for calculating
+#' the median. Default is NULL which uses all genes.
 #' @return A numeric value representing the median of non-zero entries from the UMI matrix
 get_nz_median2 <- function(umi, genes = NULL){
   if (is.null(genes)) {

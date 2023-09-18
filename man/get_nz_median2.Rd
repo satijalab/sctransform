@@ -8,6 +8,9 @@ get_nz_median2(umi, genes = NULL)
 }
 \arguments{
 \item{umi}{Count matrix}
+
+\item{genes}{A vector of genes to consider for calculating
+the median. Default is NULL which uses all genes.}
 }
 \value{
 A numeric value representing the median of non-zero entries from the UMI matrix
