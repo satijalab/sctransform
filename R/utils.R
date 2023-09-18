@@ -11,7 +11,7 @@ make_cell_attr <- function(umi, cell_attr, latent_var, batch_var, latent_var_non
   }
 
   # Make sure rownames of cell attributes match cell names in count matrix
-  if (!identical(rownames(cell_attr), colnames(umi))) {
+  if (!setequal(rownames(cell_attr), colnames(umi))) {
     stop('cell attribute row names must match column names of count matrix')
   }
 
