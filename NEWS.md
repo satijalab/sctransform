@@ -1,7 +1,7 @@
 # News
 All notable changes will be documented in this file.
 
-## Unreleased
+## [0.5.0] - 2023-09-18
 
 ### Added
 - Add `fit_nb_offset` to support vst.flavor='v2' by default

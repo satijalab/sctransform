@@ -1,7 +1,7 @@
 Package: sctransform
 Type: Package
 Title: Variance Stabilizing Transformations for Single Cell UMI Data
-Version: 0.3.5.9007
+Version: 0.4.0
 Date: 2023-09-18
 Authors@R: c(
   person(given = "Christoph", family = "Hafemeister", email = "christoph.hafemeister@nyu.edu", role = "aut", comment = c(ORCID = "0000-0001-6365-8254")),
@@ -20,7 +20,7 @@ BugReports: https://github.com/satijalab/sctransform/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
-Depends: R (>= 3.5.0)
+Depends: R (>= 3.6.0)
 LinkingTo: RcppArmadillo, Rcpp (>= 0.11.0)
 SystemRequirements: C++17
 Imports:

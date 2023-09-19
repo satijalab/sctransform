@@ -1,8 +1,10 @@
 citHeader("To cite sctransform in publications, please use:")
 
-citEntry(entry = "article",
-  author = personList(as.person("Christoph Hafemeister"),
-                      as.person("Rahul Satija")),
+bibentry(bibtype = "article",
+  author = c(person(given = "Christoph", family = "Hafemeister", email = "christoph.hafemeister@nyu.edu", role = "aut",
+  comment = c(ORCID = "0000-0001-6365-8254")),
+  person(given = "Rahul", family = "Satija", email = "rsatija@nygenome.org", role = c("aut", "ctb"), comment = c(ORCID = "000
+  -0001-9448-8833"))),
   title = "Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression",
   journal = "Genome Biology",
   year = "2019",
@@ -13,9 +15,9 @@ citEntry(entry = "article",
   textVersion = "Hafemeister, C. & Satija, R. Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression. Genome Biol 20, 296 (2019)."
 )
 
-citEntry(entry = "article",
-  author = personList(as.person("Saket Choudhary"),
-                      as.person("Rahul Satija")),
+bibentry(bibtype = "article",
+  author = c(person(given = "Saket", family = "Choudhary", email = "schoudhary@nygenome.org", role = c("aut", "cre"), comment = c(ORCID = "0000-0001-5202-7633")),
+  person(given = "Rahul", family = "Satija", email = "rsatija@nygenome.org", role = c("aut", "ctb"), comment = c(ORCID = "0000-0001-9448-8833"))),
   title = "Comparison and evaluation of statistical error models for scRNA-seq",
   journal = "Genome Biology",
   year = "2022",

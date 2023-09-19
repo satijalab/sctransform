@@ -31,6 +31,39 @@
 
 
 ```
+# EWCE
+
+<details>
+
+* Version: 
+* GitHub: https://github.com/satijalab/sctransform
+* Source code: NA
+* Number of recursive dependencies: 0
+
+</details>
+
+## Error before installation
+
+### Devel
+
+```
+
+
+
+
+
+
+```
+### CRAN
+
+```
+
+
+
+
+
+
+```
 # muscat
 
 <details>
@@ -64,7 +97,73 @@
 
 
 ```
+# RESET
+
+<details>
+
+* Version: 
+* GitHub: https://github.com/satijalab/sctransform
+* Source code: NA
+* Number of recursive dependencies: 0
+
+</details>
+
+## Error before installation
+
+### Devel
+
+```
+
+
+
+
+
+
+```
+### CRAN
+
+```
+
+
+
+
+
+
+```
 # Seurat
+
+<details>
+
+* Version: 
+* GitHub: https://github.com/satijalab/sctransform
+* Source code: NA
+* Number of recursive dependencies: 0
+
+</details>
+
+## Error before installation
+
+### Devel
+
+```
+
+
+
+
+
+
+```
+### CRAN
+
+```
+
+
+
+
+
+
+```
+# VAM
 
 <details>
 
