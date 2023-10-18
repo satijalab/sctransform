@@ -935,7 +935,7 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
   all_genes <- rownames(model_pars_fit)
   # browser()
   if (exclude_poisson){
-    if (verbosity > 0) {
+    if (verbosity > 1) {
       message(paste('Replacing fit params for', length(all_poisson_genes),  'poisson genes by theta=Inf'))
     }
     for (col in intersect(colnames(x = model_pars_fit), colnames(x = vst_out_offset)) ){
