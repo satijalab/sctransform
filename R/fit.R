@@ -178,9 +178,9 @@ fit_glmGamPoi_offset <- function(umi, model_str, data,  allow_inf_theta=FALSE) {
 
 fit_nb_offset <- function(umi, model_str, data, allow_inf_theta=FALSE) {
   # remove log_umi from model formula if it is with batch variables
-  new_formula <- gsub("\\+ log_umi", "", model_str)
+  new_formula <- gsub(pattern = "\\+ log_umi", replacement = "", x = model_str)
   # replace log_umi with 1 if it is the only formula
-  new_formula <- gsub("log_umi", "1 + offset(log_umi)", new_formula)
+  new_formula <- gsub(pattern = "log_umi", replacement = "1 + offset(log_umi)", x = new_formula)
 
   log10_umi <- data$log_umi
   stopifnot(!is.null(log10_umi))
@@ -202,7 +202,9 @@ fit_nb_offset <- function(umi, model_str, data, allow_inf_theta=FALSE) {
   })
   model_pars <- t(par_mat)
   model_pars <- cbind(model_pars, rep(log(10), nrow(umi)))
+
   rownames(x = model_pars) <- rownames(x = umi)
   colnames(x = model_pars)[match(x = 'Intercept', table = colnames(x = model_pars))] <- "(Intercept)"
+  colnames(x = model_pars)[ncol(x = model_pars)] <- "log_umi"
   return(model_pars)
 }

@@ -1,6 +1,18 @@
 # News
 All notable changes will be documented in this file.
 
+## Unreleased 
+
+### Fixed 
+
+- Fixed column name setting in `fit_nb_offset`
+
+### Changed
+
+- Verbose messages when invoking `v2`: messages are only invoked if verbosity > 1. 
+
+
+
 ## [0.5.0] - 2023-09-18
 
 ### Added

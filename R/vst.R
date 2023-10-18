@@ -141,14 +141,19 @@ vst <- function(umi,
                 show_progress = NULL) {
   if (!is.null(vst.flavor)){
     if (vst.flavor == "v2"){
-      if (verbosity>0){
-        message("vst.flavor='v2' set, setting model to use fixed slope and exclude poisson genes.")
+      if (verbosity > 0){
+        message("vst.flavor='v2' set. Using model with fixed slope and excluding poisson genes.")
       }
       glmGamPoi_check <- requireNamespace("glmGamPoi", quietly = TRUE)
       method <- "glmGamPoi_offset"
       if (!glmGamPoi_check){
-        message('`vst.flavor` is set to "v2" but could not find glmGamPoi installed.
-                Please install the glmGamPoi package. See https://github.com/const-ae/glmGamPoi for details.')
+        message("`vst.flavor` is set to 'v2' but could not find glmGamPoi installed.\n",
+                "Please install the glmGamPoi package for much faster estimation.\n",
+                "--------------------------------------------\n",
+                "install.packages('BiocManager')\n",
+                "BiocManager::install('glmGamPoi')\n",
+                "--------------------------------------------\n",
+                "Falling back to native (slower) implementation.\n")
         method <- "nb_offset"
       }
       exclude_poisson <- TRUE
@@ -257,7 +262,7 @@ vst <- function(umi,
     overdispersion_factor <- genes_var - genes_amean
     overdispersion_factor_step1 <- overdispersion_factor[genes_step1]
     is_overdispersed <- (overdispersion_factor_step1 > 0)
-    if (verbosity > 0) {
+    if (verbosity > 1) {
       message(paste("Total Step 1 genes:",
                     length(genes_step1)))
       message(paste("Total overdispersed genes:", sum(is_overdispersed)))
@@ -363,7 +368,7 @@ vst <- function(umi,
     if (min_variance == "umi_median"){
       # Maximum pearson residual for non-zero median UMI is 5
       min_var <- (get_nz_median2(umi) / 5)^2
-      if (verbosity > 0) {
+      if (verbosity > 1) {
         message(paste("Setting min_variance based on median UMI: ", min_var))
       }
       arguments$set_min_var <- min_var
@@ -674,7 +679,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
 
     # if the naive and estimated MLE are 1000x apart, set theta estimate to Inf
     diff_theta_index <- rownames(model_pars[model_pars[genes_step1, "diff_theta"]< 1e-3,])
-    if (verbosity>0){
+    if (verbosity > 1){
       message(paste("Setting estimate of ", length(diff_theta_index), "genes to inf as theta_mm/theta_mle < 1e-3"))
     }
     # Replace theta by infinity
@@ -752,7 +757,7 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
 
     poisson_genes_step1 <- genes_step1[overdispersion_factor_step1<=0]
 
-    if (verbosity>0){
+    if (verbosity > 1){
       message(paste("# of step1 poisson genes (variance < mean):",
                     length(poisson_genes_step1)))
       message(paste("# of low mean genes (mean < 0.001):", length(low_mean_genes)))
@@ -765,7 +770,7 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
     overdispersed_genes_step1 <- setdiff(genes_step1, poisson_genes_step1)
 
 
-    if (verbosity>0){
+    if (verbosity > 1){
       message(paste("Total # of Step1 poisson genes (theta=Inf; variance < mean):",
                     length(poisson_genes_step1)))
       message(paste("Total # of poisson genes (theta=Inf; variance < mean):",
@@ -844,7 +849,7 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
 
 
   if (exclude_poisson){
-    if (verbosity > 0) {
+    if (verbosity > 1) {
       message('Ignoring theta inf genes')
     }
     overdispersed_genes <- setdiff(rownames(model_pars), all_poisson_genes)
@@ -933,7 +938,7 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
     if (verbosity > 0) {
       message(paste('Replacing fit params for', length(all_poisson_genes),  'poisson genes by theta=Inf'))
     }
-    for (col in colnames(model_pars_fit)){
+    for (col in intersect(colnames(x = model_pars_fit), colnames(x = vst_out_offset)) ){
       stopifnot(col %in% colnames(vst_out_offset))
       model_pars_fit[all_poisson_genes, col] <- vst_out_offset[all_poisson_genes, col]
     }
@@ -942,7 +947,7 @@ reg_model_pars <- function(model_pars, genes_log_gmean_step1, genes_log_gmean, c
   if (fix_intercept){
     # Replace the fitted intercepts by those calculated from offset model
     col <- "(Intercept)"
-    if (verbosity > 0) {
+    if (verbosity > 1) {
       message(paste0('Replacing regularized parameter ', col, ' by offset'))
     }
     gene_mean <- rowMeans(umi)
