@@ -1,7 +1,7 @@
 Package: sctransform
 Type: Package
 Title: Variance Stabilizing Transformations for Single Cell UMI Data
-Version: 0.4.0.9003
+Version: 0.4.1
 Date: 2023-10-18
 Authors@R: c(
   person(given = "Christoph", family = "Hafemeister", email = "christoph.hafemeister@nyu.edu", role = "aut", comment = c(ORCID = "0000-0001-6365-8254")),
