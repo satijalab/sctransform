@@ -3,8 +3,8 @@ citHeader("To cite sctransform in publications, please use:")
 bibentry(bibtype = "article",
   author = c(person(given = "Christoph", family = "Hafemeister", email = "christoph.hafemeister@nyu.edu", role = "aut",
   comment = c(ORCID = "0000-0001-6365-8254")),
-  person(given = "Rahul", family = "Satija", email = "rsatija@nygenome.org", role = c("aut", "ctb"), comment = c(ORCID = "000
-  -0001-9448-8833"))),
+  person(given = "Rahul", family = "Satija", email = "rsatija@nygenome.org", role = c("aut", "ctb"), 
+comment = c(ORCID = "0000-0001-9448-8833"))),
   title = "Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression",
   journal = "Genome Biology",
   year = "2019",
