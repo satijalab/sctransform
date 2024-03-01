@@ -1,6 +1,11 @@
 # News
 All notable changes will be documented in this file.
 
+## Unreleased
+### Fixed
+
+- Fixed citation orcid
+
 ## [0.4.1] - 2023-10-18
 
 ### Fixed 
