@@ -94,6 +94,7 @@ NULL
 #'
 #' @import Matrix
 #' @importFrom future.apply future_lapply
+#' @importFrom future nbrOfWorkers
 #' @importFrom MASS theta.ml theta.mm glm.nb negative.binomial
 #' @importFrom stats glm glm.fit df.residual ksmooth model.matrix as.formula approx density poisson var bw.SJ
 #' @importFrom utils txtProgressBar setTxtProgressBar capture.output
@@ -602,7 +603,12 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
     index_lst <- split(index_vec, ceiling(index_vec/genes_per_worker))
 
     # the index list will have at most n_workers entries, each one defining which genes to work on
-    par_lst <- future_lapply(
+    if (nbrOfWorkers() == 1){
+      my.lapply <- function(X, FUN, future.seed = TRUE) lapply(X, FUN)
+    } else {
+      my.lapply <- future_lapply
+    }
+    par_lst <- my.lapply(
       X = index_lst,
       FUN = function(indices) {
         umi_bin_worker <- umi_bin[indices, , drop = FALSE]
@@ -692,6 +698,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
 }
 
 get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_data, umi, model_str_nonreg, cell_attr, verbosity) {
+  
   bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
   max_bin <- max(bin_ind)
   if (verbosity > 1) {
@@ -702,9 +709,14 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
     genes_bin <- genes[bin_ind == i]
     mu <- tcrossprod(model_pars_fit[genes_bin, -1, drop=FALSE], regressor_data)
     umi_bin <- as.matrix(umi[genes_bin, ])
+    if (nbrOfWorkers() == 1){
+      my.lapply <- function(X, FUN, future.seed = TRUE) lapply(X, FUN)
+    } else {
+      my.lapply <- future_lapply
+    }
     model_pars_nonreg[[i]] <- do.call(
       rbind,
-      future_lapply(X = genes_bin,
+      my.lapply(X = genes_bin,
                     FUN = function(gene) {
                       fam <- negative.binomial(theta = model_pars_fit[gene, 'theta'], link = 'log')
                       y <- umi_bin[gene, ]
