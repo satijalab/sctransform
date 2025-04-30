@@ -21,13 +21,13 @@ Running sctransform:
 ```r
 # Runnning sctransform on a UMI matrix
 normalized_data <- sctransform::vst(umi_count_matrix)$y
-# v2 regularization
-normalized_data <- sctransform::vst(umi_count_matrix, vst.flavor="v2")$y
+# v1 regularization
+normalized_data <- sctransform::vst(umi_count_matrix, vst.flavor="v1")$y
 
 # Runnning sctransform on a Seurat object
 seurat_object <- Seurat::SCTransform(seurat_object)
-#v2 regularization
-seurat_object <- Seurat::SCTransform(seurat_object, vst.flavor="v2")
+# v1 regularization
+seurat_object <- Seurat::SCTransform(seurat_object, vst.flavor="v1")
 ```
 
 ## Help
@@ -39,7 +39,7 @@ Available vignettes:
 
 - [Variance stabilizing transformation](https://htmlpreview.github.io/?https://github.com/satijalab/sctransform/blob/supp_html/supplement/variance_stabilizing_transformation.html)  
 - [Using sctransform in Seurat](https://htmlpreview.github.io/?https://github.com/satijalab/sctransform/blob/supp_html/supplement/seurat.html)
-- [Examples of how to perform normalization, feature selection, integration, and differential expression with sctransform v2 regularization](https://satijalab.org/seurat/articles/sctransform_v2_vignette.html)
+- [Examples of how to perform normalization, feature selection, integration, and differential expression with sctransform v2 regularization](https://satijalab.org/seurat/articles/sctransform_vignette)
 
 
 Please use [the issue tracker](https://github.com/satijalab/sctransform/issues) if you encounter a problem
