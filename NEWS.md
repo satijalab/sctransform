@@ -1,6 +1,13 @@
 # News
 All notable changes will be documented in this file.
 
+## [0.4.2] - 2025-04-30
+
+### Fixed
+
+- Fixed citation orcid
+- Fix for future_lapply when using a single core [#201](https://github.com/satijalab/sctransform/issues/201)
+
 ## [0.4.1] - 2023-10-18
 
 ### Fixed 
