@@ -9,9 +9,7 @@ correct_counts(
   umi,
   cell_attr = x$cell_attr,
   scale_factor = NA,
-  verbosity = 2,
-  verbose = NULL,
-  show_progress = NULL
+  verbosity = 2
 )
 }
 \arguments{
@@ -25,10 +23,6 @@ correct_counts(
 which uses median of total UMI as the latent factor.}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
-
-\item{verbose}{Deprecated; use verbosity instead}
-
-\item{show_progress}{Deprecated; use verbosity instead}
 }
 \value{
 Corrected data as UMI counts

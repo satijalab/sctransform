@@ -17,9 +17,7 @@ compare_expression(
   min_cells = 5,
   weighted = TRUE,
   randomize = FALSE,
-  verbosity = 2,
-  verbose = NULL,
-  show_progress = NULL
+  verbosity = 2
 )
 }
 \arguments{
@@ -48,10 +46,6 @@ compare_expression(
 \item{randomize}{Boolean indicating whether to shuffle group labels - only set to TRUE when testing methods}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
-
-\item{verbose}{Deprecated; use verbosity instead}
-
-\item{show_progress}{Deprecated; use verbosity instead}
 }
 \value{
 Data frame of results

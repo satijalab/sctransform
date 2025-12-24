@@ -9,9 +9,7 @@ plot_model_pars(
   xaxis = "gmean",
   show_theta = FALSE,
   show_var = FALSE,
-  verbosity = 2,
-  verbose = NULL,
-  show_progress = NULL
+  verbosity = 2
 )
 }
 \arguments{
@@ -24,10 +22,6 @@ plot_model_pars(
 \item{show_var}{Whether to show the average model variance; default is FALSE}
 
 \item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
-
-\item{verbose}{Deprecated; use verbosity instead}
-
-\item{show_progress}{Deprecated; use verbosity instead}
 }
 \value{
 A ggplot object
