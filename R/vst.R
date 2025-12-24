@@ -595,7 +595,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
     # if there are multiple workers, split up the matrix in chunks of n rows
     # where n is the number of workers
     n_workers <- 1
-    if (future::supportsMulticore()) {
+    if (parallelly::supportsMulticore()) {
       n_workers <- future::nbrOfWorkers()
     }
     genes_per_worker <- nrow(umi_bin) / n_workers + .Machine$double.eps
@@ -603,12 +603,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
     index_lst <- split(index_vec, ceiling(index_vec/genes_per_worker))
 
     # the index list will have at most n_workers entries, each one defining which genes to work on
-    if (nbrOfWorkers() == 1){
-      my.lapply <- function(X, FUN, future.seed = TRUE) lapply(X, FUN)
-    } else {
-      my.lapply <- future_lapply
-    }
-    par_lst <- my.lapply(
+    par_lst <- future_lapply(
       X = index_lst,
       FUN = function(indices) {
         umi_bin_worker <- umi_bin[indices, , drop = FALSE]
@@ -709,14 +704,9 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
     genes_bin <- genes[bin_ind == i]
     mu <- tcrossprod(model_pars_fit[genes_bin, -1, drop=FALSE], regressor_data)
     umi_bin <- as.matrix(umi[genes_bin, ])
-    if (nbrOfWorkers() == 1){
-      my.lapply <- function(X, FUN, future.seed = TRUE) lapply(X, FUN)
-    } else {
-      my.lapply <- future_lapply
-    }
     model_pars_nonreg[[i]] <- do.call(
       rbind,
-      my.lapply(X = genes_bin,
+      future_lapply(X = genes_bin,
                     FUN = function(gene) {
                       fam <- negative.binomial(theta = model_pars_fit[gene, 'theta'], link = 'log')
                       y <- umi_bin[gene, ]

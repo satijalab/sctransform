@@ -27,11 +27,6 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
                                cell_attr = x$cell_attr, y = x$y, min_cells = 5,
                                weighted = TRUE, randomize = FALSE, verbosity = 2,
                                verbose = NULL, show_progress = NULL) {
-  if (nbrOfWorkers() == 1){
-    my.lapply <- function(X, FUN, future.seed = TRUE) lapply(X, FUN)
-  } else {
-    my.lapply <- future_lapply
-  }
   # Take care of deprecated arguments
   if (!is.null(verbose)) {
     warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
@@ -99,16 +94,16 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     if (method == 't_test') {
-      bin_res <- my.lapply(
-        X = genes_bin, 
+      bin_res <- future_lapply(
+        X = genes_bin,
         FUN = function(gene) {model_comparison_ttest(y[gene, use_cells], group)},
         future.seed = TRUE)
     }
     if (method == 'LRT') {
       mu <- x$model_pars_fit[genes_bin, -1, drop=FALSE] %*% t(regressor_data)  # in log space
       y <- as.matrix(umi[genes_bin, use_cells])
-      bin_res <- my.lapply(
-        X = genes_bin, 
+      bin_res <- future_lapply(
+        X = genes_bin,
         FUN = function(gene) {
           model_comparison_lrt(y[gene, ], mu[gene, ], x$model_pars_fit[gene, 'theta'], group, weights)},
         future.seed = TRUE)
@@ -181,11 +176,11 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_theta[o] <- 10 ^ ksmooth(x = x$genes_log_mean_step1, y = log10(x$model_pars[, 'theta']),
                                  x.points = y_log_mean, bandwidth = bw, kernel='normal')$y
       names(y_theta) <- genes_bin
-      bin_res <- my.lapply(
-        X = genes_bin, 
+      bin_res <- future_lapply(
+        X = genes_bin,
         FUN = function(gene) {
           return(model_comparison_lrt_free3(gene, y[gene, ], y_theta[gene], x$model_str, cell_attr, group, weights, randomize))
-        }, 
+        },
         future.seed = TRUE)
     }
     res[[i]] <- do.call(rbind, bin_res)
