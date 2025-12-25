@@ -9,7 +9,7 @@ close_progress_bar(pb, verbosity)
 \arguments{
 \item{pb}{Progress bar object (can be NULL)}
 
-\item{verbosity}{Verbosity level}
+\item{verbosity}{An integer specifying the verbosity level: 0 (silent), 1 (messages only), or 2 (messages and progress bars)}
 }
 \description{
 Close progress bar

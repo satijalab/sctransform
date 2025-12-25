@@ -30,7 +30,7 @@ get_residual_var(
 
 \item{bin_size}{Number of genes to put in each bin (to show progress)}
 
-\item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
+\item{verbosity}{An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2}
 }
 \value{
 A vector of residual variances (after clipping)

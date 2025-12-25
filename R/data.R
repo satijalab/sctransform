@@ -6,7 +6,7 @@
 #' There are 914 rows (genes) and 283 columns (cells). This is a downsampled
 #' version of a 3K PBMC dataset available from 10x Genomics.
 #'
-#' @source \url{https://support.10xgenomics.com/single-cell-gene-expression/datasets/1.1.0/pbmc3k}
+#' @source \url{https://www.10xgenomics.com/datasets/3-k-pbm-cs-from-a-healthy-donor-1-standard-1-1-0}
 "pbmc"
 
 #' Transformation functions for umify

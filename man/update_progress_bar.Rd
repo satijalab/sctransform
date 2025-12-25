@@ -11,7 +11,7 @@ update_progress_bar(pb, i, verbosity)
 
 \item{i}{Current iteration number}
 
-\item{verbosity}{Verbosity level}
+\item{verbosity}{An integer specifying the verbosity level: 0 (silent), 1 (messages only), or 2 (messages and progress bars)}
 }
 \description{
 Update progress bar

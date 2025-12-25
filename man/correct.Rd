@@ -32,7 +32,7 @@ manually control the values of the latent factors; default is FALSE}
 \item{scale_factor}{Replace all values of UMI in the regression model by this value. Default is NA
 which uses median of total UMI as the latent factor.}
 
-\item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
+\item{verbosity}{An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2}
 }
 \value{
 Corrected data as UMI counts

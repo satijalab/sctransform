@@ -66,9 +66,7 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' @param do_pos Set negative values in the result to zero
 #' @param scale_factor Replace all values of UMI in the regression model by this value. Default is NA
 #' which uses median of total UMI as the latent factor.
-#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
-#' @param verbose Deprecated; use verbosity instead
-#' @param show_progress Deprecated; use verbosity instead
+#' @param verbosity An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2
 #'
 #' @return Corrected data as UMI counts
 #'
@@ -81,22 +79,7 @@ smooth_via_pca <- function(x, elbow_th = 0.025, dims_use = NULL, max_pc = 100, d
 #' }
 #'
 correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
-                    do_round = TRUE, do_pos = TRUE, scale_factor=NA, verbosity = 2,
-                    verbose = NULL, show_progress = NULL) {
-  # Take care of deprecated arguments
-  if (!is.null(verbose)) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    verbosity <- as.numeric(verbose)
-  }
-  if (!is.null(show_progress)) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    if (show_progress) {
-      verbosity <- 2
-    } else {
-      verbosity <- min(verbosity, 1)
-    }
-  }
-
+                    do_round = TRUE, do_pos = TRUE, scale_factor=NA, verbosity = 2) {
   if (is.character(data)) {
     data <- x[[data]]
   }
@@ -121,18 +104,17 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
     }
     cell_attr[, "log_umi"] <- log10(scale_factor)
   }
-  regressor_data <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
+  regressor_data <- model.matrix(get_model_formula(x$model_str), cell_attr)
 
   genes <- rownames(data)
   bin_size <- x$arguments$bin_size
-  bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
-  max_bin <- max(bin_ind)
   if (verbosity > 0) {
     message('Computing corrected count matrix for ', length(genes), ' genes')
   }
-  if (verbosity > 1) {
-    pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
-  }
+  pb_setup <- setup_progress_bar(length(genes), bin_size, verbosity)
+  bin_ind <- pb_setup$bin_ind
+  max_bin <- pb_setup$max_bin
+  pb <- pb_setup$pb
   corrected_data <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
@@ -142,13 +124,9 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
     mu <- exp(tcrossprod(coefs, regressor_data))
     variance <- mu + mu^2 / theta
     corrected_data[genes_bin, ] <- mu + pearson_residual * sqrt(variance)
-    if (verbosity > 1) {
-      setTxtProgressBar(pb, i)
-    }
+    update_progress_bar(pb, i, verbosity)
   }
-  if (verbosity > 1) {
-    close(pb)
-  }
+  close_progress_bar(pb, verbosity)
 
   if (do_round) {
     corrected_data <- round(corrected_data, 0)
@@ -170,9 +148,7 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
 #' @param cell_attr Provide cell meta data holding latent data info
 #' @param scale_factor Replace all values of UMI in the regression model by this value. Default is NA
 #' which uses median of total UMI as the latent factor.
-#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
-#' @param verbose Deprecated; use verbosity instead
-#' @param show_progress Deprecated; use verbosity instead
+#' @param verbosity An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2
 #'
 #' @return Corrected data as UMI counts
 #'
@@ -186,23 +162,8 @@ correct <- function(x, data = 'y', cell_attr = x$cell_attr, as_is = FALSE,
 #' umi_corrected <- correct_counts(vst_out, pbmc)
 #' }
 #'
-correct_counts <- function(x, umi, cell_attr = x$cell_attr, scale_factor = NA, verbosity = 2,
-                           verbose = NULL, show_progress = NULL) {
-  # Take care of deprecated arguments
-  if (!is.null(verbose)) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    verbosity <- as.numeric(verbose)
-  }
-  if (!is.null(show_progress)) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    if (show_progress) {
-      verbosity <- 2
-    } else {
-      verbosity <- min(verbosity, 1)
-    }
-  }
-
-  regressor_data_orig <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
+correct_counts <- function(x, umi, cell_attr = x$cell_attr, scale_factor = NA, verbosity = 2) {
+  regressor_data_orig <- model.matrix(get_model_formula(x$model_str), cell_attr)
   # when correcting, set all latent variables to median values
   cell_attr[, x$arguments$latent_var] <- apply(cell_attr[, x$arguments$latent_var, drop=FALSE], 2, function(x) rep(median(x), length(x)))
 
@@ -215,18 +176,17 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, scale_factor = NA, v
     }
     cell_attr[, "log_umi"] <- log10(scale_factor)
   }
-  regressor_data <- model.matrix(as.formula(gsub('^y', '', x$model_str)), cell_attr)
+  regressor_data <- model.matrix(get_model_formula(x$model_str), cell_attr)
 
   genes <- rownames(umi)[rownames(umi) %in% rownames(x$model_pars_fit)]
   bin_size <- x$arguments$bin_size
-  bin_ind <- ceiling(x = 1:length(x = genes) / bin_size)
-  max_bin <- max(bin_ind)
   if (verbosity > 0) {
     message('Computing corrected UMI count matrix')
   }
-  if (verbosity > 1) {
-    pb <- txtProgressBar(min = 0, max = max_bin, style = 3)
-  }
+  pb_setup <- setup_progress_bar(length(genes), bin_size, verbosity)
+  bin_ind <- pb_setup$bin_ind
+  max_bin <- pb_setup$max_bin
+  pb <- pb_setup$pb
   #corrected_data <- matrix(NA_real_, length(genes), nrow(regressor_data), dimnames = list(genes, rownames(regressor_data)))
   corrected_data <- list()
   for (i in 1:max_bin) {
@@ -245,13 +205,9 @@ correct_counts <- function(x, umi, cell_attr = x$cell_attr, scale_factor = NA, v
     y.res <- round(y.res, 0)
     y.res[y.res < 0] <- 0
     corrected_data[[length(corrected_data) + 1]] <- make.sparse(mat = y.res)
-    if (verbosity > 1) {
-      setTxtProgressBar(pb, i)
-    }
+    update_progress_bar(pb, i, verbosity)
   }
-  if (verbosity > 1) {
-    close(pb)
-  }
+  close_progress_bar(pb, verbosity)
   corrected_data <- do.call(what = rbind, args = corrected_data)
 
   return(corrected_data)

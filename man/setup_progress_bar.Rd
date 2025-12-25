@@ -11,10 +11,10 @@ setup_progress_bar(n_items, bin_size, verbosity)
 
 \item{bin_size}{Size of each batch/bin}
 
-\item{verbosity}{Verbosity level (0, 1, or 2)}
+\item{verbosity}{An integer specifying the verbosity level: 0 (silent), 1 (messages only), or 2 (messages and progress bars)}
 }
 \value{
-List with bin_ind (vector), pb (progress bar object or NULL), and max_bin
+A list with bin_ind (vector), pb (progress bar object or NULL), and max_bin
 }
 \description{
 Setup progress bar for batch processing

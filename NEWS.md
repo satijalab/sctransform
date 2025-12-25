@@ -1,6 +1,13 @@
 # News
 All notable changes will be documented in this file.
 
+## [0.4.3] - 2025-12-25
+
+- Fixed imports for supportsMulticore() to use parallely [#209](https://github.com/satijalab/sctransform/issues/209)
+- Switch to future_apply [#210](https://github.com/satijalab/sctransform/issues/210)
+- Remove deprecated argument 'verbose' in favor of 'verbosity'
+- Added helper functions for progress bar and parsing formulas
+
 ## [0.4.2] - 2025-04-30
 
 ### Fixed
@@ -41,7 +48,7 @@ All notable changes will be documented in this file.
 ## [0.3.4] - 2022-08-19
 
 ### Added
-- Add `make.sparse` to handle `dgCMatrix` coercsions 
+- Add `make.sparse` to handle `dgCMatrix` coercions 
 
 ### Fixed
 - Convert bitwise operators to boolean operators in utils.cpp
