@@ -8,13 +8,11 @@
 #' @param method Either 'LRT' for likelihood ratio test, or 't_test' for t-test
 #' @param bin_size Number of genes that are processed between updates of progress bar
 #' @param cell_attr Data frame of cell meta data
-#' @param y Only used if methtod = 't_test', this is the residual matrix; default is x$y
+#' @param y Only used if method = 't_test', this is the residual matrix; default is x$y
 #' @param min_cells A gene has to be detected in at least this many cells in at least one of the groups being compared to be tested
 #' @param weighted Balance the groups by using the appropriate weights
 #' @param randomize Boolean indicating whether to shuffle group labels - only set to TRUE when testing methods
-#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
-#' @param verbose Deprecated; use verbosity instead
-#' @param show_progress Deprecated; use verbosity instead
+#' @param verbosity An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2
 #'
 #' @return Data frame of results
 #'
@@ -25,27 +23,7 @@
 #'
 compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_size = 256,
                                cell_attr = x$cell_attr, y = x$y, min_cells = 5,
-                               weighted = TRUE, randomize = FALSE, verbosity = 2,
-                               verbose = NULL, show_progress = NULL) {
-  if (nbrOfWorkers() == 1){
-    my.lapply <- function(X, FUN, future.seed = TRUE) lapply(X, FUN)
-  } else {
-    my.lapply <- future_lapply
-  }
-  # Take care of deprecated arguments
-  if (!is.null(verbose)) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    verbosity <- as.numeric(verbose)
-  }
-  if (!is.null(show_progress)) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    if (show_progress) {
-      verbosity <- 2
-    } else {
-      verbosity <- min(verbosity, 1)
-    }
-  }
-
+                               weighted = TRUE, randomize = FALSE, verbosity = 2) {
   if (! method %in% c('LRT', 'LRT_free', 'LRT_reg', 't_test')) {
     stop('method needs to be either \'LRT\', \'LRT_free\', \'LRT_reg\' or \'t_test\'')
   }
@@ -99,16 +77,16 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
   for (i in 1:max_bin) {
     genes_bin <- genes[bin_ind == i]
     if (method == 't_test') {
-      bin_res <- my.lapply(
-        X = genes_bin, 
+      bin_res <- future_lapply(
+        X = genes_bin,
         FUN = function(gene) {model_comparison_ttest(y[gene, use_cells], group)},
         future.seed = TRUE)
     }
     if (method == 'LRT') {
       mu <- x$model_pars_fit[genes_bin, -1, drop=FALSE] %*% t(regressor_data)  # in log space
       y <- as.matrix(umi[genes_bin, use_cells])
-      bin_res <- my.lapply(
-        X = genes_bin, 
+      bin_res <- future_lapply(
+        X = genes_bin,
         FUN = function(gene) {
           model_comparison_lrt(y[gene, ], mu[gene, ], x$model_pars_fit[gene, 'theta'], group, weights)},
         future.seed = TRUE)
@@ -181,11 +159,11 @@ compare_expression <- function(x, umi, group, val1, val2, method = 'LRT', bin_si
       y_theta[o] <- 10 ^ ksmooth(x = x$genes_log_mean_step1, y = log10(x$model_pars[, 'theta']),
                                  x.points = y_log_mean, bandwidth = bw, kernel='normal')$y
       names(y_theta) <- genes_bin
-      bin_res <- my.lapply(
-        X = genes_bin, 
+      bin_res <- future_lapply(
+        X = genes_bin,
         FUN = function(gene) {
           return(model_comparison_lrt_free3(gene, y[gene, ], y_theta[gene], x$model_str, cell_attr, group, weights, randomize))
-        }, 
+        },
         future.seed = TRUE)
     }
     res[[i]] <- do.call(rbind, bin_res)

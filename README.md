@@ -1,7 +1,7 @@
 # sctransform
 ## R package for normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression
 
-The sctransform package was developed by Christoph Hafemeister in [Rahul Satija's lab](https://satijalab.org/) at the New York Genome Center and described in [Hafemeister and Satija, Genome Biology 2019](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1874-1). Recent updates are described in [(Choudhary and Satija, Genome Biology, 2022)](https://doi.org/10.1186/s13059-021-02584-9).
+The sctransform package was developed by Christoph Hafemeister in [Rahul Satija's lab](https://satijalab.org/) at the New York Genome Center and described in [Hafemeister and Satija, Genome Biology 2019](https://doi.org/10.1186/s13059-019-1874-1). Recent updates are described in [(Choudhary and Satija, Genome Biology, 2022)](https://doi.org/10.1186/s13059-021-02584-9).
 Core functionality of this package has been integrated into [Seurat](https://satijalab.org/seurat/), an R package designed for QC, analysis, and exploration of single cell RNA-seq data.
 
 ## Quick start
@@ -19,12 +19,12 @@ remotes::install_github("satijalab/sctransform", ref="develop")
 Running sctransform:
 
 ```r
-# Runnning sctransform on a UMI matrix
+# Running sctransform on a UMI matrix
 normalized_data <- sctransform::vst(umi_count_matrix)$y
 # v1 regularization
 normalized_data <- sctransform::vst(umi_count_matrix, vst.flavor="v1")$y
 
-# Runnning sctransform on a Seurat object
+# Running sctransform on a Seurat object
 seurat_object <- Seurat::SCTransform(seurat_object)
 # v1 regularization
 seurat_object <- Seurat::SCTransform(seurat_object, vst.flavor="v1")

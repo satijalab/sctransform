@@ -17,9 +17,7 @@ compare_expression(
   min_cells = 5,
   weighted = TRUE,
   randomize = FALSE,
-  verbosity = 2,
-  verbose = NULL,
-  show_progress = NULL
+  verbosity = 2
 )
 }
 \arguments{
@@ -39,7 +37,7 @@ compare_expression(
 
 \item{cell_attr}{Data frame of cell meta data}
 
-\item{y}{Only used if methtod = 't_test', this is the residual matrix; default is x$y}
+\item{y}{Only used if method = 't_test', this is the residual matrix; default is x$y}
 
 \item{min_cells}{A gene has to be detected in at least this many cells in at least one of the groups being compared to be tested}
 
@@ -47,11 +45,7 @@ compare_expression(
 
 \item{randomize}{Boolean indicating whether to shuffle group labels - only set to TRUE when testing methods}
 
-\item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
-
-\item{verbose}{Deprecated; use verbosity instead}
-
-\item{show_progress}{Deprecated; use verbosity instead}
+\item{verbosity}{An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2}
 }
 \value{
 Data frame of results

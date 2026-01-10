@@ -41,9 +41,7 @@ NULL
 #' @param fix_slope Fix slope to log(10) (equivalent to using library size as an offset); default is FALSE
 #' @param scale_factor Replace all values of UMI in the regression model by this value instead of the median UMI; default is NA
 #' @param vst.flavor When set to `v2` sets method = glmGamPoi_offset, n_cells=2000, and exclude_poisson = TRUE which causes the model to learn theta and intercept only besides excluding poisson genes from learning and regularization; default is NULL which uses the original sctransform model
-#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
-#' @param verbose Deprecated; use verbosity instead
-#' @param show_progress Deprecated; use verbosity instead
+#' @param verbosity An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2
 #'
 #' @return A list with components
 #' \item{y}{Matrix of transformed data, i.e. Pearson residuals, or deviance residuals; empty if \code{residual_type = 'none'}}
@@ -137,9 +135,7 @@ vst <- function(umi,
                 fix_slope = FALSE,
                 scale_factor = NA,
                 vst.flavor = NULL,
-                verbosity = 2,
-                verbose = NULL,
-                show_progress = NULL) {
+                verbosity = 2) {
   if (!is.null(vst.flavor)){
     if (vst.flavor == "v2"){
       if (verbosity > 0){
@@ -164,20 +160,6 @@ vst <- function(umi,
   }
   arguments <- as.list(environment())
   arguments <- arguments[!names(arguments) %in% c("umi", "cell_attr")]
-
-  # Take care of deprecated arguments
-  if (!is.null(verbose)) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    verbosity <- as.numeric(verbose)
-  }
-  if (!is.null(show_progress)) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    if (show_progress) {
-      verbosity <- 2
-    } else {
-      verbosity <- min(verbosity, 1)
-    }
-  }
 
   # Check for suggested package
   if (method %in% c("glmGamPoi", "glmGamPoi_offset")) {
@@ -334,7 +316,7 @@ vst <- function(umi,
   }
 
   # use all fitted values in NB model
-  regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), cell_attr)
+  regressor_data <- model.matrix(get_model_formula(model_str), cell_attr)
 
   if (!is.null(latent_var_nonreg)) {
     if (verbosity > 0) {
@@ -349,7 +331,7 @@ vst <- function(umi,
     times$get_model_pars_nonreg = Sys.time()
     model_pars_nonreg <- get_model_pars_nonreg(genes, bin_size, model_pars_fit, regressor_data, umi, model_str_nonreg, cell_attr, verbosity)
 
-    regressor_data_nonreg <- model.matrix(as.formula(gsub('^y', '', model_str_nonreg)), cell_attr)
+    regressor_data_nonreg <- model.matrix(get_model_formula(model_str_nonreg), cell_attr)
     model_pars_final <- cbind(model_pars_fit, model_pars_nonreg)
     regressor_data_final <- cbind(regressor_data, regressor_data_nonreg)
     #model_pars_final[, '(Intercept)'] <- model_pars_final[, '(Intercept)'] + model_pars_nonreg[, '(Intercept)']
@@ -449,8 +431,7 @@ vst <- function(umi,
     }
   }
 
-  rv$y[rv$y < res_clip_range[1]] <- res_clip_range[1]
-  rv$y[rv$y > res_clip_range[2]] <- res_clip_range[2]
+  rv$y <- clip_matrix_values(rv$y, res_clip_range)
 
   if (!return_cell_attr) {
     rv[['cell_attr']] <- NULL
@@ -501,7 +482,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
                                 rep(log(10), length(genes_step1)))
     }
     dimnames(model_pars_fixed) <- list(genes_step1, c('theta', '(Intercept)', 'log_umi'))
-    regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[cells_step1, ])
+    regressor_data <- model.matrix(get_model_formula(model_str), data_step1[cells_step1, ])
     y_fixed <- as.matrix(umi[genes_step1, cells_step1])
     mu_fixed <- exp(tcrossprod(model_pars_fixed[genes_step1, -1, drop=FALSE], regressor_data))
   }
@@ -528,7 +509,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
                         length(x = use_genes), length(x = use_cells)))
       }
       y <- as.matrix(umi[use_genes, use_cells])
-      regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[use_cells, ])
+      regressor_data <- model.matrix(get_model_formula(model_str), data_step1[use_cells, ])
       mu <- exp(tcrossprod(model_pars[use_genes, -1, drop=FALSE], regressor_data))
       if (requireNamespace("glmGamPoi", quietly = TRUE) && getNamespaceVersion('glmGamPoi') >= '1.2') {
         theta <- 1 / glmGamPoi::overdispersion_mle(y = y, mean = mu)$estimate
@@ -550,7 +531,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
                         length(x = use_genes), length(x = use_cells)))
       }
       y <- as.matrix(umi[use_genes, use_cells])
-      regressor_data <- model.matrix(as.formula(gsub('^y', '', model_str)), data_step1[use_cells, ])
+      regressor_data <- model.matrix(get_model_formula(model_str), data_step1[use_cells, ])
       mu <- exp(tcrossprod(model_pars[use_genes, -1, drop=FALSE], regressor_data))
       if (requireNamespace("glmGamPoi", quietly = TRUE) && getNamespaceVersion('glmGamPoi') >= '1.2') {
         theta <- 1 / glmGamPoi::overdispersion_mle(y = y, mean = mu)$estimate
@@ -595,7 +576,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
     # if there are multiple workers, split up the matrix in chunks of n rows
     # where n is the number of workers
     n_workers <- 1
-    if (future::supportsMulticore()) {
+    if (parallelly::supportsMulticore()) {
       n_workers <- future::nbrOfWorkers()
     }
     genes_per_worker <- nrow(umi_bin) / n_workers + .Machine$double.eps
@@ -603,12 +584,7 @@ get_model_pars <- function(genes_step1, bin_size, umi, model_str, cells_step1,
     index_lst <- split(index_vec, ceiling(index_vec/genes_per_worker))
 
     # the index list will have at most n_workers entries, each one defining which genes to work on
-    if (nbrOfWorkers() == 1){
-      my.lapply <- function(X, FUN, future.seed = TRUE) lapply(X, FUN)
-    } else {
-      my.lapply <- future_lapply
-    }
-    par_lst <- my.lapply(
+    par_lst <- future_lapply(
       X = index_lst,
       FUN = function(indices) {
         umi_bin_worker <- umi_bin[indices, , drop = FALSE]
@@ -709,14 +685,9 @@ get_model_pars_nonreg <- function(genes, bin_size, model_pars_fit, regressor_dat
     genes_bin <- genes[bin_ind == i]
     mu <- tcrossprod(model_pars_fit[genes_bin, -1, drop=FALSE], regressor_data)
     umi_bin <- as.matrix(umi[genes_bin, ])
-    if (nbrOfWorkers() == 1){
-      my.lapply <- function(X, FUN, future.seed = TRUE) lapply(X, FUN)
-    } else {
-      my.lapply <- future_lapply
-    }
     model_pars_nonreg[[i]] <- do.call(
       rbind,
-      my.lapply(X = genes_bin,
+      future_lapply(X = genes_bin,
                     FUN = function(gene) {
                       fam <- negative.binomial(theta = model_pars_fit[gene, 'theta'], link = 'log')
                       y <- umi_bin[gene, ]

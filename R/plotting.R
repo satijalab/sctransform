@@ -4,9 +4,7 @@
 #' @param xaxis Variable to plot on X axis; default is "gmean"
 #' @param show_theta Whether to show the theta parameter; default is FALSE (only the overdispersion factor is shown)
 #' @param show_var Whether to show the average model variance; default is FALSE
-#' @param verbosity An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2
-#' @param verbose Deprecated; use verbosity instead
-#' @param show_progress Deprecated; use verbosity instead
+#' @param verbosity An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2
 #'
 #' @return A ggplot object
 #'
@@ -22,21 +20,7 @@
 #' }
 #'
 plot_model_pars <- function(vst_out, xaxis="gmean", show_theta = FALSE, show_var = FALSE,
-                            verbosity = 2, verbose = NULL, show_progress = NULL) {
-  # Take care of deprecated arguments
-  if (!is.null(verbose)) {
-    warning("The 'verbose' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    verbosity <- as.numeric(verbose)
-  }
-  if (!is.null(show_progress)) {
-    warning("The 'show_progress' argument is deprecated as of v0.3. Use 'verbosity' instead. (in sctransform::vst)", immediate. = TRUE, call. = FALSE)
-    if (show_progress) {
-      verbosity <- 2
-    } else {
-      verbosity <- min(verbosity, 1)
-    }
-  }
-
+                            verbosity = 2) {
   if (! 'gmean' %in% names(vst_out$gene_attr)) {
     stop('vst_out must contain a data frame named gene_attr with a column named gmean (perhaps call vst with return_gene_attr = TRUE)')
   }

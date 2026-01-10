@@ -9,9 +9,7 @@ get_model_var(
   cell_attr = vst_out$cell_attr,
   use_nonreg = FALSE,
   bin_size = 256,
-  verbosity = 2,
-  verbose = NULL,
-  show_progress = NULL
+  verbosity = 2
 )
 }
 \arguments{
@@ -23,11 +21,7 @@ get_model_var(
 
 \item{bin_size}{Number of genes to put in each bin (to show progress)}
 
-\item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
-
-\item{verbose}{Deprecated; use verbosity instead}
-
-\item{show_progress}{Deprecated; use verbosity instead}
+\item{verbosity}{An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2}
 }
 \value{
 A named vector of variances (the average across all cells), one entry per gene.

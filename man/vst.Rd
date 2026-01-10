@@ -34,9 +34,7 @@ vst(
   fix_slope = FALSE,
   scale_factor = NA,
   vst.flavor = NULL,
-  verbosity = 2,
-  verbose = NULL,
-  show_progress = NULL
+  verbosity = 2
 )
 }
 \arguments{
@@ -100,11 +98,7 @@ results in a maximum pearson residual of 5. When set to 'model_median' or 'model
 
 \item{vst.flavor}{When set to `v2` sets method = glmGamPoi_offset, n_cells=2000, and exclude_poisson = TRUE which causes the model to learn theta and intercept only besides excluding poisson genes from learning and regularization; default is NULL which uses the original sctransform model}
 
-\item{verbosity}{An integer specifying whether to show only messages (1), messages and progress bars (2) or nothing (0) while the function is running; default is 2}
-
-\item{verbose}{Deprecated; use verbosity instead}
-
-\item{show_progress}{Deprecated; use verbosity instead}
+\item{verbosity}{An integer specifying the verbosity level: 0 (silent, no messages), 1 (show messages only), or 2 (show messages and progress bars); default is 2}
 }
 \value{
 A list with components
